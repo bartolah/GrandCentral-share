@@ -1503,7 +1503,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         return
                     if action == "person-add":
                         db.class_person_set(conn, _clean(payload.get("email"), 120),
-                                            _clean(payload.get("name"), 80))
+                                            _clean(payload.get("name"), 80),
+                                            _clean(payload.get("group"), 60) or None,
+                                            payload.get("teammate") is not False)
                     elif action == "group-add":
                         db.class_group_set(conn, _clean(payload.get("domain"), 120),
                                            _clean(payload.get("group"), 60))
@@ -1522,6 +1524,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         db.class_set_jev(conn, account, on)
                     else:
                         raise ValueError(f"unknown action {action!r}")
+                    if action != "jev":
+                        # a roster change re-classifies now, not at the next
+                        # mail_sync — the pane shows the new answer at once
+                        from common import load_env
+                        from sources import gmail_reader
+                        import mailclass
+                        env = load_env()
+                        known = [r[0] for r in conn.execute("SELECT DISTINCT account FROM mail_class")]
+                        mailclass.run(conn, env, known or list(gmail_reader.scan_accounts(env)),
+                                      log=lambda *_: None)
                     self._json(200, {"ok": True, **db.class_roster(conn)})
                 finally:
                     conn.close()

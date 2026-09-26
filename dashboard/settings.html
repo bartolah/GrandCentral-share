@@ -310,26 +310,34 @@
       d = await (await fetch('/classify/settings', { cache: 'no-store' })).json();
       if (!d.ok) throw new Error(d.error || 'failed');
     } catch (err) { p.innerHTML = `<div class="empty" style="padding:16px 22px">Could not load — ${esc(err.message)}</div>`; return; }
+    // E212: a group holds domains AND people — anyone in it is "company";
+    // a teammate may belong to a group or stand alone.
     const groups = {};
-    d.groups.forEach(g => { (groups[g.grp] = groups[g.grp] || []).push(g.domain); });
+    const g = n => (groups[n] = groups[n] || { domains: [], people: [] });
+    d.groups.forEach(x => g(x.grp).domains.push(x.domain));
+    d.people.filter(x => x.grp).forEach(x => g(x.grp).people.push(x));
+    const loners = d.people.filter(x => !x.grp);
+    const personRow = x => `<div class="cfg-row"><span class="conn-main">${esc(x.name || '')} <span class="conn-user">${esc(x.email)}</span>
+        ${x.teammate ? '<span class="conn-pill on">teammate</span>' : ''}</span>
+        <button class="btn" onclick="clsMate('${esc(x.email)}','${esc(x.grp || '')}',${!x.teammate})">${x.teammate ? 'Not a teammate' : 'Make teammate'}</button>
+        <button class="btn del-btn" onclick="clsDel('person','${esc(x.email)}')">Remove</button></div>`;
     p.innerHTML = `
-      <p class="cfg-note">Grand Central classifies each email: its type, who the sender is to you, whether to respond, who you're waiting on, and when to follow up. These settings decide who counts as your team.</p>
-      <div class="cfg-group"><h3>Company group</h3>
-        <div class="cfg-note">Everyone at these domains counts as your company, e.g. ConnectBlue, Capitol Influence and Northwind Media.</div>
-        ${Object.keys(groups).length ? Object.entries(groups).map(([g, doms]) => `<div class="cfg-row"><b>${esc(g)}</b>${doms.map(dm =>
-          ` <span class="idtag">${esc(dm)}</span><button class="btn del-btn" onclick="clsDel('group','${esc(dm)}')" title="Remove ${esc(dm)}">✕</button>`).join('')}</div>`).join('')
-          : '<div class="empty">No domains yet.</div>'}
-        <div class="cfg-add" id="cls-grp">${inp('group', Object.keys(groups)[0] || '', 'md', 'Group name')}${inp('domain', '', 'md', 'domain.com')}
+      <p class="cfg-note">Grand Central classifies each email: its type, who the sender is to you, whether to respond, who you're waiting on, and when to follow up. These settings decide who counts as your company and your team.</p>
+      ${Object.entries(groups).map(([name, gr]) => `
+      <div class="cfg-group"><h3>${esc(name)}</h3>
+        <div class="cfg-row">${gr.domains.map(dm => `<span class="idtag">${esc(dm)}</span><button class="btn del-btn" onclick="clsDel('group','${esc(dm)}')" title="Remove ${esc(dm)}">✕</button>`).join(' ') || '<span class="empty">No domains — only the people below.</span>'}</div>
+        ${gr.people.map(personRow).join('')}
+      </div>`).join('') || '<div class="cfg-group"><h3>Company groups</h3><div class="empty">No groups yet. Add a domain or a person below, e.g. ConnectBlue, Capitol Influence and Northwind Media in one group.</div></div>'}
+      <div class="cfg-group"><h3>Add to a group</h3>
+        <div class="cfg-note">Everyone at a domain, or one person by address, counts as your company. Teammates' threads you're waiting on follow up after 2 business days.</div>
+        <datalist id="cls-grps">${Object.keys(groups).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+        <div class="cfg-add" id="cls-grp">${inp('group', Object.keys(groups)[0] || '', 'md', 'Group name').replace('<input', '<input list="cls-grps"')}${inp('domain', '', 'md', 'domain.com')}
           <button class="btn" onclick="clsAdd('group-add','cls-grp')">Add domain</button><span class="cfg-status"></span></div>
+        <div class="cfg-add" id="cls-ppl">${inp('group', Object.keys(groups)[0] || '', 'md', 'Group (optional)').replace('<input', '<input list="cls-grps"')}${inp('name', '', 'md', 'Name')}${inp('email', '', 'md', 'name@domain.com')}
+          <label class="conn-user"><input type="checkbox" data-f="teammate" checked> teammate</label>
+          <button class="btn" onclick="clsAddPerson()">Add person</button><span class="cfg-status"></span></div>
       </div>
-      <div class="cfg-group"><h3>Teammates</h3>
-        <div class="cfg-note">People you work with directly, by email address. Mail you're waiting on from them follows up after 2 business days.</div>
-        ${d.teammates.length ? d.teammates.map(t => `<div class="cfg-row"><span class="conn-main">${esc(t.name || '')} <span class="conn-user">${esc(t.email)}</span></span>
-          <button class="btn del-btn" onclick="clsDel('person','${esc(t.email)}')">Remove</button></div>`).join('')
-          : '<div class="empty">No teammates yet.</div>'}
-        <div class="cfg-add" id="cls-ppl">${inp('name', '', 'md', 'Name')}${inp('email', '', 'md', 'name@domain.com')}
-          <button class="btn" onclick="clsAdd('person-add','cls-ppl')">Add teammate</button><span class="cfg-status"></span></div>
-      </div>
+      ${loners.length ? `<div class="cfg-group"><h3>Teammates without a group</h3>${loners.map(personRow).join('')}</div>` : ''}
       <div class="cfg-group"><h3>Jev, per account</h3>
         <div class="cfg-note">When on, Jev (TypeSafe) classifies that account's person-to-person mail. For each thread it sees the subject, who's on it, who wrote last, and up to 400 characters of the latest message. Newsletters and automated mail are never sent, and neither are full messages or attachments. TypeSafe doesn't train on it; its retention period isn't fixed (zero retention is enterprise-only). ${d.jev_key_set ? '' : '<b>Add a Jev API key in Connections to turn any of these on.</b>'}</div>
         ${d.accounts.map(a => `<div class="cfg-row"><span class="conn-main">${esc(a.account.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}</span>
@@ -342,6 +350,13 @@
     clsPost({ action, ...rowVals(row) }, row.querySelector('.cfg-status'));
   }
   function clsDel(kind, key) { clsPost({ action: kind + '-remove', key }, null); }
+  function clsAddPerson() {
+    const row = document.getElementById('cls-ppl');
+    const v = rowVals(row);
+    clsPost({ action: 'person-add', email: v.email, name: v.name, group: v.group,
+              teammate: row.querySelector('[data-f=teammate]').checked }, row.querySelector('.cfg-status'));
+  }
+  function clsMate(email, group, teammate) { clsPost({ action: 'person-add', email, group, teammate }, null); }
   function clsJev(account, on, btn) { clsPost({ action: 'jev', account, on }, btn.nextElementSibling); }
 
   // ---------- shell ----------
@@ -360,7 +375,7 @@
   // Inline onclick handlers in the tab markup need these on window.
   Object.assign(window, { connTestGmail, connAddGmail, connRemoveGmail, connTestSingle,
                           connSaveSingle, connClearSingle, ctxAdd, ctxSave, ctxToggle, ctxDelete,
-                          clsAdd, clsDel, clsJev });
+                          clsAdd, clsDel, clsJev, clsAddPerson, clsMate });
   show(new URLSearchParams(location.search).get('tab'));
 })();
 </script>

@@ -194,7 +194,32 @@ class Pass(unittest.TestCase):
         with self.assertRaises(ValueError):
             db.class_correct(self.conn, B, TID, "respond", "no")   # no row in B
 
+    def test_a_person_can_belong_to_a_group_on_any_domain(self):
+        # E212: Pat writes from outside.org but works with the group
+        seed(self.conn, A)
+        db.class_group_set(self.conn, "sister.co", "CB group")
+        db.class_person_set(self.conn, "pat@outside.org", "Pat", grp="CB group", teammate=False)
+        self.run_pass()
+        got = db.class_get(self.conn, A, TID)
+        self.assertEqual((got["relationship"], got["group"], got["type"]),
+                         ("company", "CB group", "Team collaboration"))
+        db.class_person_set(self.conn, "pat@outside.org", "", grp="CB group", teammate=True)
+        self.run_pass()
+        got = db.class_get(self.conn, A, TID)
+        self.assertEqual((got["relationship"], got["group"]), ("teammate", "CB group"))
+        roster = db.class_roster(self.conn)["people"]
+        self.assertEqual(roster[0]["name"], "Pat")          # a blank name keeps the old one
+
+    def test_domain_membership_names_the_group(self):
+        seed(self.conn, A, last_from_email="lee@sister.co",
+             participants=json.dumps(["Lee <lee@sister.co>", ME]))
+        db.class_group_set(self.conn, "sister.co", "CB group")
+        self.run_pass()
+        self.assertEqual(db.class_get(self.conn, A, TID)["group"], "CB group")
+
     def test_roster_validation(self):
+        with self.assertRaises(ValueError):
+            db.class_person_set(self.conn, "x@y.com", "X", grp=None, teammate=False)
         with self.assertRaises(ValueError):
             db.class_person_set(self.conn, "not-an-address")
         with self.assertRaises(ValueError):

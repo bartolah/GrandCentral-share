@@ -332,11 +332,11 @@ class HttpBoundary(unittest.TestCase):
         self.assertEqual(code, 200, out)
         code, out = self.get("/classify/settings")
         self.assertEqual(code, 200, out)
-        self.assertIn({"email": "sam@team.com", "name": "Sam"}, out["teammates"])
+        self.assertIn({"email": "sam@team.com", "name": "Sam", "grp": None, "teammate": True}, out["people"])
         self.assertIsInstance(out["jev_key_set"], bool)
         self.assertNotIn("JEV_API_KEY", json.dumps(out))
         code, out = self.post("/classify", {"action": "person-remove", "key": "sam@team.com"})
-        self.assertEqual((code, out["teammates"]), (200, []), out)
+        self.assertEqual((code, out["people"]), (200, []), out)
 
     def test_task_add_without_account_is_refused(self):
         code, out = self.post("/task", {"action": "add", "text": "orphan"})

@@ -41,7 +41,7 @@ from datetime import datetime, timedelta, timezone
 
 import db
 
-VERSION = "rules-2"   # rules-2: waiting_who carries the display name
+VERSION = "rules-3"   # rules-3: people in groups; classifications name the group
 
 TYPES = ("Correspondence", "Team collaboration", "Sales/outreach", "Update",
          "Newsletter", "Receipt", "Calendar", "Promo", "Other")
@@ -103,13 +103,21 @@ def own_addresses(env: dict) -> set:
 
 # ---------------------------------------------------------------- roster
 def roster(conn) -> dict:
-    """{'teammates': {email: name}, 'domains': {domain: group}} + a hash."""
-    mates = {r["email"]: r["name"] or "" for r in conn.execute(
-        "SELECT email, name FROM class_people")}
+    """{'teammates': {email: name}, 'members': {email: group},
+    'domains': {domain: group}} + a hash of all of it."""
+    people = conn.execute("SELECT email, name, grp, teammate FROM class_people").fetchall()
+    mates = {r["email"]: r["name"] or "" for r in people if r["teammate"]}
+    members = {r["email"]: r["grp"] for r in people if r["grp"]}
     doms = {r["domain"]: r["grp"] for r in conn.execute(
         "SELECT domain, grp FROM class_groups")}
-    h = hashlib.sha1(json.dumps([sorted(mates.items()), sorted(doms.items())]).encode()).hexdigest()[:10]
-    return {"teammates": mates, "domains": doms, "hash": h}
+    h = hashlib.sha1(json.dumps([sorted(mates.items()), sorted(members.items()),
+                                 sorted(doms.items())]).encode()).hexdigest()[:10]
+    return {"teammates": mates, "members": members, "domains": doms, "hash": h}
+
+
+def group_of(email: str, ros: dict) -> str | None:
+    """The company group an address belongs to: its own entry, else its domain."""
+    return ros.get("members", {}).get(email) or ros["domains"].get(_domain(email))
 
 
 def frequent_counts(conn, account: str, days: int = 90) -> dict:
@@ -140,7 +148,7 @@ def relationship_of(email: str, ros: dict, freq: dict, own: set) -> str:
         return "self"
     if email in ros["teammates"]:
         return "teammate"
-    if _domain(email) in ros["domains"]:
+    if group_of(email, ros):
         return "company"
     n = freq.get(email, 0)
     if n >= FREQUENT_MIN:
@@ -189,7 +197,10 @@ def classify(row: dict, ros: dict, freq: dict, own: set) -> dict:
     else:
         typ = "Other"
 
-    out = {"type": typ, "relationship": rel, "respond": "unsure", "priority": None,
+    who = sender if direction == "inbound" else next(
+        (a for a in others if relationship_of(a, ros, freq, own) == rel), "")
+    out = {"type": typ, "relationship": rel, "group": group_of(who, ros) if who else None,
+           "respond": "unsure", "priority": None,
            "waiting_on": "none", "waiting_who": None, "follow_up": None}
     conf = 0.9
 

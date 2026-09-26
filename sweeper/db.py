@@ -629,6 +629,12 @@ _MIGRATIONS = [
     ("mail_class", "jev", "ALTER TABLE mail_class ADD COLUMN jev TEXT"),
     ("mail_class", "jev_fp", "ALTER TABLE mail_class ADD COLUMN jev_fp TEXT"),
     ("mail_class", "jev_at", "ALTER TABLE mail_class ADD COLUMN jev_at TEXT"),
+    # E212: a person can belong to a company group (Bart: "associate people
+    # and emails with specific company groups"), teammate or not. Rows from
+    # E209 were all teammates, hence the default.
+    ("class_people", "grp", "ALTER TABLE class_people ADD COLUMN grp TEXT"),
+    ("class_people", "teammate",
+     "ALTER TABLE class_people ADD COLUMN teammate INTEGER NOT NULL DEFAULT 1"),
 ]
 
 
@@ -2026,6 +2032,8 @@ def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
     if jev:
         out["jev_model"] = jev.get("model_id")
     for f, v in pins.items():
+        if f == "follow_up" and not v:
+            v = None                      # Bart cleared the follow-up date
         out[f], src[f] = (int(v) if f == "priority" else v), "you"
     # nothing owed and nobody to chase → nothing to follow up
     if out.get("respond") == "no" and out.get("waiting_on", "none") == "none" \
@@ -2070,20 +2078,27 @@ def class_correct(conn, account: str, thread_id: str, field: str, value: str) ->
 
 
 def class_roster(conn) -> dict:
-    return {"teammates": [dict(r) for r in conn.execute(
-                "SELECT email, name FROM class_people ORDER BY name, email")],
+    return {"people": [dict(r, teammate=bool(r["teammate"])) for r in conn.execute(
+                "SELECT email, name, grp, teammate FROM class_people ORDER BY grp, name, email")],
             "groups": [dict(r) for r in conn.execute(
                 "SELECT domain, grp FROM class_groups ORDER BY grp, domain")]}
 
 
-def class_person_set(conn, email: str, name: str = "") -> str:
+def class_person_set(conn, email: str, name: str = "", grp: str | None = None,
+                     teammate: bool = True) -> str:
+    """A person on the roster: optionally in a company group, teammate or not.
+    Someone who is neither a teammate nor in a group has no reason to be here."""
     email = (email or "").strip().lower()
+    grp = (grp or "").strip()[:60] or None
     if not _EMAIL_RE.fullmatch(email):
         raise ValueError("a full email address is required")
+    if not teammate and not grp:
+        raise ValueError("pick a group, or mark them a teammate")
     with conn:
-        conn.execute("INSERT INTO class_people (email, name, added_at) VALUES (?,?,?) "
-                     "ON CONFLICT(email) DO UPDATE SET name=excluded.name",
-                     (email, (name or "").strip()[:80], _now_iso()))
+        conn.execute("INSERT INTO class_people (email, name, grp, teammate, added_at) VALUES (?,?,?,?,?) "
+                     "ON CONFLICT(email) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''), class_people.name), "
+                     "grp=excluded.grp, teammate=excluded.teammate",
+                     (email, (name or "").strip()[:80], grp, 1 if teammate else 0, _now_iso()))
     return email
 
 

@@ -824,6 +824,25 @@
   .msg .mav { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; vertical-align: middle; margin-right: 8px; position: relative; overflow: hidden; }
   .msg .mh b { font-size: 13.5px; }
   .msg .mh .t { color: var(--faint); font-size: 12px; }
+  /* E212: the Classified button */
+  .cls-bar { padding: 2px 20px 8px; font-size: 12.5px; }
+  .cls-sum { color: var(--muted); text-align: left; padding: 3px 0; line-height: 1.4; }
+  .cls-sum b { color: var(--ink); font-weight: 600; }
+  button.cls-sum:hover { color: var(--ink); }
+  .cls-sum.muted, .cls-bar .muted { color: var(--faint); }
+  .cls-panel { margin-top: 6px; border: 1px solid var(--line); border-radius: var(--r, 10px); padding: 10px 12px; background: var(--card); }
+  .cls-row { display: grid; grid-template-columns: 92px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 3px 0; }
+  .cls-k { color: var(--muted); }
+  .cls-v { flex: 1 1 auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-width: 0; }
+  .cls-v select, .cls-v input[type=date] { font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg, var(--card)); color: var(--ink); }
+  .cls-src { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; background: var(--chip-bg); color: var(--muted); }
+  .cls-src.cls-you { background: var(--blue-soft); color: var(--blue); }
+  .cls-src.cls-jev { background: var(--amber-soft, var(--chip-bg)); color: var(--note-head, var(--muted)); }
+  .cls-why { color: var(--muted); padding: 0 0 6px; }
+  .cls-reasons { margin: 6px 0 0 18px; padding: 0; color: var(--muted); }
+  .cls-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  @media (max-width: 640px) { .cls-bar { padding: 2px 14px 8px; } .cls-row { grid-template-columns: 78px minmax(0,1fr) auto; gap: 6px; }
+    .cls-v input[type=date] { max-width: 150px; } }
   /* Dev #26: reply / reply all / forward ONE message of a thread */
   .msg .mh .mact { margin-left: auto; display: flex; gap: 2px; opacity: .55; }
   .msg:hover .mh .mact, .msg .mh .mact:focus-within { opacity: 1; }
@@ -5800,6 +5819,110 @@ function useOption(key,ix){
   window.SD_PREFILL=o.body;
   openComposer(key,'all');
 }
+/* ================= E212: the Classified button (phase 3) =================
+   Plan: "Email classification with Jev". Collapsed: one line of what the
+   email is and what it needs. Expanded: every field, where it came from
+   (rules / haiku / jev / you) and a picker to correct it — a correction is
+   pinned for good and feeds tuning. Account-scoped like everything else. */
+const CLS={};                 // key -> {date, data}
+let CLS_OPEN=false;
+const CLS_OPTS={
+  type:['Correspondence','Team collaboration','Sales/outreach','Update','Newsletter','Receipt','Calendar','Promo','Other'],
+  respond:[['yes','Reply needed'],['optional','Reply optional'],['no','No reply needed']],
+  priority:[['0','0 · noise'],['1','1 · routine'],['2','2 · someone waiting'],['3','3 · urgent']],
+  waiting_on:[['none','Nobody'],['teammate','A teammate'],['outside','Someone outside']],
+  relationship:[['teammate','Teammate'],['company','Company group'],['frequent','Frequent contact'],['known','Known'],['new','New'],['machine','Automated']],
+};
+const clsLbl=(f,v)=>{ const o=(CLS_OPTS[f]||[]).find(x=>Array.isArray(x)?x[0]===String(v):x===v); return o?(Array.isArray(o)?o[1]:o):(v==null?'—':String(v)); };
+const clsDay=d=>{ if(!d) return ''; const t=new Date(d+'T12:00:00'); const diff=Math.round((t-new Date(dOff(0)+'T12:00:00'))/864e5);
+  return diff===0?'today':diff===1?'tomorrow':diff===-1?'yesterday':diff<0?`${-diff}d overdue`:t.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); };
+function clsHtml(i){
+  const c=CLS[i.key];
+  if(!c||c.date!==i.date){ setTimeout(()=>clsLoad(i),0); return `<span class="cls-sum muted">🏷 Classifying…</span>`; }
+  const d=c.data;
+  if(!d) return `<span class="cls-sum muted" title="Only mail from the last 30 days is classified">🏷 Not classified — older than 30 days</span>`;
+  const bits=[d.type];
+  if(d.respond==='yes') bits.push('Reply needed'); else if(d.respond==='optional') bits.push('Reply optional');
+  if(d.waiting_on&&d.waiting_on!=='none') bits.push('Waiting on '+(d.waiting_who||d.waiting_on));
+  if(d.follow_up) bits.push('Follow up '+clsDay(d.follow_up));
+  if(d.group) bits.push(d.group);
+  const k=esc(i.key);
+  let h=`<button class="cls-sum" onclick="CLS_OPEN=!CLS_OPEN;clsRender('${k}')" title="How this email is classified — click to see why and correct it">
+    🏷 <b>Classified:</b> ${bits.map(esc).join(' · ')} <span class="cls-car">${CLS_OPEN?'▴':'▾'}</span></button>`;
+  if(!CLS_OPEN) return h;
+  const src=f=>{ const s=(d.source||{})[f]||'rules'; return `<span class="cls-src cls-${esc(s)}" title="${s==='you'?'Your correction — kept for good':'Decided by '+esc(s)}">${esc(s==='jev'&&d.jev_model?d.jev_model:s)}</span>`; };
+  const sel=(f,v)=>`<select onchange="clsFix('${k}','${f}',this.value)">${(CLS_OPTS[f]||[]).map(o=>{ const [val,lab]=Array.isArray(o)?o:[o,o];
+      return `<option value="${esc(val)}" ${String(v)===String(val)?'selected':''}>${esc(lab)}</option>`; }).join('')}
+      ${v==null||v==='unsure'?`<option value="" selected disabled>${v==='unsure'?'Not judged yet':'—'}</option>`:''}</select>`;
+  const row=(label,f,ctl)=>`<div class="cls-row"><span class="cls-k">${label}</span><span class="cls-v">${ctl}</span>${src(f)}</div>`;
+  // the other person: the sender, or — when you wrote last — who you wrote to
+  const sender=clsOther(i);
+  h+=`<div class="cls-panel">
+    ${d.summary?`<div class="cls-why">✨ ${esc(d.summary)}</div>`:''}
+    ${row('Type','type',sel('type',d.type))}
+    ${row('Respond','respond',sel('respond',d.respond))}
+    ${row('Priority','priority',sel('priority',d.priority))}
+    ${row('Waiting on','waiting_on',sel('waiting_on',d.waiting_on)+(d.waiting_who?` <span class="muted">${esc(d.waiting_who)}</span>`:''))}
+    ${row('Follow up','follow_up',`<input type="date" value="${esc(d.follow_up||'')}" onchange="clsFix('${k}','follow_up',this.value)">
+       ${d.follow_up?`<span class="muted">${esc(clsDay(d.follow_up))}</span> <button class="qbtn" onclick="clsFix('${k}','follow_up','')">Clear</button>`:''}`)}
+    ${row('Relationship','relationship',sel('relationship',d.relationship)+(d.group?` <span class="muted">${esc(d.group)}</span>`:''))}
+    ${(d.reasons||[]).length?`<ul class="cls-reasons">${d.reasons.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
+    <div class="cls-foot">
+      ${sender&&!OWN.has(sender)?`<button class="qbtn" onclick="clsGroupDlg('${k}')">👥 Add ${esc(sender)} to a group…</button>`:''}
+      <span class="muted">Corrections stick and tune the classifier · ${esc(d.version||'')}</span></div>
+  </div>`;
+  return h;
+}
+function clsOther(i){
+  const em=(i.raw.last_from_email||'').toLowerCase();
+  if(em&&!OWN.has(em)) return em;
+  return ((i.raw.participants||[]).map(emOf).find(e=>e&&!OWN.has(e))||'');
+}
+async function clsLoad(i){
+  const c=CLS[i.key]; if(c&&c.loading) return;
+  CLS[i.key]={date:i.date,loading:true,data:c?.data||null};
+  try{
+    const out=await fetch(`/classify?account=${encodeURIComponent(i.account)}&thread_id=${encodeURIComponent(i.raw.thread_id)}`,{cache:'no-store'}).then(r=>r.json());
+    CLS[i.key]={date:i.date,data:out.ok?out.classification:null};
+  }catch(e){ CLS[i.key]={date:i.date,data:null}; }
+  clsRender(i.key);
+}
+function clsRender(key){
+  const el=document.getElementById('cls-bar'); const i=findItem(key);
+  if(el&&i&&el.dataset.key===key) el.innerHTML=clsHtml(i);
+}
+async function clsFix(key,field,value){
+  const i=findItem(key); if(!i) return;
+  try{
+    const out=await post('/classify',{action:'correct',account:i.account,thread_id:i.raw.thread_id,field,value});
+    CLS[key]={date:i.date,data:out.classification}; clsRender(key); toast('Saved — this email keeps your answer');
+  }catch(e){ toast('Not saved — '+e.message); clsRender(key); }
+}
+async function clsGroupDlg(key){
+  const i=findItem(key); if(!i) return;
+  const em=clsOther(i); if(!em) return;
+  let groups=[];
+  try{ const s=await fetch('/classify/settings',{cache:'no-store'}).then(r=>r.json());
+    groups=[...new Set([...(s.groups||[]).map(g=>g.grp),...(s.people||[]).map(p=>p.grp).filter(Boolean)])]; }catch(e){}
+  dlg(`<h3>Add to a company group</h3>
+    <div class="status" style="text-transform:none;letter-spacing:0">${esc(em)}</div>
+    <label>Group</label><input type="text" id="clsg-grp" list="clsg-list" value="${esc(groups[0]||'')}" placeholder="e.g. ConnectBlue group">
+    <datalist id="clsg-list">${groups.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>
+    <label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0"><input type="checkbox" id="clsg-mate"> Also a teammate (follow up after 2 business days)</label>
+    <div class="foot"><button class="btn" onclick="clsGroupSave('${esc(key)}')">Add</button>
+      <button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="clsg-st"></span></div>`);
+}
+async function clsGroupSave(key){
+  const i=findItem(key); if(!i) return;
+  const grp=$('#clsg-grp').value.trim(); if(!grp){ $('#clsg-st').textContent='Pick a group'; return; }
+  try{
+    const em=clsOther(i), p=(i.raw.participants||[]).find(x=>emOf(x)===em);
+    await post('/classify',{action:'person-add',email:em,
+      name:p?nmOf(p):'',group:grp,teammate:$('#clsg-mate').checked});
+    closeDlg(); Object.keys(CLS).forEach(x=>delete CLS[x]); clsLoad(i); toast('Added to '+grp+' — re-classified');
+  }catch(e){ $('#clsg-st').textContent=e.message; }
+}
+
 function paneShell(i, inner){
   const labels=(i.labels||[]);
   const k=esc(i.key);
@@ -5842,6 +5965,7 @@ function paneShell(i, inner){
     ${i.type==='mail'?`<input class="lbl-add" list="pane-lbl-list" placeholder="＋" title="Add a label"
       onkeydown="if(event.key==='Enter'){addLabel('${k}',this.value);this.value=''}">
     <datalist id="pane-lbl-list">${labelUniverse().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>`:''}</div>
+  ${i.type==='mail'?`<div class="cls-bar" id="cls-bar" data-key="${k}">${clsHtml(i)}</div>`:''}
   ${owner?`<div class="todo-bar">${ic('checkcircle','sm')} In todo
     <b onclick="openTodoPlace(${owner.id})" title="Open the todo">${esc(owner.text.slice(0,52))}</b></div>`:''}
   ${i.type==='mail'&&i.note?`<div class="pane-note" onclick="noteDlg('${k}')" title="Note to self — click to edit">📝 ${esc(i.note)}</div>`:''}
