@@ -1,0 +1,53 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+Grand Central is a single-user (Bart) chief-of-staff board running on a Mac mini: it syncs several Gmail accounts, Google Calendar (ICS) and Granola into SQLite and serves a Shortwave-style web app (inbox, todos, calendar, Today). Python 3.11 stdlib-heavy backend, one large vanilla-JS page, no frameworks, no build step.
+
+**Current direction is "account-first" (2026-09-24, see `ACCOUNT_FIRST.md`).** Accounts are the navigation and the ownership boundary: mail is only ever seen through its own account; a todo belongs to exactly one account and may only hold that account's email. Projects, goals, theaters/operations/objectives, automatic project classification, Attio and the old dashboard are **retired**. `README.md`, `BUILD_SPEC.md` §1–5, `RECONCILIATION.md`, `ToDos.md` and `MISCLASSIFICATIONS.md` still describe that retired design as history; do not rebuild from them. Retired tables/columns are kept frozen for rollback, and retired routes answer 410 (`_RETIRED_GET`/`_RETIRED_POST` in `dashboard/serve.py`). Dropping them is "slice 3" and needs Bart's explicit sign-off plus a DB backup.
+
+## Commands
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v                    # full offline suite
+.venv/bin/python -m unittest tests.test_account_isolation -v         # one file
+.venv/bin/python -m unittest tests.test_mail_categories.ListUnsubscribeIsTheWeakestSignal -v  # one class/test
+.venv/bin/python sweeper/dev_check.py      # syntax gate: ast on changed .py + `node --check` on every inline <script> in dashboard/*.html and dashboard/*.js
+.venv/bin/python sweeper/selftest.py       # API checks against the LIVE board on :8080 (write paths clean up after themselves)
+.venv/bin/python sweeper/selftest.py --ui  # + headless Chrome render checks
+.venv/bin/python sweeper/uitest.py         # phone-layout invariants (390x844, every skin) in headless Chrome
+.venv/bin/python integrations/mcp/gc_mcp.py --selftest   # must pass after any change under integrations/mcp/
+launchctl kickstart -k gui/$(id -u)/com.example.grandcentral.dashboard   # restart after serve.py / sweeper changes the server imports
+```
+
+- `tests/` are fully offline: scratch SQLite files, a fake Anthropic client, a scratch `serve.py` on a scratch port (`GC_DB_PATH`, `GC_PORT` env overrides), and fake account slugs `acctone`/`accttwo` that exist in no `.env`. Keep new tests that way. `tests/test_ui_account_scope.py` extracts the real JS from `index.html` and runs it under node (skipped without node).
+- `selftest.py`/`uitest.py` hit the live board and live DB; the unit tests never do.
+- `sweep.py` and `mail_sync.py` are launchd jobs that re-import code every run, so edits are live for them without a restart. `serve.py` is long-running and needs the kickstart above.
+- Mutating CLI verbs (`mail_actions.py`, `mail_sync.py --dry-run`, `backfill_todo_accounts.py`) default to or offer dry-run; keep that convention.
+
+## Architecture
+
+- **`sweeper/`** is the write side. `sweep.py` (hourly 07–19) reads sources (`sources/gmail_reader.py`, `calendar_reader.py`, `granola_reader.py`), runs `assess.py` (Haiku, batched **per account**, only summary/`reply_needed`/`importance`, results keyed `(account, thread_id)`), then `build_state.py` writes `dashboard/grand_central.json` atomically (temp + rename). `mail_sync.py` (every 3 min) syncs Gmail INBOX headers into SQLite, categorizes mail into bundles (`categorize()`: people/newsletter/receipt/notification/calendar), wakes snoozes, and runs `todo_labels.py` (todos ↔ `GC/Todo/<name>` Gmail labels, two-way, same-account only).
+- **`sweeper/db.py`** is the SQLite layer over `data/grand_central.db` (system of record: mail threads, engagements = todos, triage, dismissals, snoozes, sends, dev requests…). Schema changes are **additive migrations only** (nullable columns via the existing migration list). Account enforcement lives here: `add_engagement` requires an account, `link_thread` refuses cross-account membership, `todo_view(account=)`/`mail_view(account=)`.
+- **Gmail thread ids are not unique across accounts.** Always key by `(account, thread_id)`. Tests deliberately reuse the same thread id in two accounts.
+- **`dashboard/serve.py`** is a stdlib `http.server`: serves static files plus every read/write endpoint, each validated before touching `sweeper/*` (it puts `sweeper/` on `sys.path`). `dashboard/index.html` (~8k lines) is the entire app; `settings.html` holds Connections + Context; `sw.js` is the service worker (bump its cache name when the shell changes). The board reads `grand_central.json` for Top 5/reply debt/calendar rails and live endpoints (`/mail?account=`, `/todos?account=`, `/accounts`, …) for everything else. Every active view is scoped to one selected account and filtered again client-side.
+- **`command.py`** backs the in-app "Ask" bar (Claude tool-calling restricted to the same validated single-thread actions as the buttons). **`integrations/mcp/`** is the agent surface (OpenClaw): a thin HTTP client with a hard `(method, path)` allowlist (`gc_client.ALLOWED`), explicit `DENIED` routes, and `ACTION_ALLOW` for routes that mix safe and dangerous verbs.
+- **Dev queue:** Bart files change requests in-app (`GET/POST /dev`, account-scoped, paired devices only). `sweeper/dev_worker.sh` runs a restricted headless Claude session twice daily with `sweeper/dev_worker_settings.json`; `dev_answer.py ID <building|shipped|declined|open> 'note'` answers a card.
+- Runtime: launchd plists in `config/` (sweep, mailsync, dashboard :8080, Cloudflare tunnel, autopull, devworker). `auto_pull.sh` fast-forwards `main` from GitHub every 5 min and restarts the dashboard, so **pushing to `main` deploys**.
+
+## Security guardrails (BUILD_SPEC §6, non-negotiable)
+
+Every widening of what the system may do is a dated, explicit Bart decision recorded in `BUILD_SPEC.md` §6. Don't reinterpret it; propose a new decision instead.
+- **One send path:** `POST /send` → `send_mail.py`, only from the human confirm dialog (`confirm:true` + the exact recipient list shown, ≤10 recipients, one thread, logged to `mail_sends`). Never expose send, trash, bulk, or credential writes to the Ask bar, MCP/OpenClaw, or any Claude tool. `send_mail.py` intentionally has no CLI.
+- Delete means Gmail Trash (recoverable). There is no purge/empty-trash verb, and none may be added.
+- Calendar writes are create-only on Bart's own calendars, never with attendees.
+- Credentials live only in `config/.env` (chmod 600) or Keychain. `connections.py` is the sole writer and never returns values. **`config/backups/.env*` hold live secrets:** stage files by name, never `git add -A`/`-f`. `data/`, `logs/`, `grand_central.json` are gitignored runtime output.
+- The server only accepts loopback/tailnet peers and rejects mutating POSTs with a foreign Origin/Referer (E161). Keep both checks.
+
+## Conventions
+
+- Work is numbered `E<n>` (sub-releases `E<n>.<m>`). Commit subjects look like `E207: put trash back where deleting is a deliberate act`. A user-visible change gets a `dashboard/release_notes.json` entry (next E number, same shape as existing entries, update `latest`), and a design/decision write-up goes in `ACCOUNT_FIRST.md` or `ToDos.md`.
+- Keep Python modules small and each runnable on its own. Code comments explain *why* and often cite the E number and Bart's words; match that.
+- Live Gmail writes (labels, archive, trash) have real consequences. When a fix would change live-write behaviour, flag it and don't just ship it (e.g. the known `&` label-encoding bug in `todo_labels.py` noted in `ACCOUNT_FIRST.md`).

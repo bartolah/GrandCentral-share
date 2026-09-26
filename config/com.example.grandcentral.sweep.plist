@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.example.grandcentral.sweep</string>
+
+    <!-- Phase 1: run under the project venv (Python 3.11 + pyyaml/requests/anthropic). -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/you/Code/GrandCentral/.venv/bin/python</string>
+        <string>/Users/you/Code/GrandCentral/sweeper/sweep.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/you/Code/GrandCentral</string>
+
+    <!-- Hourly across work hours, 07:00 .. 19:00 local (spec §8 q2: Bart chose hourly). -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>10</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>11</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>13</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>14</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>15</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>16</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>17</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <!-- launchd's own capture of stdout/stderr; the sweeper also writes its
+         own per-sweep log into logs/. -->
+    <key>StandardOutPath</key>
+    <string>/Users/you/Code/GrandCentral/logs/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/you/Code/GrandCentral/logs/launchd.err.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grand Central — Upload</title>
+<style>
+  :root { --bg:#0D1117; --panel:#151C26; --line:#26303F; --text:#E9E4D6;
+          --muted:#8B95A5; --amber:#F2A93B; --ok:#57B37F; --alert:#E05C5C; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',-apple-system,sans-serif;
+         min-height:100vh; display:grid; place-items:center; padding:20px; }
+  .box { width:min(560px, 94vw); }
+  h1 { font-family:'Barlow Condensed','Arial Narrow',sans-serif; font-weight:700; font-size:24px;
+       letter-spacing:2.5px; text-transform:uppercase; margin-bottom:4px; }
+  h1 .dot { color:var(--amber); }
+  p.sub { color:var(--muted); font-size:13px; margin-bottom:18px; }
+  .drop { border:2px dashed var(--line); border-radius:10px; background:var(--panel);
+          padding:44px 20px; text-align:center; cursor:pointer; transition:border-color .15s ease; }
+  .drop.hot, .drop:hover { border-color:var(--amber); }
+  .drop .big { font-size:15px; margin-bottom:6px; }
+  .drop .small { font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace; font-size:10.5px;
+                 color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+  input[type=file] { display:none; }
+  .list { margin-top:16px; }
+  .row { display:flex; gap:10px; align-items:baseline; padding:8px 0; border-bottom:1px dashed var(--line);
+         font-size:13px; }
+  .row .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .st { font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace; font-size:10.5px; }
+  .st.ok { color:var(--ok); } .st.err { color:var(--alert); } .st.up { color:var(--muted); }
+  .hint { margin-top:18px; padding:12px 14px; background:var(--panel); border:1px solid var(--line);
+          border-radius:8px; font-size:12.5px; color:var(--muted); line-height:1.6; }
+  .hint b { color:var(--text); }
+  a { color:var(--amber); }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Grand Central<span class="dot">.</span> Upload</h1>
+  <p class="sub">Send screenshots or PDFs to the Mini for Claude to look at — from any device on your network.</p>
+  <label class="drop" id="drop">
+    <div class="big">Drop images here, or tap to choose</div>
+    <div class="small">png · jpg · gif · webp · pdf · heic — up to 20 MB each</div>
+    <input type="file" id="file" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.heic,image/*,application/pdf">
+  </label>
+  <div class="list" id="list"></div>
+  <div class="hint">Files land in <b>data/uploads/</b> on the Mini. Then just tell Claude:
+    <b>“look at my latest uploads”</b> — no paths needed. <a href="/">← back to the board</a></div>
+</div>
+<script>
+  const drop = document.getElementById('drop');
+  const input = document.getElementById('file');
+  const list = document.getElementById('list');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  async function send(file) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="nm">${esc(file.name)}</span><span class="st up">uploading…</span>`;
+    list.prepend(row);
+    const st = row.querySelector('.st');
+    try {
+      const res = await fetch('/upload?name=' + encodeURIComponent(file.name), { method: 'POST', body: file });
+      const out = await res.json();
+      if (!out.ok) throw new Error(out.error || 'rejected');
+      st.textContent = 'saved ✓ ' + out.name;
+      st.className = 'st ok';
+    } catch (err) {
+      st.textContent = err.message;
+      st.className = 'st err';
+    }
+  }
+  input.addEventListener('change', () => [...input.files].forEach(send));
+  ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('hot'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('hot'); }));
+  drop.addEventListener('drop', e => [...e.dataTransfer.files].forEach(send));
+</script>
+</body>
+</html>

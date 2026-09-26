@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.example.grandcentral.dashboard</string>
+
+    <!-- Same interpreter convention as the sweep job: the project venv. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/you/Code/GrandCentral/.venv/bin/python</string>
+        <string>/Users/you/Code/GrandCentral/dashboard/serve.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/you/Code/GrandCentral</string>
+
+    <!-- The board is an always-on surface: start at login, restart if it
+         dies. ThrottleInterval stops a crash loop from spinning the CPU. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/you/Code/GrandCentral/logs/dashboard.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/you/Code/GrandCentral/logs/dashboard.err.log</string>
+</dict>
+</plist>

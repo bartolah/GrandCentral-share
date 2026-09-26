@@ -1,0 +1,26 @@
+# Secrets — never commit
+config/.env
+# .env backups written by sweeper/connections.py contain live secrets
+config/backups/.env*
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Generated / runtime
+logs/*.log
+logs/*.png
+logs/*.json
+# registry snapshots written by the sweeper on every registry edit — machine
+# output, and the account-first work retires the registry anyway
+config/backups/*.yaml
+dashboard/grand_central.json
+dashboard/*.tmp
+config/overrides.json
+config/dismissed.json
+config/*.imported
+data/
+
+# macOS
+.DS_Store

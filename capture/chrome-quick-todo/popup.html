@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span class="brand">🚂 Grand Central</span>
+    <button id="gear" title="Settings">⚙︎</button>
+  </header>
+
+  <div id="settings" class="hidden">
+    <label>Board URL</label>
+    <div class="row">
+      <input id="baseUrl" type="text" placeholder="https://gc.example.com">
+      <button id="saveBase">Save</button>
+    </div>
+    <p class="hint">Falls back to http://localhost:8080 when the board URL is unreachable.</p>
+  </div>
+
+  <textarea id="text" rows="2" placeholder="New todo… (⌘↵ to add)" autofocus></textarea>
+
+  <div class="chips">
+    <button class="chip" data-due="today">Today</button>
+    <button class="chip" data-due="tomorrow">Tomorrow</button>
+    <button class="chip" data-due="nextweek">Next week</button>
+    <input id="due" type="date" title="Due date">
+  </div>
+
+  <div class="row">
+    <select id="account"><option value="">Account…</option></select>
+  </div>
+
+  <textarea id="notes" rows="2" placeholder="Notes (optional)"></textarea>
+  <button id="tabBtn" class="link">＋ add current page to notes</button>
+
+  <div class="row bottom">
+    <span id="status"></span>
+    <button id="add" class="primary">Add todo</button>
+  </div>
+
+<script src="popup.js"></script>
+</body>
+</html>

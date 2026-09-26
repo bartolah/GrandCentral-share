@@ -1,0 +1,19 @@
+# Grand Central — registry example.
+#
+# The real file is personal: it names the accounts, the people whose mail is
+# weighted as important, and the work behind them. This example carries only
+# the structure the code actually reads, which since the account-first change
+# is `defaults:` and `key_people:`.
+#
+# Copy to config/projects.yaml and edit.
+
+version: 2
+
+defaults:
+  reply_warn_days: 4      # a reply owed this long -> warn
+  reply_alert_days: 7     # a reply owed this long -> alert
+  sweep_lookback_days: 7  # how far back readers scan INBOX + Sent
+
+# Senders whose mail should always count as important. Plain names, matched
+# against the display name on the message.
+key_people: []

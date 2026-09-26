@@ -1,0 +1,17 @@
+{
+ "latest": "E0",
+ "note": "Release notes for this copy. The original changelog was personal and is not included.",
+ "releases": [
+  {
+   "id": "E0",
+   "date": "",
+   "area": "Setup",
+   "title": "Shareable copy",
+   "what": "A copy of Grand Central with personal content removed. See README → Before first run.",
+   "why": "",
+   "test": [
+    "Open the board; this note appears under What's New."
+   ]
+  }
+ ]
+}

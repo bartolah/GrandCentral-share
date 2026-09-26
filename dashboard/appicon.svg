@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- E190 — Grand Central's app icon, drawn as vectors.
+       The old one rendered the 🚂 emoji as TEXT, so rasterising it without a
+       colour-emoji font gave a black silhouette on a near-black ground: an
+       icon you cannot see on a home screen or in a Dock. This owes nothing
+       to a font. Deep navy plate, cyan locomotive, one rail. -->
+  <rect width="512" height="512" fill="#0d131c"/>
+  <!-- rails -->
+  <rect x="64" y="398" width="384" height="14" rx="7" fill="#1b2836"/>
+  <rect x="96" y="424" width="320" height="8" rx="4" fill="#16202c"/>
+  <!-- boiler -->
+  <rect x="96" y="236" width="230" height="120" rx="26" fill="#22d3ee"/>
+  <!-- cab -->
+  <rect x="300" y="168" width="116" height="188" rx="20" fill="#22d3ee"/>
+  <rect x="322" y="196" width="72" height="62" rx="10" fill="#0d131c"/>
+  <!-- funnel + steam -->
+  <rect x="132" y="168" width="52" height="72" rx="10" fill="#22d3ee"/>
+  <rect x="120" y="150" width="76" height="26" rx="13" fill="#22d3ee"/>
+  <circle cx="158" cy="104" r="22" fill="#22d3ee" opacity=".55"/>
+  <circle cx="206" cy="72" r="16" fill="#22d3ee" opacity=".35"/>
+  <!-- lamp -->
+  <circle cx="118" cy="286" r="18" fill="#ffb020"/>
+  <!-- wheels -->
+  <circle cx="160" cy="372" r="42" fill="#0d131c" stroke="#22d3ee" stroke-width="16"/>
+  <circle cx="290" cy="380" r="30" fill="#0d131c" stroke="#22d3ee" stroke-width="14"/>
+  <circle cx="380" cy="380" r="30" fill="#0d131c" stroke="#22d3ee" stroke-width="14"/>
+</svg>

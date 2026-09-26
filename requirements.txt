@@ -1,0 +1,11 @@
+# Grand Central sweeper dependencies (installed into .venv with Python 3.11+)
+#   python3.11 -m venv .venv
+#   .venv/bin/pip install -r requirements.txt
+pyyaml>=6.0
+ruamel.yaml>=0.18   # registry editor: comment-preserving YAML round-trips
+requests>=2.31
+anthropic>=0.40
+icalendar>=6.0
+recurring-ical-events>=3.0
+pywebpush>=2.0     # E188: browser push (VAPID); pulls cryptography + http-ece
+websocket-client>=1.7  # E200: sweeper/browser.py drives headless Chrome over CDP (dev/testing only)

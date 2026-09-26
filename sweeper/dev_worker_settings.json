@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+      "Glob",
+      "Grep",
+      "Edit(./dashboard/**)",
+      "Edit(./sweeper/**)",
+      "Edit(./integrations/**)",
+      "Edit(./capture/**)",
+      "Edit(./README.md)",
+      "Edit(./ToDos.md)",
+      "Bash(git status)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git push origin main)",
+      "Bash(.venv/bin/python sweeper/dev_check.py:*)",
+      "Bash(.venv/bin/python sweeper/dev_answer.py:*)",
+      "Bash(launchctl kickstart -k gui/501/com.example.grandcentral.dashboard)"
+    ],
+    "deny": [
+      "Read(./config/.env*)",
+      "Read(./config/backups/**)",
+      "Read(./data/**)",
+      "Read(./logs/**)",
+      "Read(./.git/**)",
+      "Read(~/.ssh/**)",
+      "Edit(./sweeper/dev_worker.sh)",
+      "Edit(./sweeper/dev_worker_settings.json)",
+      "Edit(./sweeper/dev_answer.py)",
+      "Edit(./sweeper/dev_check.py)",
+      "Edit(./sweeper/dev_pairing.py)",
+      "Edit(./sweeper/auto_pull.sh)",
+      "Edit(./sweeper/send_mail.py)",
+      "Edit(./sweeper/connections.py)",
+      "Bash(git add -f:*)",
+      "Bash(git add --force:*)",
+      "Bash(git add -A:*)",
+      "Bash(git add --all:*)",
+      "Bash(git add .:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "WebFetch",
+      "WebSearch"
+    ]
+  }
+}

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grand Central — Settings</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root { color-scheme: light dark; --bg:#f6f6f4; --fg:#1c1c1c; --mut:#6b6b6b; --line:#d9d9d4; --card:#fff; --acc:#2f6fed; --ok:#1a7f37; --err:#c62828; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141518; --fg:#e6e6e6; --mut:#9a9a9a; --line:#2c2e33; --card:#1c1e22; --acc:#6ea0ff; --ok:#56d364; --err:#ff7b72; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 -apple-system, system-ui, sans-serif; }
+  header { display:flex; gap:14px; align-items:center; padding:12px 18px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; }
+  header a { color:var(--acc); text-decoration:none; }
+  header h1 { font-size:15px; margin:0; flex:1; }
+  .tabs { display:flex; gap:6px; padding:10px 18px 0; }
+  .tab { padding:6px 12px; border:1px solid var(--line); border-radius:8px 8px 0 0; background:var(--card); color:var(--fg); cursor:pointer; }
+  .tab.on { border-bottom-color:var(--bg); background:var(--bg); font-weight:600; }
+  #banner { display:none; margin:10px 18px; padding:8px 12px; border:1px solid var(--err); color:var(--err); border-radius:8px; }
+  #banner.show { display:block; }
+  #pane { padding:10px 18px 60px; max-width:920px; }
+  .cfg-note { color:var(--mut); margin:6px 0 12px; }
+  .cfg-group { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:0 0 12px; }
+  .cfg-group h3 { margin:0 0 6px; font-size:13px; }
+  .cfg-row, .cfg-add, .conn-row, .conn-add { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:6px 0; }
+  .conn-main { flex:1; min-width:180px; }
+  .cfg-in { font:inherit; padding:5px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  .cfg-in.sm { width:110px; } .cfg-in.md { width:200px; } .cfg-in.lg { flex:1; min-width:220px; }
+  .btn { font:inherit; padding:5px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); cursor:pointer; }
+  .btn:hover { border-color:var(--acc); } .del-btn { color:var(--err); }
+  .idtag { font:12px ui-monospace, monospace; padding:1px 6px; border:1px solid var(--line); border-radius:6px; color:var(--mut); }
+  .conn-pill { font-size:11px; padding:1px 7px; border-radius:999px; border:1px solid var(--line); }
+  .conn-pill.on { color:var(--ok); border-color:var(--ok); } .conn-pill.off { color:var(--mut); }
+  .conn-hint, .conn-user { color:var(--mut); }
+  .cfg-status { color:var(--mut); font-size:12px; } .cfg-status.ok { color:var(--ok); } .cfg-status.err { color:var(--err); }
+  .empty { color:var(--mut); }
+  code { font:12px ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<header><a href="/">← Grand Central</a><h1>Settings</h1></header>
+<div class="tabs" id="tabs"></div>
+<div id="banner"></div>
+<div id="pane"></div>
+<script>
+(() => {
+  'use strict';
+  const esc = s => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const rowVals = row => {
+    const out = {};
+    row.querySelectorAll('[data-f]').forEach(el => { out[el.dataset.f] = el.value; });
+    return out;
+  };
+  const inp = (f, v, cls, ph) => `<input class="cfg-in ${cls||'md'}" data-f="${f}" value="${esc(v ?? '')}" placeholder="${esc(ph||f)}">`;
+  function banner(msg) {
+    const b = document.getElementById('banner');
+    if (msg) { b.textContent = msg; b.classList.add('show'); } else b.classList.remove('show');
+  }
+
+  // ---------- E51: Connections tab — sources & credentials ----------
+  // The only screen that writes secrets (POST /connections -> config/.env,
+  // atomic + chmod 600 + backup). Values are never shown back: each field is
+  // "set / not set" with a masked hint, and editing means replacing. Live
+  // Test where the service allows it (IMAP login, Anthropic/Granola).
+  let CONN = null;
+  async function loadConnections() {
+    const res = await fetch('/connections', { cache: 'no-store' });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'failed');
+    CONN = out;
+    return out;
+  }
+  async function connPost(body, statusEl, okMsg) {
+    if (statusEl) { statusEl.textContent = 'working…'; statusEl.className = 'cfg-status'; }
+    try {
+      const res = await fetch('/connections', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const out = await res.json();
+      if (!out.ok) throw new Error(out.error || out.message || 'rejected');
+      if (statusEl) { statusEl.textContent = out.message || okMsg || 'done ✓'; statusEl.className = 'cfg-status ok'; }
+      // A mutation returns fresh status — re-render so pills update.
+      if (out.accounts || out.singles) { CONN = out; renderConnectionsTab(document.getElementById('pane')); }
+      return out;
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = err.message; statusEl.className = 'cfg-status err'; }
+      return null;
+    }
+  }
+  const connPill = on => on
+    ? '<span class="conn-pill on">connected</span>'
+    : '<span class="conn-pill off">not set</span>';
+
+  async function renderConnectionsTab(p) {
+    p.innerHTML = '<div class="empty" style="padding:16px 22px">Loading connections…</div>';
+    try { await loadConnections(); }
+    catch (err) { p.innerHTML = `<div class="empty" style="padding:16px 22px">Could not load connections — ${esc(err.message)}</div>`; return; }
+
+    const gmailRows = (CONN.accounts || []).map(a => `
+      <div class="conn-row">
+        <div class="conn-main"><span class="idtag">${esc(a.slug)}</span> <span class="conn-user">${esc(a.user || '—')}</span></div>
+        ${connPill(a.set)}
+        <button class="btn del-btn" onclick="connRemoveGmail('${esc(a.slug)}', this)">Remove</button>
+        <span class="cfg-status"></span>
+      </div>`).join('') || '<div class="empty">No Gmail accounts configured.</div>';
+
+    const single = (name, m) => `
+      <div class="cfg-group" data-conn="${name}">
+        <h3>${esc(m.label)} ${connPill(m.set)}${m.set && m.hint ? ` <span class="conn-hint">${esc(m.hint)}</span>` : ''}</h3>
+        <div class="cfg-note" style="margin:2px 0 8px">${esc(m.note || '')}</div>
+        <div class="cfg-add">
+          <input class="cfg-in lg" data-conn-val type="password" autocomplete="off"
+                 placeholder="${m.set ? 'paste a new value to replace' : (m.islist ? 'comma-separated ICS URLs' : 'paste value')}">
+          ${m.testable ? `<button class="btn" onclick="connTestSingle('${name}', this)">Test</button>` : ''}
+          <button class="btn" onclick="connSaveSingle('${name}', this)">Save</button>
+          ${m.set ? `<button class="btn del-btn" onclick="connClearSingle('${name}', this)">Clear</button>` : ''}
+          <span class="cfg-status"></span>
+        </div>
+      </div>`;
+
+    const S = CONN.singles || {};
+    const singleOrder = ['anthropic', 'granola', 'calendar'];
+    p.innerHTML = `
+      <div class="cfg-note">Sources &amp; credentials. Writes go only to <code>config/.env</code> (backed up, chmod 600) and take effect on the next sweep (mail ~3 min). Values are never shown back — to change one, paste a new value. Behind Cloudflare Access.</div>
+
+      <div class="cfg-group">
+        <h3>Gmail accounts</h3>
+        <div class="cfg-note" style="margin:2px 0 10px">Each account needs a Google <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">app password</a> (2-Step Verification must be on). Adding one writes two <code>.env</code> keys; the sweeper picks it up next cycle.</div>
+        ${gmailRows}
+        <div class="conn-add">
+          <input class="cfg-in md" id="conn-gm-email" type="email" autocomplete="off" placeholder="you@gmail.com">
+          <input class="cfg-in md" id="conn-gm-pw" type="password" autocomplete="off" placeholder="16-char app password">
+          <input class="cfg-in sm" id="conn-gm-label" autocomplete="off" placeholder="label (optional)">
+          <button class="btn" onclick="connTestGmail(this)">Test</button>
+          <button class="btn" onclick="connAddGmail(this)">Add account</button>
+          <span class="cfg-status"></span>
+        </div>
+      </div>
+
+      ${singleOrder.filter(n => S[n]).map(n => single(n, S[n])).join('')}
+    `;
+  }
+
+  function connGmailFields(btn) {
+    const box = btn.closest('.conn-add');
+    return {
+      email: box.querySelector('#conn-gm-email').value.trim(),
+      password: box.querySelector('#conn-gm-pw').value,
+      label: box.querySelector('#conn-gm-label').value.trim(),
+      st: box.querySelector('.cfg-status'),
+    };
+  }
+  async function connTestGmail(btn) {
+    const f = connGmailFields(btn);
+    await connPost({ action: 'test_gmail', email: f.email, password: f.password }, f.st);
+  }
+  async function connAddGmail(btn) {
+    const f = connGmailFields(btn);
+    if (!f.email || !f.password) { f.st.textContent = 'email + app password required'; f.st.className = 'cfg-status err'; return; }
+    await connPost({ action: 'add_gmail', email: f.email, password: f.password, label: f.label }, f.st);
+  }
+  async function connRemoveGmail(slug, btn) {
+    if (!confirm(`Remove the '${slug}' account? Its credentials are deleted from config/.env (a backup is kept). Synced mail already on the board stays until it ages out.`)) return;
+    await connPost({ action: 'remove_gmail', slug }, btn.parentNode.querySelector('.cfg-status'));
+  }
+  function connSingleVal(btn) {
+    const box = btn.closest('.cfg-add');
+    return { val: box.querySelector('[data-conn-val]').value, st: box.querySelector('.cfg-status') };
+  }
+  async function connTestSingle(name, btn) {
+    const { val, st } = connSingleVal(btn);
+    await connPost({ action: 'test_single', name, value: val }, st);
+  }
+  async function connSaveSingle(name, btn) {
+    const { val, st } = connSingleVal(btn);
+    if (!val.trim()) { st.textContent = 'paste a value first'; st.className = 'cfg-status err'; return; }
+    await connPost({ action: 'set_single', name, value: val }, st);
+  }
+  async function connClearSingle(name, btn) {
+    if (!confirm(`Clear ${name}? The source stops on the next sweep. A backup of config/.env is kept.`)) return;
+    await connPost({ action: 'clear_single', name }, btn.parentNode.querySelector('.cfg-status'));
+  }
+
+  // ---------- E19: Context tab — Bart's rules/notes corpus ----------
+  // The beginning of durable context: label meanings, people notes, voice
+  // preferences, automation ideas. Stored in the DB; nothing consumes an
+  // entry automatically — future automations / prompt grounding / reply
+  // suggestions will opt in by kind, deliberately.
+
+  let CTX = null;
+
+  async function renderContextTab(p) {
+    p.innerHTML = '<div class="empty" style="padding:16px 22px">Loading context…</div>';
+    try {
+      const res = await fetch('/context', { cache: 'no-store' });
+      const out = await res.json();
+      if (!out.ok) throw new Error(out.error || 'failed');
+      CTX = out.context || [];
+    } catch (err) {
+      p.innerHTML = `<div class="empty" style="padding:16px 22px">Could not load context — ${esc(err.message)}</div>`;
+      return;
+    }
+    const kindSel = (v, df) => `<select class="cfg-in sm" data-f="kind" ${df || ''}>${
+      ['note', 'rule', 'voice', 'automation'].map(k =>
+        `<option ${k === v ? 'selected' : ''}>${k}</option>`).join('')}</select>`;
+    const byScope = {};
+    CTX.forEach(c => (byScope[c.scope] = byScope[c.scope] || []).push(c));
+    p.innerHTML = `
+      <div class="cfg-note">Context — durable statements about how your world works: what a label means,
+        who a person is, how you like replies written, automations you want someday. This corpus will feed
+        automations and reply suggestions as those get built — nothing acts on an entry yet. Scope
+        examples: <b>global</b>, <b>account:personal</b>, <b>label:_VIPs</b>, <b>person:chris@example.com</b>.
+        Older <b>project:</b> / <b>goal:</b> notes are kept as written.</div>
+      <div class="cfg-group"><h3>Add context</h3>
+        <div class="cfg-add">
+          ${inp('scope', 'global', 'md', 'scope — global, account:X, label:X, person:X')}
+          ${kindSel('note')}
+          ${inp('text', '', 'lg', 'the statement — e.g. label:_VIPs threads are platform-invite targets')}
+          <button class="btn" onclick="ctxAdd(this)">Add</button><span class="cfg-status"></span>
+        </div>
+      </div>` +
+      Object.entries(byScope).sort(([a], [b]) => a.localeCompare(b)).map(([scope, rows]) =>
+        `<div class="cfg-group"><h3>${esc(scope)}</h3>` + rows.map(c =>
+          `<div class="cfg-row" data-row data-ctxid="${c.id}">
+            <span class="idtag">#${c.id} ${esc(c.kind)}</span>
+            ${inp('text', c.text, 'lg')}
+            ${kindSel(c.kind)}
+            <button class="btn" onclick="ctxSave(${c.id}, this)">Save</button>
+            <button class="btn${c.active ? '' : ' del-btn'}" onclick="ctxToggle(${c.id}, ${c.active ? 0 : 1}, this)"
+              title="${c.active ? 'Pause — kept but ignored by consumers' : 'Reactivate'}">${c.active ? 'Active ✓' : 'Paused'}</button>
+            <button class="btn del-btn" onclick="ctxDelete(${c.id}, this)">Delete</button>
+            <span class="cfg-status"></span>
+          </div>`).join('') + `</div>`).join('') +
+      (CTX.length ? '' : '<div class="empty" style="padding:12px 22px">No context yet — add the first statement above.</div>');
+  }
+
+  async function ctxPost(body) {
+    const res = await fetch('/context', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'context action failed');
+    return out;
+  }
+  async function ctxAdd(btn) {
+    const box = btn.closest('.cfg-add');
+    const vals = rowVals(box);
+    try {
+      await ctxPost({ action: 'add', scope: vals.scope, kind: vals.kind, text: vals.text });
+      renderContextTab(document.getElementById('pane'));
+    } catch (err) { banner('Context add failed — ' + err.message); }
+  }
+  async function ctxSave(id, btn) {
+    const row = btn.closest('[data-row]');
+    const vals = rowVals(row);
+    try {
+      await ctxPost({ action: 'update', id, fields: { text: vals.text, kind: vals.kind } });
+      btn.textContent = 'Saved ✓'; setTimeout(() => { btn.textContent = 'Save'; }, 1500);
+    } catch (err) { banner('Context save failed — ' + err.message); }
+  }
+  async function ctxToggle(id, active, btn) {
+    try {
+      await ctxPost({ action: 'update', id, fields: { active } });
+      renderContextTab(document.getElementById('pane'));
+    } catch (err) { banner('Context toggle failed — ' + err.message); }
+  }
+  async function ctxDelete(id, btn) {
+    if (btn.dataset.armed) {
+      try {
+        await ctxPost({ action: 'delete', id });
+        renderContextTab(document.getElementById('pane'));
+      } catch (err) { banner('Context delete failed — ' + err.message); }
+      return;
+    }
+    btn.dataset.armed = '1'; btn.textContent = 'Sure?';
+    setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Delete'; }, 3000);
+  }
+
+  // ---------- shell ----------
+  const TABS = [['connections', 'Connections', renderConnectionsTab], ['context', 'Context', renderContextTab]];
+  function show(id) {
+    const tab = TABS.find(t => t[0] === id) || TABS[0];
+    banner('');
+    document.getElementById('tabs').innerHTML = TABS.map(([tid, label]) =>
+      `<button class="tab${tid === tab[0] ? ' on' : ''}" data-tab="${tid}">${label}</button>`).join('');
+    document.querySelectorAll('#tabs .tab').forEach(b => b.addEventListener('click', () => {
+      history.replaceState(null, '', '?tab=' + b.dataset.tab); show(b.dataset.tab);
+    }));
+    tab[2](document.getElementById('pane'));
+  }
+  // Inline onclick handlers in the tab markup need these on window.
+  Object.assign(window, { connTestGmail, connAddGmail, connRemoveGmail, connTestSingle,
+                          connSaveSingle, connClearSingle, ctxAdd, ctxSave, ctxToggle, ctxDelete });
+  show(new URLSearchParams(location.search).get('tab'));
+})();
+</script>
+</body>
+</html>

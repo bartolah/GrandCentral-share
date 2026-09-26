@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.example.grandcentral.mailsync</string>
+
+    <!-- E3-P1: lightweight INBOX header sync feeding the Mail screen.
+         Headers + flags + a handful of snippets only — no classifier, no
+         Anthropic calls. Runs 24/7; an off-hours run costs one IMAP scan. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/you/Code/GrandCentral/.venv/bin/python</string>
+        <string>/Users/you/Code/GrandCentral/sweeper/mail_sync.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/you/Code/GrandCentral</string>
+
+    <!-- Every 3 minutes. The job writes its own one-line-per-run summary to
+         logs/mail_sync.log; these capture stray stdout/stderr only. -->
+    <key>StartInterval</key>
+    <integer>180</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/you/Code/GrandCentral/logs/mailsync.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/you/Code/GrandCentral/logs/mailsync.err.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
