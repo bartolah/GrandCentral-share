@@ -70,15 +70,16 @@ class UiAccountScope(unittest.TestCase):
         self.assertIn("post('/dev',{action:'update',id,text,account:ACCT}", html)
         self.assertIn("post('/dev',{action:'update',id,status:'archived',account:ACCT}", html)
 
-    def test_active_mail_rows_expose_only_the_six_triage_actions(self):
+    def test_active_mail_rows_expose_the_triage_strip(self):
+        # Six fast verbs + trash and "…" (Bart, dev #27, 2026-09-26). Star and
+        # label live behind "…"; retired project/goal verbs never come back.
         html = open(os.path.join(ROOT, "dashboard", "index.html"), encoding="utf-8").read()
-        start = html.index("// Bounded account triage: these are the only six mutating verbs exposed.")
+        start = html.index("// Bounded account triage: six fast verbs")
         block = html[start:html.index("const when =", start)]
         for action in ("replyOptions", "archiveItem", "snoozeDlg", "pinItem",
-                       "handledItem", "todoPick"):
+                       "handledItem", "todoPick", "trashItem", "rowMore"):
             self.assertIn(action, block)
-        for retired in ("labelDlg", "starItem", "trashItem", "refileDlg",
-                        "tagGoal", "dismissItem"):
+        for retired in ("labelDlg", "starItem", "refileDlg", "tagGoal", "dismissItem"):
             self.assertNotIn(retired, block)
 
 

@@ -724,6 +724,10 @@
   /* E178: one card grammar for every list. Rows inside a card are separated
      by a hairline and square off; the section name sits above the card. */
   .ib-card { border: 1px solid var(--line); margin-bottom: 14px; }
+  /* dev #28: the way from Home to the whole inbox */
+  .fd-go { display: flex; gap: 8px; flex-wrap: wrap; padding: 2px 0 12px; }
+  .fd-go .btn { flex: 1 1 auto; justify-content: center; }
+  @media (max-width: 640px) { .fd-go { padding: 4px 12px 12px; } }
   .ib-card .row { border-radius: 0; margin: 0; border-bottom: 1px solid var(--line-soft); }
   .ib-card .row:last-child { border-bottom: none; }
   .ib-card .ib-row:last-child { border-bottom: none; }
@@ -820,6 +824,12 @@
   .msg .mav { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; vertical-align: middle; margin-right: 8px; position: relative; overflow: hidden; }
   .msg .mh b { font-size: 13.5px; }
   .msg .mh .t { color: var(--faint); font-size: 12px; }
+  /* Dev #26: reply / reply all / forward ONE message of a thread */
+  .msg .mh .mact { margin-left: auto; display: flex; gap: 2px; opacity: .55; }
+  .msg:hover .mh .mact, .msg .mh .mact:focus-within { opacity: 1; }
+  .msg .mh .mact button { padding: 2px 6px; border-radius: 7px; color: var(--muted); display: inline-flex; }
+  .msg .mh .mact button:hover { background: var(--chip-bg); color: var(--ink); }
+  .msg .mh .mact svg + svg { margin-left: -7px; }
   .msg .mrcpt { color: var(--faint); font-size: 11.5px; margin: 2px 0 0 38px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
 
   /* E65: rich body editor */
@@ -1360,6 +1370,7 @@
   .row .acts button { width: 30px; height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
     color: var(--muted); border-radius: 6px; }
   .row .acts button:hover { background: var(--chip-bg); color: var(--ink); }
+  .row .acts button.warn:hover { background: var(--red-soft); color: var(--red); }
 
   /* a group is a row: icon, name + count, the senders who matter by name,
      everyone else as a face */
@@ -3262,7 +3273,7 @@ function renderHomeFeed(d){
   // real but it is not news, so it gets its own band further down.
   const fresh=d.mailLive.filter(i=>(i.raw.category||'people')==='people'&&(i.unread||i.needs||fdAge(i.date)<=2))
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const freshShow=fresh.slice(0,6);
+  const freshShow=fresh.slice(0,15);   // dev #28: more mail on Home (was 6)
   // Replies owed: oldest first, and only the ones that have actually aged —
   // anything still in the fresh band above is not "owed", it is just today.
   const freshKeys=new Set(freshShow.map(i=>i.key));
@@ -3308,6 +3319,9 @@ function renderHomeFeed(d){
     + `<div class="fd-chips cal-strip" onclick="openCalPage('time')" style="cursor:pointer">${evStrip}</div>`
     + (freshShow.length?fdBand('latest from your inbox', fresh.length>freshShow.length?`${freshShow.length} of ${fresh.length} →`:'', "setScope('inbox',null)")
         + fdCard(freshShow.map(i=>fdMailRow(i)).join('')):'')
+    // dev #28 (Bart): "clear buttons to get to the entire inbox"
+    + `<div class="fd-go"><button class="btn" onclick="setScope('inbox',null)">📥 Open the whole inbox · ${d.mailLive.length}</button>
+        <button class="btn sec2" onclick="setScope('allmail',null)">🗄 All mail · ${MAIL.length}</button></div>`
     // E179: the brief lives in the ◎ dock now — one line here says where.
     + `<div class="fd-chips" style="padding-top:10px"><span class="chip" onclick="document.querySelector('.dk[data-dock=brief]')?.click()"
         title="Today's brief — the plan, what's due, what's drifting">◎ today's brief${PLAN&&PLAN.theme?` — ${esc(PLAN.theme.slice(0,68))}`:''}</span></div>`
@@ -4445,13 +4459,17 @@ function rowHtml(i, idx){
   const k=esc(i.key);
   if(i.type==='todo') return todoRowHtml(i,open,sel,kb);
   const lead=`<span class="lead" style="background:${avColor(i.who)}">${initials(i.who)}${avImg(i.raw.last_from_email)}</span>`;
-  // Bounded account triage: these are the only six mutating verbs exposed.
+  // Bounded account triage: six fast verbs, then (Bart, dev #27) trash and a
+  // "…" that opens the full row menu — star, label, open and the rest —
+  // without hunting for right-click. Trash is still Gmail Trash with Undo.
   const acts=actBtn('reply','Reply / draft',`replyOptions('${k}')`)
     + actBtn('archive','Archive',`archiveItem('${k}')`)
     + actBtn('clock','Snooze',`snoozeDlg('${k}')`)
     + actBtn('flag',i.pinned?'Unpin':'Pin',`pinItem('${k}')`)
     + actBtn('check','Handled',`handledItem('${k}')`)
-    + actBtn('todo','Create or add to an account todo',`todoPick(['${k}'])`);
+    + actBtn('todo','Create or add to an account todo',`todoPick(['${k}'])`)
+    + actBtn('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`).replace('<button ','<button class="warn" ')
+    + actBtn('more','More actions',`rowMore(event,'${k}')`);
   const when = i.snoozed&&i.wake ? `<span class="when" title="Snoozed until">${ic('clock','sm')} ${fmtDate(i.wake)}</span>`
     : i.raw.snooze_returned ? `<span class="when snz" style="color:var(--blue);font-weight:650">${ic('clock','sm')} Unsnoozed</span>`
     : `<span class="when">${fmtDate(i.date)}</span>`;
@@ -4502,6 +4520,12 @@ function ctxOpen(x,y,html){
   const r=c.getBoundingClientRect();
   c.style.left=Math.max(4,Math.min(x,innerWidth-r.width-8))+'px';
   c.style.top=Math.max(4,Math.min(y,innerHeight-r.height-8))+'px';
+}
+// Dev #27: the hover strip's "…" — the right-click menu, anchored to the button
+function rowMore(e,key){
+  const i=findItem(key); if(!i||i.type!=='mail') return;
+  const r=e.currentTarget.getBoundingClientRect();
+  ctxOpen(r.right-220, r.bottom+4, mailCtxHtml(i));
 }
 const _mi=(label,fn,cls)=>`<button class="${cls||''}" onclick="ctxClose();${fn}">${label}</button>`;
 function mailCtxHtml(i){
@@ -6031,13 +6055,15 @@ function msgHtml(m,gi){
     .map(personSpan).join(', ');
   const rcpt=[m.to?`to ${names(m.to)}`:'', m.cc?`cc ${names(m.cc)}`:''].filter(Boolean).join(' · ');
   return `<div class="msg"${gi!=null?` data-mi="${gi}"`:''}><div class="mh" title="Collapse this message"><span class="mav" style="background:${avColor(frm)}">${initials(frm)}${avImg(emOf(m.from))}</span>
-    ${personSpan(m.from||frm).replace('class="person"','class="person" style="font-weight:700;font-size:13.5px"')}<span class="t">${esc((m.date||'').replace('T',' ').slice(0,16))}</span></div>
+    ${personSpan(m.from||frm).replace('class="person"','class="person" style="font-weight:700;font-size:13.5px"')}<span class="t">${esc((m.date||'').replace('T',' ').slice(0,16))}</span>
+    ${gi!=null&&MSG_CTX?.key?`<span class="mact">${[['reply','Reply to this message','reply'],['reply','Reply all to this message','all'],['forward','Forward this message','fwd']].map(([icn,t,md])=>
+      `<button title="${t}" onclick="event.stopPropagation();openComposer('${esc(MSG_CTX.key)}','${md}',${gi})">${md==='all'?ic('reply')+ic('reply'):ic(icn)}</button>`).join('')}</span>`:''}</div>
     ${rcpt?`<div class="mrcpt">${rcpt}</div>`:''}
     ${body}${atts}</div>`;
 }
 function sizeFrame(f){ try{ f.style.height=Math.min(f.contentDocument.body.scrollHeight+24,560)+'px'; }catch(e){} }
 function renderThreadPane(i){
-  MSG_CTX={account:i.account, thread_id:i.raw.thread_id};
+  MSG_CTX={account:i.account, thread_id:i.raw.thread_id, key:i.key};
   $('#pane').classList.remove('composing');
   // E107: only the LATEST message opens expanded; earlier ones are
   // collapsed one-liners (click to expand, click a header to re-collapse).
@@ -6660,7 +6686,8 @@ function replyRecipients(i,mode){
     const seen=new Set(), uq=a=>{ const e=em(a); if(!e||seen.has(e))return false; seen.add(e); return true; };
     return { to:to.filter(uq).join(', '), cc:mode==='reply'?'':cc.filter(uq).join(', ') };
   }
-  const last=[...msgs].reverse().find(m=>!OWN.has(((m.from||'').match(/[\w.+-]+@[\w.-]+/)||[''])[0].toLowerCase()))||msgs[msgs.length-1];
+  // Dev #26: answering one message answers ITS sender and recipients
+  const last=sdMsg(i)||[...msgs].reverse().find(m=>!OWN.has(((m.from||'').match(/[\w.+-]+@[\w.-]+/)||[''])[0].toLowerCase()))||msgs[msgs.length-1];
   const addrs = s => String(s||'').split(',').map(x=>x.trim()).filter(Boolean);
   const em = s => ((s.match(/[\w.+-]+@[\w.-]+/)||[''])[0]).toLowerCase();
   let to=[last.from,...addrs(last.to)].filter(a=>a&&!OWN.has(em(a)));
@@ -6677,7 +6704,7 @@ function replyRecipients(i,mode){
    recipients prefilled, subject threaded, signature appended, and the prior
    conversation quoted below (on by default, toggleable). */
 function buildQuote(i,mode){
-  const m=(i._msgs||[]).slice(-1)[0]; if(!m) return '';
+  const m=sdMsg(i)||(i._msgs||[]).slice(-1)[0]; if(!m) return '';
   const src=(m.body||'').trim()||'(original was an HTML message — open in Gmail to view)';
   if(mode==='fwd')
     return '\n\n---------- Forwarded message ----------\n'
@@ -6689,14 +6716,19 @@ function buildQuote(i,mode){
   return '\n\n'+head+'\n'+src.split('\n').map(l=>'> '+l).join('\n');
 }
 let SD_MODE='all';   // 'reply' | 'all' | 'fwd' — set per composer open
-async function openComposer(key,mode){
-  SD_MODE=mode||'all'; SD_ATTS=[];
+let SD_MSG=null;     // Dev #26: index of the one message being answered; null = the thread
+const sdMsg=i=>SD_MSG!=null?(i._msgs||[])[SD_MSG]||null:null;
+async function openComposer(key,mode,mi){
+  SD_MODE=mode||'all'; SD_ATTS=[]; SD_MSG=Number.isInteger(mi)?mi:null;
   const i=findItem(key); if(!i||i.type!=='mail') return;
   const box=$('#composer'); if(!box) return;
   // E204: the reply takes most of the pane (Shortwave) — the thread shrinks
   // above it and stays scrollable.
   $('#pane').classList.add('composing');
-  const cm=$('#cmp-mode'); if(cm) cm.textContent={reply:'Reply',all:'Reply all',fwd:'Forward'}[mode||'all']+' · as '+(i.account||'');
+  const cm=$('#cmp-mode'); if(cm){ const tm=sdMsg(i);
+    cm.textContent={reply:'Reply',all:'Reply all',fwd:'Forward'}[mode||'all']
+      +(tm?(mode==='fwd'?' ':' to ')+((tm.from||'').split('<')[0].trim()||'this message')+"'s message of "+(tm.date||'').replace('T',' ').slice(5,16):'')
+      +' · as '+(i.account||''); }
   if(!i._msgs?.length){
     box.innerHTML='<div class="empty" style="padding:12px">Loading recipients…</div>';
     await ensureMsgs(i);   // fallback recipients still work if this fails
@@ -6705,7 +6737,7 @@ async function openComposer(key,mode){
   // E153 (Bart's invoice forward arrived bare): forwards carry the
   // ORIGINAL attachments — listed here, checked by default, fetched
   // server-side from Gmail on the confirmed send.
-  const origAtts=fwd?(i._msgs||[]).flatMap(m=>m.uid?(m.attachments||[]).map((a,k)=>
+  const origAtts=fwd?(sdMsg(i)?[sdMsg(i)]:(i._msgs||[])).flatMap(m=>m.uid?(m.attachments||[]).map((a,k)=>
     ({uid:m.uid,idx:k,name:a.filename||('attachment '+(k+1)),size:a.size||0})):[]):[];
   const r=fwd?{to:'',cc:''}:replyRecipients(i,SD_MODE);
   const sig=SIGS[i.account]?'\n\n'+SIGS[i.account]:'';
