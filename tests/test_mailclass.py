@@ -187,7 +187,7 @@ class Pass(unittest.TestCase):
     def test_corrections_are_validated(self):
         seed(self.conn, A)
         self.run_pass()
-        for field, value in (("type", "Spam"), ("respond", "maybe"), ("colour", "x"),
+        for field, value in (("type", "Junk"), ("respond", "maybe"), ("colour", "x"),
                              ("follow_up", "Tuesday")):
             with self.assertRaises(ValueError, msg=field):
                 db.class_correct(self.conn, A, TID, field, value)

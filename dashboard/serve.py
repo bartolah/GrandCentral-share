@@ -453,6 +453,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 try:
                     threads = db.mail_view(conn, include_done=include_done,
                                            account=acct)
+                    if acct:
+                        # E217: each row carries its classification summary
+                        # (type, respond, value) for chips, sorting and needs
+                        cls = db.class_for_threads(conn, acct)
+                        for t in threads:
+                            t["cls"] = cls.get(t.get("thread_id"))
                     outbox = db.open_outbox(conn)
                     row = conn.execute("SELECT MAX(synced_at) AS s FROM mail_threads").fetchone()
                     synced_at = row["s"] if row else None
@@ -922,6 +928,30 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 finally:
                     conn.close()
                 self._json(200, {"ok": True, "context": notes})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/contacts":
+            # Dev #32-#34: one account's address book — names and addresses
+            # only, from its own mail (never another account's), plus Bart's edits.
+            try:
+                import db
+                from common import load_env
+                from sources import gmail_reader
+                qs = urllib.parse.parse_qs(parsed.query)
+                account = _clean((qs.get("account") or [""])[0], 40)
+                conn = db.connect()
+                try:
+                    if not account or not _account_known(conn, account):
+                        raise ValueError("known account required")
+                    env = load_env()
+                    own = {(env.get(uk) or "").strip().lower()
+                           for uk, _ in gmail_reader.scan_accounts(env).values()}
+                    self._json(200, {"ok": True, "contacts": db.contacts_for(conn, account, own)})
+                finally:
+                    conn.close()
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
@@ -1559,6 +1589,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self._json(200, {"ok": True, **db.class_roster(conn)})
                 finally:
                     conn.close()
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/contacts":
+            # Dev #32: edit a contact — name, notes, or keep out of typeahead
+            try:
+                import db
+                conn = db.connect()
+                try:
+                    em = db.contact_set(conn, _clean(payload.get("email"), 120),
+                                        name=None if payload.get("name") is None else _clean(payload.get("name"), 80),
+                                        notes=None if payload.get("notes") is None else str(payload.get("notes"))[:2000],
+                                        hidden=None if payload.get("hidden") is None else bool(payload.get("hidden")))
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "email": em})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:

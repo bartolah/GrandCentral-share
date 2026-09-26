@@ -127,7 +127,7 @@ class Payload(JevCase):
         body = self.sent[0]
         self.assertEqual(set(body), {"state", "model", "questions"})
         self.assertEqual(set(body["state"]), {"subject", "sender", "people_on_thread", "who_wrote_last",
-                                              "sender_relationship", "latest_message"})
+                                              "messages_in_thread", "sender_relationship", "latest_message"})
         self.assertEqual(len(body["state"]["latest_message"]), 400)
         self.assertEqual(set(body["questions"]), {"type", "priority", "respond"})
 
@@ -195,6 +195,54 @@ class Answers(JevCase):
         self.ask()
         got = db.class_get(self.conn, A, TID)
         self.assertEqual((got["waiting_on"], got["follow_up"]), ("none", None))
+
+
+class SalesSplit(JevCase):
+    def test_jev_is_asked_to_tell_prospects_from_cold_pitches_and_spam(self):
+        seed(self.conn, A)
+        self.classify()
+        db.class_set_jev(self.conn, A, True)
+        self.ask()
+        opts = set(self.sent[0]["questions"]["type"]["criteria"])
+        self.assertTrue({"Prospect", "Cold pitch", "Spam"} <= opts)
+        self.assertNotIn("Sales/outreach", opts)
+
+    def test_new_questions_re_ask_threads_answered_under_the_old_ones(self):
+        seed(self.conn, A)
+        self.classify()
+        db.class_set_jev(self.conn, A, True)
+        fp = self.conn.execute("SELECT fingerprint FROM mail_class").fetchone()[0]
+        db.class_write_jev(self.conn, A, TID, {"type": "Sales/outreach", "confidence": {"type": .9}}, fp)
+        self.ask()
+        self.assertEqual(len(self.sent), 1)          # answered at qv 1 → asked again
+        self.ask()
+        self.assertEqual(len(self.sent), 1)          # now current → left alone
+
+
+class ValueScore(unittest.TestCase):
+    def v(self, **kw):
+        base = {"type": "Correspondence", "relationship": "new", "respond": "unsure", "priority": None}
+        base.update(kw)
+        return db.class_value(base, today="2026-09-26")[0]
+
+    def test_it_ranks_what_matters_above_what_doesnt(self):
+        prospect = self.v(type="Prospect", relationship="frequent", respond="yes", priority=3)
+        mate = self.v(type="Team collaboration", relationship="teammate", respond="yes", priority=2)
+        pitch = self.v(type="Cold pitch", respond="optional", priority=1)
+        spam = self.v(type="Spam", relationship="machine", respond="no", priority=0)
+        self.assertGreater(prospect, pitch)
+        self.assertGreater(mate, pitch)
+        self.assertGreater(pitch, spam)
+        self.assertEqual(spam, 0)
+        self.assertLessEqual(prospect, 100)
+
+    def test_a_due_follow_up_raises_it_and_the_parts_say_why(self):
+        due = db.class_value({"type": "Correspondence", "relationship": "known", "respond": "no",
+                              "follow_up": "2026-09-25"}, today="2026-09-26")
+        later = db.class_value({"type": "Correspondence", "relationship": "known", "respond": "no",
+                                "follow_up": "2026-10-10"}, today="2026-09-26")
+        self.assertEqual(due[0] - later[0], 10)
+        self.assertIn("follow-up due", [p for p, _ in due[1]])
 
 
 class Failures(JevCase):

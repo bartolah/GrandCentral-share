@@ -40,12 +40,18 @@ WINDOW_DAYS = 14
 TIMEOUT = 15
 CONF_FLOOR = db.JEV_CONF_FLOOR   # below this, keep the rules / Haiku answer
 
+# E217 — Bart: "a delineation between an outbound sales prospect, versus
+# someone spamming me", and Spam. Jev reads criteria literally (its docs), so
+# each option says exactly which side of the line it covers.
+QVERSION = 2      # bump when the questions change: every answered thread is re-asked
 _TYPE_CRITERIA = {
-    "Correspondence": "A real person writing to the owner one-to-one or in a small group, outside the owner's team, about anything that isn't a pitch.",
+    "Correspondence": "A real person writing to the owner one-to-one or in a small group, outside the owner's team, about anything that is not selling.",
     "Team collaboration": "Colleagues coordinating work: the sender is a teammate or at the owner's company (see `sender_relationship`), or the thread is about shared internal work.",
-    "Sales/outreach": "Someone pitching, prospecting or asking for a meeting to sell something, often a first contact; includes partnership pitches.",
+    "Prospect": "The OWNER is selling or partnering: a lead, customer, advertiser or partner the owner is pursuing or pitched — the owner started or keeps the thread going, or the other side is answering the owner's pitch.",
+    "Cold pitch": "Someone is selling TO the owner without being asked: an unsolicited vendor, agency, SEO, lead-generation, recruiting or partnership pitch, or a follow-up bump to one, from someone the owner has not worked with.",
+    "Spam": "Unwanted or deceptive mail: scams, phishing, fake invoices or security alerts, crypto or prize offers, or mass mail with no real connection to the owner.",
     "Update": "An automated or FYI status message: notifications, alerts, reports, confirmations, no conversation.",
-    "Newsletter": "A publication or mailing-list message sent to many people.",
+    "Newsletter": "A publication or mailing-list message sent to many people that the owner chose to receive.",
 }
 _RESPOND_CRITERIA = {
     "yes": "The latest message asks the owner a question, a request, or a decision, and a reply is expected.",
@@ -75,6 +81,7 @@ def build_request(row: dict, rel: str) -> dict:
         "sender": row.get("last_from") or row.get("last_from_email") or "",
         "people_on_thread": [str(p)[:120] for p in people[:8]],
         "who_wrote_last": "the other person" if inbound else "the owner",
+        "messages_in_thread": int(row.get("message_count") or 1),
         "sender_relationship": _REL_TEXT.get(rel, "unknown"),
         "latest_message": (row.get("snippet") or "")[:SNIPPET_MAX],
     }
@@ -97,7 +104,7 @@ def build_request(row: dict, rel: str) -> dict:
 def parse(resp: dict) -> dict:
     """Answers → the fields we store, with each answer's confidence."""
     a = resp.get("answers") or {}
-    out = {"model_id": resp.get("model"), "confidence": {}}
+    out = {"model_id": resp.get("model"), "confidence": {}, "qv": QVERSION}
     for f in ("type", "respond"):
         if f in a and a[f].get("choice"):
             out[f] = a[f]["choice"]
@@ -147,7 +154,8 @@ def run(conn, env: dict, accounts: list, log=print, post=None,
             "JOIN mail_threads mt ON mt.account = mc.account AND mt.thread_id = mc.thread_id "
             "WHERE mc.account = ? AND mt.last_date >= ? AND mt.bulk = 0 "
             "AND mt.category IN ('people', 'other') "
-            "AND (mc.jev_fp IS NULL OR mc.jev_fp != mc.fingerprint) "
+            "AND (mc.jev_fp IS NULL OR mc.jev_fp != mc.fingerprint "
+            f"     OR COALESCE(json_extract(mc.jev, '$.qv'), 1) != {QVERSION}) "
             "ORDER BY mt.last_date DESC LIMIT ?", (account, since, budget)).fetchall()
         n = 0
         for r in rows:
@@ -157,7 +165,7 @@ def run(conn, env: dict, accounts: list, log=print, post=None,
                 ans = parse(post(key, build_request(row, rel)))
             except JevError as e:
                 if e.status == 422:          # this thread's request is malformed; don't loop on it
-                    db.class_write_jev(conn, account, row["thread_id"], {"error": str(e)}, row["fp"])
+                    db.class_write_jev(conn, account, row["thread_id"], {"error": str(e), "qv": QVERSION}, row["fp"])
                     continue
                 log(f"jev: {account} stopped — {e}" + (" (key rejected; check Connections)"
                                                        if e.status in (401, 403) else ""))

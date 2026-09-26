@@ -351,6 +351,12 @@ class HttpBoundary(unittest.TestCase):
         code, out = self.get("/todos/unassigned")
         self.assertEqual(code, 200, out)
 
+    def test_contacts_need_a_known_account(self):
+        code, out = self.get("/contacts?account=nosuchacct")
+        self.assertEqual(code, 400, out)
+        code, out = self.get(f"/contacts?account={A}")
+        self.assertEqual(code, 200, out)
+
     def test_task_add_without_account_is_refused(self):
         code, out = self.post("/task", {"action": "add", "text": "orphan"})
         self.assertEqual(code, 400, out)

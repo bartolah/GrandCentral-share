@@ -829,9 +829,23 @@
   .ua-main { flex: 1 1 260px; min-width: 0; }
   .ua-t { font-weight: 600; }
   .ua-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+  .ct-row { flex-wrap: nowrap; align-items: flex-start; }
+  .ct-acts { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; }
+  .ct-row .lead { width: 34px; height: 34px; border-radius: var(--av, 50%); display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; flex: 0 0 auto; }
+  .ct-row .ct-name { font: inherit; font-weight: 600; border: 1px solid transparent; background: none; color: var(--ink); padding: 2px 4px; border-radius: 6px; width: 100%; }
+  .ct-row .ct-notes { font: inherit; font-size: 12.5px; border: 1px solid transparent; background: none; color: var(--muted); padding: 2px 4px; border-radius: 6px; width: 100%; margin-top: 3px; }
+  .ct-row input:hover, .ct-row input:focus { border-color: var(--line); background: var(--input-bg, var(--card)); }
   .ua-notes { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dev-q { border-left: 3px solid var(--amber, #e8a33d); padding: 6px 10px; margin: 6px 0; background: var(--amber-soft, var(--chip-bg)); border-radius: 6px; }
   .dev-q textarea { width: 100%; margin-top: 6px; }
+  /* E217: value score + sales-split chips */
+  .val { display: inline-block; min-width: 26px; text-align: center; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+  .val-hi { background: var(--blue); color: var(--card, #fff); }
+  .val-mid { background: var(--blue-soft); color: var(--blue); }
+  .val-lo { background: var(--chip-bg); color: var(--faint); }
+  .chip.ty-Prospect { background: var(--blue-soft); color: var(--blue); }
+  .chip.ty-Coldpitch { background: var(--chip-bg); color: var(--muted); }
+  .chip.ty-Spam { background: var(--red-soft); color: var(--red); }
   /* E212: the Classified button */
   .cls-bar { padding: 2px 20px 8px; font-size: 12.5px; }
   .cls-sum { color: var(--muted); text-align: left; padding: 3px 0; line-height: 1.4; }
@@ -2162,7 +2176,7 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
         <button class="lh-btn" id="group-btn" onclick="groupMenu(event)" title="Group the list by…"></button>
       </div>
       <label class="group-pick" hidden>Group <select id="group">
-          <option value="smart">Smart</option><option value="account">Account</option>
+          <option value="smart">Smart</option><option value="value">Value</option><option value="account">Account</option>
           <option value="label">Label</option><option value="date">Date</option>
         </select>
       </label>
@@ -2423,7 +2437,12 @@ function rebuild(){
       // E58: bundled mail (newsletters/updates/promos/receipts) categorically
       // can't owe a reply, whatever the sweep said — Bart's ⊘ clicks and the
       // categorizer outrank a stale reply-debt row until the next sweep heals.
-      needs:OWED.has(x.account+':'+x.thread_id) && (x.category||'people')==='people',
+      // E217: where Jev (account switched on) or Bart's own correction has
+      // judged "respond", that decides; elsewhere the hourly assessor's list.
+      needs:(x.cls&&['jev','you'].includes(x.cls.respond_src))
+        ? x.cls.respond==='yes' && x.last_direction!=='outbound'
+        : OWED.has(x.account+':'+x.thread_id) && (x.category||'people')==='people',
+      cls:x.cls||null,
       note:x.note||'',
     })),
     ...TODOS.map(x=>({
@@ -2523,6 +2542,7 @@ function renderRail(){
     sc('outbox',null,'🕐','Scheduled', pending||'') +
     sc('braindump',null,'💡','Braindump', (BRAIN||[]).filter(b=>b.status==='idea').length||'') +
     (UNASG===null?(loadUnassigned(),''):UNASG.length?sc('unassigned',null,'◌','Unassigned todos',UNASG.length):'') +
+    sc('contacts',null,'👥','Contacts',CONTACTS[ACCT]?CONTACTS[ACCT].length:'') +
     `<div class="rail-more">` +
     `<h4>Mail accounts</h4>` +
     accts.map(a=>sc('account',a,'',a,live.filter(x=>x.account===a).length,ACCT_COLOR[a]||'#999')).join('') +
@@ -2549,7 +2569,7 @@ function scopeTitle(kind,id){
     kind==='label'?'🏷 '+id:kind==='drafts'?'Drafts':kind==='sent'?'Sent':
     kind==='outbox'?'Scheduled':kind==='snoozed'?'⏰ Snoozed':
     kind==='todo'?'◯ Todo':kind==='goals'?'🎯 Goals':
-    kind==='braindump'?'💡 Braindump':kind==='dev'?'🛠 Dev requests':kind==='unassigned'?'◌ Unassigned todos':goalName(id).slice(0,40);
+    kind==='braindump'?'💡 Braindump':kind==='dev'?'🛠 Dev requests':kind==='unassigned'?'◌ Unassigned todos':kind==='contacts'?'👥 Contacts':goalName(id).slice(0,40);
 }
 /* E118: breadcrumb trail under the top bar — every crumb but the last is a
    way back, so navigation survives a collapsed rail. */
@@ -2736,6 +2756,15 @@ function groupItems(items){
     const names={'0':'⏰ Overdue','1':'☀ Today','2':'🗓 Coming up','3':'◌ No date'};
     return groupBy(sorted,i=>i.my_day?'1':!i.due?'3':i.due<today?'0':i.due===today?'1':'2',k=>names[k]);
   }
+  if (GROUP==='value'){
+    // E217: at-a-glance triage — bands, highest value first inside each
+    const bands=[['★ High value · 70+',i=>i.cls?.value>=70],['Worth a look · 40–69',i=>i.cls?.value>=40],
+                 ['Low · below 40',i=>i.cls?.value!=null],['Not scored',()=>true]];
+    const out=bands.map(([n])=>[n,[]]);
+    items.forEach(i=>{ const k=bands.findIndex(([,f])=>f(i)); out[k][1].push(i); });
+    out.forEach(([,v])=>v.sort((a,b)=>(b.cls?.value??-1)-(a.cls?.value??-1)||String(b.date||'').localeCompare(String(a.date||''))));
+    return out.filter(([,v])=>v.length);
+  }
   if (GROUP==='account') return groupBy(items,i=>i.account||'todos',k=>k==='todos'?'Todos (no account)':k);
   if (GROUP==='date') return groupBy(items,i=>String(i.date||'').slice(0,10)||'zz',k=>k==='zz'?'Undated':k);
   if (GROUP==='label'){
@@ -2855,8 +2884,17 @@ function renderList(){
   // E134: freeform editors inside the list (scratch pads, braindump cards,
   // todo/goal notes — anything .sp-edit) must never lose keystrokes to the
   // 60s poll — skip the re-render until blur, same deal as the dock.
-  const ae=document.activeElement;
-  if(ae && ae.classList?.contains('sp-edit') && $('#list').contains(ae)) return;
+  // Dev #31 (Bart: "I start typing and it erases without my doing
+  // anything"): that guard only covered .sp-edit, so the Ask box on Home, the
+  // Dev request box and every other field in the list lost its text to the
+  // 60s poll. Now: skip while any field in the list has focus, and carry
+  // unsent text in named fields across the re-render.
+  const ae=document.activeElement, lst=$('#list');
+  if(ae && lst.contains(ae) && (ae.matches('input,textarea,select,[contenteditable]')||ae.classList?.contains('sp-edit'))) return;
+  const keep={};
+  lst.querySelectorAll('input[id],textarea[id]').forEach(el=>{ if(el.type!=='checkbox'&&el.value) keep[el.id]=el.value; });
+  requestAnimationFrame(()=>{ for(const [id,v] of Object.entries(keep)){ const el=document.getElementById(id);
+    if(el&&!el.value&&lst.contains(el)) el.value=v; } });
   // E69: the day-notes journal lives on the Today tab, outside the list's
   // re-render cycle so typing is never clobbered by the poll.
   // E180 (Bart: "we can remove it now that it's in the sidebar"): the day's
@@ -2878,6 +2916,7 @@ function renderList(){
   if (SCOPE.kind==='braindump') return renderBraindump();
   if (SCOPE.kind==='dev') return renderDev();
   if (SCOPE.kind==='unassigned') return renderUnassigned();
+  if (SCOPE.kind==='contacts') return renderContacts();
   const items = ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i));
   const vis = ITEMS.filter(i=>inScope(i)&&inQ(i));
   // E177: the tab counts are computed before any view takes over — the Inbox
@@ -3456,7 +3495,7 @@ function renderListHead(){
 function groupMenu(ev){
   ev.stopPropagation();
   const r=ev.currentTarget.getBoundingClientRect();
-  const opts=[['smart','Smart — todos, starred, then by date'],['account','Account'],['label','Label'],['date','Date'],...(TAB==='todos'?[['urgency','Urgency — overdue, today, later']]:[])];
+  const opts=[['smart','Smart — todos, starred, then by date'],['value','Value — highest first'],['account','Account'],['label','Label'],['date','Date'],...(TAB==='todos'?[['urgency','Urgency — overdue, today, later']]:[])];
   ctxOpen(r.right-250,r.bottom+4,'<div style="padding:4px 10px;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--faint)">Group by</div>'
     +opts.map(([v,l])=>`<button onclick="ctxClose();GROUP='${v}';const s=$('#group');if(s)s.value='${v}';renderList()">${GROUP===v?'✓ ':'　'}${esc(l)}</button>`).join(''));
 }
@@ -4035,6 +4074,55 @@ async function loadUnassigned(){
     if(r.ok){ UNASG=r.todos||[]; renderRail(); if(SCOPE.kind==='unassigned') renderList(); } }
   catch(e){}
 }
+/* ================= Contacts (dev #32 #33) =================
+   Bart: "I need a way to edit contacts" · "It would be cool to have a contact
+   address book thing." One account's address book, from its own mail; a
+   name or note edited here is Bart's and wins in every account's typeahead. */
+let CT_Q='', CT_AUTO=false;
+function renderContacts(){
+  VISIBLE=[];
+  if(!CONTACTS[ACCT]){ $('#list').innerHTML='<div class="empty">Loading contacts…</div>';
+    loadContacts(ACCT).then(()=>{ renderRail(); if(SCOPE.kind==='contacts') renderList(); }); return; }
+  $('#list').innerHTML=`<div class="scope-head"><div class="sh-top"><span class="kind">👥 Contacts · ${esc(acctLabel(ACCT))} · ${CONTACTS[ACCT].length}</span></div>
+    <div class="status" style="margin-top:4px;text-transform:none;letter-spacing:0">Everyone ${esc(acctLabel(ACCT))} has emailed with, most frequent first.
+      Edit a name or add a note — your version is used in every account's address suggestions.</div>
+    <input id="ct-q" class="tp-notes" style="min-height:0;margin-top:8px" placeholder="Search name or address…" value="${esc(CT_Q)}"
+      oninput="CT_Q=this.value;ctFill()">
+    <label class="status" style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;margin-top:6px">
+      <input type="checkbox" ${CT_AUTO?'checked':''} onchange="CT_AUTO=this.checked;ctFill()"> Show automated senders
+      (${(CONTACTS[ACCT]||[]).filter(c=>c.auto).length})</label></div><div id="ct-list" class="ua-list"></div>`;
+  ctFill();
+}
+function ctFill(){
+  const q=CT_Q.trim().toLowerCase();
+  const list=(CONTACTS[ACCT]||[]).filter(c=>(CT_AUTO||!c.auto)&&(!q||(c.name||'').toLowerCase().includes(q)||c.email.includes(q)));
+  const el=$('#ct-list'); if(!el) return;
+  el.innerHTML=list.slice(0,200).map(c=>`<div class="ua-row ct-row">
+      <span class="lead" style="background:${avColor(c.name||c.email)}">${initials(c.name||c.email)}</span>
+      <div class="ua-main">
+        <input class="ct-name" value="${esc(c.name||'')}" placeholder="Add a name" title="Your name for them — used in suggestions"
+          onchange="ctSave('${esc(c.email)}',{name:this.value})">
+        <div class="ua-meta"><span class="chip">${esc(c.email)}</span><span class="chip">${c.threads} thread${c.threads===1?'':'s'}</span>
+          ${c.last?`<span class="chip">last ${esc(fmtDate(c.last))}</span>`:''}
+          ${c.group?`<span class="chip">${esc(c.group)}</span>`:''}${c.teammate?'<span class="chip">teammate</span>':''}
+          ${c.edited?'<span class="chip" title="You edited this contact">✎ yours</span>':''}</div>
+        <input class="ct-notes" value="${esc(c.notes||'')}" placeholder="Notes…" onchange="ctSave('${esc(c.email)}',{notes:this.value})"></div>
+      <div class="ct-acts"><button class="qbtn" title="Email them" onclick="composeDlg();setTimeout(()=>chipAdd('cp-to',${JSON.stringify(contactStr(c)).replace(/"/g,'&quot;')}),80)">✉</button>
+      <button class="qbtn" title="Keep out of address suggestions" onclick="ctSave('${esc(c.email)}',{hidden:true},true)">Hide</button></div>
+    </div>`).join('')+(list.length>200?`<div class="empty">Showing 200 of ${list.length} — search to narrow.</div>`:'')
+    +(list.length?'':'<div class="empty">No one matches.</div>');
+}
+async function ctSave(email,fields,drop){
+  try { await post('/contacts',{email,...fields});
+    const c=(CONTACTS[ACCT]||[]).find(x=>x.email===email);
+    if(c){ if(fields.name!==undefined){ c.name=fields.name.trim(); c.edited=!!c.name; } if(fields.notes!==undefined) c.notes=fields.notes; }
+    if(drop){ CONTACTS[ACCT]=CONTACTS[ACCT].filter(x=>x.email!==email); ctFill(); toast('Hidden from suggestions'); }
+    else toast('Saved');
+    Object.keys(CONTACTS).forEach(a=>{ if(a!==ACCT) delete CONTACTS[a]; });   // other accounts refetch with the edit
+    const dl=$('#dl-contacts'); if(dl) dl.remove();
+  } catch(e){ toast('Not saved — '+e.message); }
+}
+
 function renderUnassigned(){
   VISIBLE=[];
   const hinted=UNASG.filter(t=>t.hint&&ACCOUNTS.includes(t.hint));
@@ -4522,10 +4610,16 @@ const todoFresh=i=>(i.threads||[]).some(t=>t.unread)||todoUnsnoozed(i)>0;
 
 /* E204: the end of line three — Shortwave puts the label chip, the paper
    clip and the star at the tail of the preview, not up by the name. */
+const valBand=v=>v>=70?'hi':v>=40?'mid':'lo';
+function valChip(i){
+  const c=i.cls; if(!c||c.value==null) return '';
+  const t=['Prospect','Cold pitch','Spam'].includes(c.type)?`<span class="chip ty ty-${c.type.replace(/\s/g,'')}">${esc(c.type)}</span>`:'';
+  return t+`<span class="val val-${valBand(c.value)}" title="Value ${c.value}/100 — how much this email is worth your attention (open 🏷 Classified for why)">${c.value}</span>`;
+}
 function rowTail(i){
   const lbl=(i.labels||[])[0];
   const proj='';
-  return `<span class="tail">`
+  return `<span class="tail">`+valChip(i)
     + (i.needs?`<span class="owed" title="A reply is owed">↩ ${fdAge(i.date)??0}d</span>`:'')
     + (i.note?`<span class="chip" style="background:var(--amber-soft);color:var(--note-head)" title="${esc(i.note)}">📝 ${esc(i.note.slice(0,24))}</span>`:'')
     + (lbl?`<span class="chip lbl" style="${lblStyle(lbl)}" onclick="event.stopPropagation();setScope('label','${esc(lbl)}')" title="Show everything labelled ${esc(lbl)}">${esc(lbl)}</span>`
@@ -5897,7 +5991,7 @@ function useOption(key,ix){
 const CLS={};                 // key -> {date, data}
 let CLS_OPEN=false;
 const CLS_OPTS={
-  type:['Correspondence','Team collaboration','Sales/outreach','Update','Newsletter','Receipt','Calendar','Promo','Other'],
+  type:['Correspondence','Team collaboration','Prospect','Cold pitch','Spam','Update','Newsletter','Receipt','Calendar','Promo','Other'],
   respond:[['yes','Reply needed'],['optional','Reply optional'],['no','No reply needed']],
   priority:[['0','0 · noise'],['1','1 · routine'],['2','2 · someone waiting'],['3','3 · urgent']],
   waiting_on:[['none','Nobody'],['teammate','A teammate'],['outside','Someone outside']],
@@ -5916,9 +6010,10 @@ function clsHtml(i){
   if(d.waiting_on&&d.waiting_on!=='none') bits.push('Waiting on '+(d.waiting_who||d.waiting_on));
   if(d.follow_up) bits.push('Follow up '+clsDay(d.follow_up));
   if(d.group) bits.push(d.group);
+  if(d.value!=null) bits.unshift(`<span class="val val-${valBand(d.value)}">${d.value}</span>`);
   const k=esc(i.key);
   let h=`<button class="cls-sum" onclick="CLS_OPEN=!CLS_OPEN;clsRender('${k}')" title="How this email is classified — click to see why and correct it">
-    🏷 <b>Classified:</b> ${bits.map(esc).join(' · ')} <span class="cls-car">${CLS_OPEN?'▴':'▾'}</span></button>`;
+    🏷 <b>Classified:</b> ${bits.map((b,n)=>n===0&&d.value!=null?b:esc(b)).join(' · ')} <span class="cls-car">${CLS_OPEN?'▴':'▾'}</span></button>`;
   if(!CLS_OPEN) return h;
   const src=f=>{ const s=(d.source||{})[f]||'rules'; return `<span class="cls-src cls-${esc(s)}" title="${s==='you'?'Your correction — kept for good':'Decided by '+esc(s)}">${esc(s==='jev'&&d.jev_model?d.jev_model:s)}</span>`; };
   const sel=(f,v)=>`<select onchange="clsFix('${k}','${f}',this.value)">${(CLS_OPTS[f]||[]).map(o=>{ const [val,lab]=Array.isArray(o)?o:[o,o];
@@ -5929,6 +6024,8 @@ function clsHtml(i){
   const sender=clsOther(i);
   h+=`<div class="cls-panel">
     ${d.summary?`<div class="cls-why">✨ ${esc(d.summary)}</div>`:''}
+    ${d.value!=null?`<div class="cls-row"><span class="cls-k">Value</span><span class="cls-v"><span class="val val-${valBand(d.value)}">${d.value}</span>
+      <span class="muted">${(d.value_parts||[]).map(([n,v])=>`${esc(n)} ${v>0?'+':''}${v}`).join(' · ')}</span></span><span></span></div>`:''}
     ${row('Type','type',sel('type',d.type))}
     ${row('Respond','respond',sel('respond',d.respond))}
     ${row('Priority','priority',sel('priority',d.priority))}
@@ -6751,11 +6848,40 @@ function contactsUniverse(){
   });
   return m;
 }
-function ensureContactsDl(){
+/* Dev #32-#34: the address book is per account and comes from the server —
+   every thread that account ever had, archived and sent included, plus
+   Bart's edits. contactsUniverse() (this inbox only) is the fallback. */
+const CONTACTS={};           // account -> [{email,name,threads,...}]
+async function loadContacts(acct){
+  acct=acct||ACCT; if(!acct) return [];
+  try { const r=await fetch('/contacts?account='+encodeURIComponent(acct),{cache:'no-store'}).then(r=>r.json());
+    if(r.ok) CONTACTS[acct]=r.contacts||[]; } catch(e){}
+  return CONTACTS[acct]||[];
+}
+const contactStr=c=>c.name&&c.name!==c.email?`${/[,"]/.test(c.name)?'"'+c.name.replace(/"/g,'')+'"':c.name} <${c.email}>`:c.email;
+function contactList(acct){
+  acct=acct||ACCT;
+  if(CONTACTS[acct]) return CONTACTS[acct];
+  return [...contactsUniverse().entries()].map(([email,name])=>({email,name,threads:0}));
+}
+function ensureContactsDl(acct){
+  acct=acct||ACCT;
   let dl=$('#dl-contacts');
   if(!dl){ dl=document.createElement('datalist'); dl.id='dl-contacts'; document.body.appendChild(dl); }
-  dl.innerHTML=[...contactsUniverse().entries()].slice(0,500)
-    .map(([em,nm])=>`<option value="${esc(nm&&nm!==em?nm+' <'+em+'>':em)}">`).join('');
+  const fill=()=>{ dl.innerHTML=contactList(acct).slice(0,800).map(c=>`<option value="${esc(contactStr(c))}">`).join(''); dl.dataset.acct=acct; };
+  fill();
+  if(!CONTACTS[acct]) loadContacts(acct).then(fill);
+}
+// A typed name with no address becomes the matching contact: exact name, else
+// one contact whose name or address starts with it. Otherwise it stays as typed.
+function resolveContact(raw){
+  if(emOf(raw)) return raw;
+  const q=raw.trim().toLowerCase(); if(!q) return raw;
+  const list=contactList($('#dl-contacts')?.dataset.acct);
+  const exact=list.filter(c=>(c.name||'').toLowerCase()===q);
+  if(exact.length) return contactStr(exact[0]);
+  const pre=list.filter(c=>(c.name||'').toLowerCase().startsWith(q)||c.email.startsWith(q));
+  return pre.length===1?contactStr(pre[0]):raw;
 }
 /* E104: compact recipient block — To on one line, Cc/Bcc folded behind
    toggles unless already populated (Gmail grammar). */
@@ -6774,7 +6900,7 @@ function chipField(id, csv){
   return `<div class="chipfield" id="${id}" onclick="this.querySelector('input').focus()">
     ${parts.map(chipHtml).join('')}
     <input class="chip-in" list="dl-contacts" placeholder="add…"
-      onkeydown="chipKey(event,'${id}')" onblur="chipCommit('${id}',this)" onchange="chipCommit('${id}',this)">
+      onkeydown="chipKey(event,'${id}')" oninput="chipInput('${id}',this)" onblur="chipCommit('${id}',this)" onchange="chipCommit('${id}',this)">
   </div>`;
 }
 function chipHtml(raw){
@@ -6794,9 +6920,16 @@ function chipKey(e,id){
 function chipCommit(id,inp){
   const v=(inp.value||'').trim().replace(/[,;]+$/,'');
   if(!v) return;
-  inp.insertAdjacentHTML('beforebegin',
-    v.split(',').map(s=>s.trim()).filter(Boolean).map(chipHtml).join(''));
+  // Dev #34: split on commas outside quotes and <>, so "Smith, John" <j@x>
+  // stays one contact; a bare typed name resolves to its contact's address.
+  const parts=(v.match(/(?:"[^"]*"|<[^>]*>|[^,;])+/g)||[]).map(s=>s.trim()).filter(Boolean).map(resolveContact);
+  inp.insertAdjacentHTML('beforebegin', parts.map(chipHtml).join(''));
   inp.value='';
+}
+// Picking a suggestion commits it at once, so it can't be half-typed over.
+function chipInput(id,inp){
+  const v=inp.value; if(!v||!emOf(v)) return;
+  const dl=$('#dl-contacts'); if(dl&&[...dl.options].some(o=>o.value===v)) chipCommit(id,inp);
 }
 function chipVal(id){
   return [...$('#'+id).querySelectorAll('.rchip')].map(c=>c.dataset.raw).join(', ');
@@ -7091,7 +7224,8 @@ function composeDlg(){
       <button class="btn sec2" onclick="attachViaGmail()" title="For files over 5 MB — saves this as a draft and opens it in Gmail">📎 via Gmail ↗</button>
       <button class="btn sec2" onclick="closeDlg()">Cancel</button>
       <span class="status" id="cp-status"></span></div><div id="sd-attlist" class="matts"></div>`);
-  const seed=()=>{ const a=$('#cp-acct').value;
+  ensureContactsDl($('#cp-acct').value);
+  const seed=()=>{ const a=$('#cp-acct').value; ensureContactsDl(a);
     if(!rbText('cp-body').trim()) rbInit('cp-body', SIGS[a]?'\n\n'+SIGS[a]:''); };
   $('#cp-acct').onchange=seed; seed();
   armBak('cp-body','new'); offerBak('cp-body','new');   // E155
@@ -7993,12 +8127,17 @@ const SFX={
    inside a real touch/click gesture — so declare intent up front and
    pre-unlock on the first gesture anywhere. */
 if(navigator.audioSession){ try{navigator.audioSession.type='playback';}catch(e){} }
-['touchend','click'].forEach(ev=>addEventListener(ev,()=>{
+// Dev #30 ("Sound effects don't seem to be working any more"): this unlock
+// ran ONCE. iOS suspends the context again whenever the tab is backgrounded
+// or the phone locks ('interrupted'), and resume() outside a gesture is
+// refused silently — so sound died after the first trip away from the app.
+// Re-arm on every gesture; it's a no-op while the context is running.
+['touchend','click','keydown'].forEach(ev=>addEventListener(ev,()=>{
   try{
     _AC=_AC||new (window.AudioContext||window.webkitAudioContext)();
     if(_AC.state!=='running') _AC.resume();
   }catch(e){}
-},{once:true,passive:true}));
+},{passive:true}));
 function sfx(kind){
   if(localStorage.getItem('gc2_sfx')==='0') return;
   const set=SFX[document.documentElement.dataset.skin||'2049'];

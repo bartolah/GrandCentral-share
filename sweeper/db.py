@@ -527,6 +527,17 @@ CREATE TABLE IF NOT EXISTS class_accounts (
   updated_at TEXT NOT NULL
 );
 
+-- Dev #32/#33 (2026-09-26): Bart's own edits to a contact — who someone IS,
+-- shared by every account like the team roster. The address book itself is
+-- built from each account's mail; this only overrides a name and keeps notes.
+CREATE TABLE IF NOT EXISTS contacts (
+  email      TEXT PRIMARY KEY,         -- lowercased
+  name       TEXT,                     -- Bart's name for them; wins everywhere
+  notes      TEXT,
+  hidden     INTEGER NOT NULL DEFAULT 0,  -- keep out of typeahead
+  updated_at TEXT NOT NULL
+);
+
 -- 2026-09-26: an account HINT for a legacy todo with none — written once by
 -- tools/suggest_todo_accounts.py (old project name, or an account named in
 -- the text). Only ever pre-selects a picker; Bart confirms every move.
@@ -1980,8 +1991,10 @@ def set_day_note(conn: sqlite3.Connection, date: str, text: str) -> None:
 # --------------------------------------------------------------------------
 CLASS_FIELDS = ("type", "relationship", "respond", "priority", "waiting_on", "follow_up")
 _CLASS_VALUES = {
-    "type": ("Correspondence", "Team collaboration", "Sales/outreach", "Update",
-             "Newsletter", "Receipt", "Calendar", "Promo", "Other"),
+    # E217: sales splits into Prospect (Bart selling) and Cold pitch (selling
+    # to Bart), plus Spam. "Sales/outreach" stays valid for older answers.
+    "type": ("Correspondence", "Team collaboration", "Prospect", "Cold pitch", "Spam",
+             "Update", "Newsletter", "Receipt", "Calendar", "Promo", "Other", "Sales/outreach"),
     "relationship": ("teammate", "company", "frequent", "known", "new", "machine"),
     "respond": ("yes", "no", "optional"),
     "priority": ("0", "1", "2", "3"),
@@ -2035,6 +2048,48 @@ def class_pins(conn, account: str, thread_id: str | None = None) -> dict:
 JEV_CONF_FLOOR = 0.35     # a Jev answer less confident than this doesn't override
 
 
+# E217 (Bart: "a value score for an email that is a combination of all of the
+# hints, that I can use to at a glance evaluate and sort emails"). 0-100; each
+# part is named so the Classified panel can say why. Weights in one place.
+_VALUE_TYPE = {"Prospect": 15, "Team collaboration": 8, "Correspondence": 5, "Calendar": 0,
+               "Update": -5, "Receipt": -5, "Other": 0, "Newsletter": -15, "Promo": -20,
+               "Cold pitch": -15, "Sales/outreach": 0, "Spam": -45}
+_VALUE_REL = {"teammate": 15, "company": 12, "frequent": 10, "known": 5, "new": 0, "machine": -10}
+_VALUE_RESPOND = {"yes": 20, "optional": 8, "no": 0, "unsure": 5}
+
+
+def class_value(eff: dict, today: str | None = None) -> tuple:
+    today = today or datetime.now().strftime("%Y-%m-%d")
+    parts = [("base", 30)]
+    pr = eff.get("priority")
+    if pr is not None:
+        parts.append((f"priority {pr}", (int(pr) - 1) * 10))
+    parts.append((f"respond {eff.get('respond') or 'unsure'}", _VALUE_RESPOND.get(eff.get("respond") or "unsure", 0)))
+    parts.append((eff.get("relationship") or "new", _VALUE_REL.get(eff.get("relationship") or "new", 0)))
+    parts.append((eff.get("type") or "Other", _VALUE_TYPE.get(eff.get("type") or "Other", 0)))
+    fu = eff.get("follow_up")
+    if fu and fu <= today:
+        parts.append(("follow-up due", 10))
+    parts = [p for p in parts if p[1]]
+    return max(0, min(100, sum(v for _, v in parts))), parts
+
+
+def class_for_threads(conn, account: str) -> dict:
+    """{thread_id: small summary} for one account's list — type, respond (and
+    who decided it), value — in one pass, for rows and sorting."""
+    use_jev = class_account_jev(conn, account)
+    pins = class_pins(conn, account)
+    today = datetime.now().strftime("%Y-%m-%d")
+    out = {}
+    for r in conn.execute("SELECT * FROM mail_class WHERE account = ?", (account,)):
+        e = class_effective(r, pins.get(r["thread_id"], {}), use_jev=use_jev)
+        out[r["thread_id"]] = {"type": e.get("type"), "respond": e.get("respond"),
+                               "respond_src": (e.get("source") or {}).get("respond"),
+                               "value": e["value"], "follow_up": e.get("follow_up"),
+                               "waiting_on": e.get("waiting_on")}
+    return out
+
+
 def class_write_jev(conn, account, thread_id, answers: dict, fingerprint: str) -> None:
     with conn:
         conn.execute("UPDATE mail_class SET jev=?, jev_fp=?, jev_at=? WHERE account=? AND thread_id=?",
@@ -2062,6 +2117,7 @@ def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
         out["waiting_on"], out["waiting_who"], src["waiting_on"] = "none", None, "jev"
     if jev:
         out["jev_model"] = jev.get("model_id")
+    out["value"], out["value_parts"] = class_value(out)
     for f, v in pins.items():
         if f == "follow_up" and not v:
             v = None                      # Bart cleared the follow-up date
@@ -2193,3 +2249,88 @@ def todo_unassigned(conn) -> list:
                     "notes": (r["notes"] or "")[:200], "hint": r["hint"], "why": r["why"],
                     "email_accounts": accts})
     return out
+
+
+# --------------------------------------------------------------------------
+# Contacts (dev #32 #33 #34, 2026-09-26)
+# --------------------------------------------------------------------------
+def _split_addrs(s: str) -> list:
+    """'A <a@x>, "Smith, J" <j@y>' -> ['A <a@x>', '"Smith, J" <j@y>'] — commas
+    inside quotes or <> are not separators."""
+    return [p.strip() for p in re.findall(r'(?:"[^"]*"|<[^>]*>|[^,])+', s or "") if p.strip()]
+
+
+_AUTO_ADDR = re.compile(r"^(no-?reply|do-?not-?reply|notifications?|notify|updates?|news(letter)?s?|"
+                        r"mailer(-daemon)?|bounces?|alerts?|info|support|hello|team|marketing|digest)[@+.-]|"
+                        r"@(e|em|email|mail|news|notifications?|updates?|mailer)\.", re.I)
+
+
+def contacts_for(conn, account: str, own: set, limit: int = 3000) -> list:
+    """Everyone this account has corresponded with — every thread, archived
+    and sent included — with Bart's overrides and roster membership."""
+    seen: dict[str, dict] = {}
+    for r in conn.execute("SELECT participants, last_from, last_date FROM mail_threads "
+                          "WHERE account = ? ORDER BY last_date DESC", (account,)):
+        try:
+            people = json.loads(r["participants"] or "[]")
+        except ValueError:
+            people = []
+        for p in people + [r["last_from"] or ""]:
+            m = _EMAIL_RE.search(p or "")
+            if not m:
+                continue
+            em = m.group(0).lower()
+            if em in own:
+                continue
+            nm = (p.split("<")[0].strip().strip('"').strip() if "<" in p else "") or ""
+            c = seen.get(em)
+            if c is None:
+                seen[em] = c = {"email": em, "name": "", "threads": 0, "last": r["last_date"]}
+            c["threads"] += 1
+            if nm and not c["name"] and "@" not in nm:
+                c["name"] = nm
+    for r in conn.execute("SELECT to_addrs, cc_addrs FROM mail_sends WHERE account = ?", (account,)):
+        for p in _split_addrs(r["to_addrs"]) + _split_addrs(r["cc_addrs"]):
+            m = _EMAIL_RE.search(p)
+            if m and m.group(0).lower() not in own:
+                em = m.group(0).lower()
+                c = seen.setdefault(em, {"email": em, "name": "", "threads": 0, "last": None})
+                c["threads"] += 1
+    over = {r["email"]: r for r in conn.execute("SELECT * FROM contacts")}
+    roster = {r["email"]: r for r in conn.execute("SELECT email, name, grp, teammate FROM class_people")}
+    out = []
+    for em, c in seen.items():
+        o, ro = over.get(em), roster.get(em)
+        if o and o["hidden"]:
+            continue
+        c["name"] = (o["name"] if o and o["name"] else "") or (ro["name"] if ro and ro["name"] else "") or c["name"]
+        c["notes"] = o["notes"] if o else ""
+        c["edited"] = bool(o and o["name"])
+        c["group"] = ro["grp"] if ro else None
+        c["auto"] = bool(_AUTO_ADDR.search(em)) and not (ro or (o and o["name"]))
+        c["teammate"] = bool(ro and ro["teammate"])
+        out.append(c)
+    out.sort(key=lambda c: (-c["threads"], c["name"].lower() or c["email"]))
+    return out[:limit]
+
+
+def contact_set(conn, email: str, name: str | None = None, notes: str | None = None,
+                hidden: bool | None = None) -> str:
+    email = (email or "").strip().lower()
+    if not _EMAIL_RE.fullmatch(email):
+        raise ValueError("a full email address is required")
+    cur = conn.execute("SELECT * FROM contacts WHERE email = ?", (email,)).fetchone()
+    vals = {"name": cur["name"] if cur else None, "notes": cur["notes"] if cur else None,
+            "hidden": cur["hidden"] if cur else 0}
+    if name is not None:
+        vals["name"] = re.sub(r"[<>,\"]", "", name).strip()[:80] or None
+    if notes is not None:
+        vals["notes"] = notes.strip()[:2000] or None
+    if hidden is not None:
+        vals["hidden"] = 1 if hidden else 0
+    with conn:
+        conn.execute("INSERT INTO contacts (email, name, notes, hidden, updated_at) VALUES (?,?,?,?,?) "
+                     "ON CONFLICT(email) DO UPDATE SET name=excluded.name, notes=excluded.notes, "
+                     "hidden=excluded.hidden, updated_at=excluded.updated_at",
+                     (email, vals["name"], vals["notes"], vals["hidden"], _now_iso()))
+    return email
