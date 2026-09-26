@@ -338,6 +338,10 @@ class HttpBoundary(unittest.TestCase):
         code, out = self.post("/classify", {"action": "person-remove", "key": "sam@team.com"})
         self.assertEqual((code, out["people"]), (200, []), out)
 
+    def test_answering_a_dev_question_needs_the_pairing_code(self):
+        code, out = self.post("/dev", {"action": "answer", "id": 1, "account": A, "answer": "yes"})
+        self.assertEqual(code, 403, out)
+
     def test_task_add_without_account_is_refused(self):
         code, out = self.post("/task", {"action": "add", "text": "orphan"})
         self.assertEqual(code, 400, out)

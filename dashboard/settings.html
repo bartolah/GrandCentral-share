@@ -319,10 +319,14 @@
     const loners = d.people.filter(x => !x.grp);
     const personRow = x => `<div class="cfg-row"><span class="conn-main">${esc(x.name || '')} <span class="conn-user">${esc(x.email)}</span>
         ${x.teammate ? '<span class="conn-pill on">teammate</span>' : ''}</span>
+        <input class="cfg-in sm" list="cls-grps" value="${esc(x.grp || '')}" placeholder="No group" title="Move to a group — pick one or type a new name"
+          onkeydown="if(event.key==='Enter')this.nextElementSibling.click()">
+        <button class="btn" onclick="clsMove('${esc(x.email)}', this.previousElementSibling.value, ${x.teammate}, this)">Move</button>
         <button class="btn" onclick="clsMate('${esc(x.email)}','${esc(x.grp || '')}',${!x.teammate})">${x.teammate ? 'Not a teammate' : 'Make teammate'}</button>
         <button class="btn del-btn" onclick="clsDel('person','${esc(x.email)}')">Remove</button></div>`;
     p.innerHTML = `
       <p class="cfg-note">Grand Central classifies each email: its type, who the sender is to you, whether to respond, who you're waiting on, and when to follow up. These settings decide who counts as your company and your team.</p>
+      <datalist id="cls-grps">${Object.keys(groups).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       ${Object.entries(groups).map(([name, gr]) => `
       <div class="cfg-group"><h3>${esc(name)}</h3>
         <div class="cfg-row">${gr.domains.map(dm => `<span class="idtag">${esc(dm)}</span><button class="btn del-btn" onclick="clsDel('group','${esc(dm)}')" title="Remove ${esc(dm)}">✕</button>`).join(' ') || '<span class="empty">No domains — only the people below.</span>'}</div>
@@ -330,7 +334,6 @@
       </div>`).join('') || '<div class="cfg-group"><h3>Company groups</h3><div class="empty">No groups yet. Add a domain or a person below, e.g. ConnectBlue, Capitol Influence and Northwind Media in one group.</div></div>'}
       <div class="cfg-group"><h3>Add to a group</h3>
         <div class="cfg-note">Everyone at a domain, or one person by address, counts as your company. Teammates' threads you're waiting on follow up after 2 business days.</div>
-        <datalist id="cls-grps">${Object.keys(groups).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
         <div class="cfg-add" id="cls-grp">${inp('group', Object.keys(groups)[0] || '', 'md', 'Group name').replace('<input', '<input list="cls-grps"')}${inp('domain', '', 'md', 'domain.com')}
           <button class="btn" onclick="clsAdd('group-add','cls-grp')">Add domain</button><span class="cfg-status"></span></div>
         <div class="cfg-add" id="cls-ppl">${inp('group', Object.keys(groups)[0] || '', 'md', 'Group (optional)').replace('<input', '<input list="cls-grps"')}${inp('name', '', 'md', 'Name')}${inp('email', '', 'md', 'name@domain.com')}
@@ -357,6 +360,13 @@
               teammate: row.querySelector('[data-f=teammate]').checked }, row.querySelector('.cfg-status'));
   }
   function clsMate(email, group, teammate) { clsPost({ action: 'person-add', email, group, teammate }, null); }
+  // "I need a way to move a teammate to a group or company" — same upsert,
+  // new group; a blank group keeps them as a teammate with no group.
+  function clsMove(email, group, teammate, btn) {
+    group = (group || '').trim();
+    if (!group && !teammate) { btn.textContent = 'Needs a group'; setTimeout(() => { btn.textContent = 'Move'; }, 2000); return; }
+    clsPost({ action: 'person-add', email, group, teammate }, null);
+  }
   function clsJev(account, on, btn) { clsPost({ action: 'jev', account, on }, btn.nextElementSibling); }
 
   // ---------- shell ----------
@@ -375,7 +385,7 @@
   // Inline onclick handlers in the tab markup need these on window.
   Object.assign(window, { connTestGmail, connAddGmail, connRemoveGmail, connTestSingle,
                           connSaveSingle, connClearSingle, ctxAdd, ctxSave, ctxToggle, ctxDelete,
-                          clsAdd, clsDel, clsJev, clsAddPerson, clsMate });
+                          clsAdd, clsDel, clsJev, clsAddPerson, clsMate, clsMove });
   show(new URLSearchParams(location.search).get('tab'));
 })();
 </script>

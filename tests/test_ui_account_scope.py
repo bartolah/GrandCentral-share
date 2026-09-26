@@ -70,6 +70,18 @@ class UiAccountScope(unittest.TestCase):
         self.assertIn("post('/dev',{action:'update',id,text,account:ACCT}", html)
         self.assertIn("post('/dev',{action:'update',id,status:'archived',account:ACCT}", html)
 
+    def test_an_open_email_keeps_trash_and_more(self):
+        # Bart, 2026-09-26: "Why do I keep losing the trash icon and more
+        # menu on individual emails?" E205-E206 dropped the reading pane's ⋯
+        # (paneMore stayed, orphaned) and nothing noticed. Pin both here.
+        html = open(os.path.join(ROOT, "dashboard", "index.html"), encoding="utf-8").read()
+        start = html.index('<div class="pane-tools">')
+        block = html[start:html.index("</div>", start)]
+        self.assertIn("trashItem(", block)
+        self.assertIn("paneMore(", block)
+        # and nothing defines a menu that no button opens
+        self.assertGreater(html.count("paneMore("), 1)
+
     def test_active_mail_rows_expose_the_triage_strip(self):
         # Six fast verbs + trash and "…" (Bart, dev #27, 2026-09-26). Star and
         # label live behind "…"; retired project/goal verbs never come back.

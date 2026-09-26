@@ -1418,7 +1418,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 action = _clean(payload.get("action"), 10)
                 status = _clean(payload.get("status"), 10) or None
                 account = _clean(payload.get("account"), 40)
-                gated = (action in ("add", "check", "newcode")
+                gated = (action in ("add", "check", "newcode", "answer")
                          or (action == "update" and (payload.get("text") is not None
                                                      or status == "open")))
                 if gated and action == "update" and payload.get("text") is None:
@@ -1454,6 +1454,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     return
                 conn = db.connect()
                 try:
+                    if action == "answer":
+                        # the worker asked; Bart's paired answer re-queues it
+                        if not account or not _account_known(conn, account):
+                            raise ValueError("known account required")
+                        db.dev_answer_question(conn, int(payload.get("id", 0) or 0), account,
+                                               str(payload.get("answer") or ""))
+                        self._json(200, {"ok": True})
+                        return
                     if action == "add":
                         text = str(payload.get("text") or "").strip()[:8000]
                         if not text:

@@ -205,6 +205,18 @@ def run(conn, env: dict, log=print) -> None:
                      f"📅 {t}: {e.get('title','')[:60]}{loc}{_prep(conn, e)}", log=log, url="/?go=today")
             _mark(conn, "event", ref)
 
+    # ---- a dev request needs Bart's answer (2026-09-26), once per question ----
+    if not quiet:
+        for r in conn.execute("SELECT id, account, note, updated_at FROM dev_requests "
+                              "WHERE status = 'question'").fetchall():
+            ref = f"{r['id']}:{r['updated_at']}"
+            if _sent(conn, "devq", ref):
+                continue
+            _deliver(conn, "dev", target,
+                     f"❓ Claude has a question about dev request #{r['id']}\n{(r['note'] or '')[:280]}",
+                     log=log, url=f"/?go=dev&account={r['account']}")
+            _mark(conn, "devq", ref)
+
     # ---- evening shutdown (E101 #4), once per day ----
     if "17:20" <= hm <= "18:10" and not _sent(conn, "shutdown", today):
         _deliver(conn, "wrap", target, _shutdown_text(conn), log=log, url="/?go=todos")

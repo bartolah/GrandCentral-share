@@ -824,6 +824,8 @@
   .msg .mav { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; vertical-align: middle; margin-right: 8px; position: relative; overflow: hidden; }
   .msg .mh b { font-size: 13.5px; }
   .msg .mh .t { color: var(--faint); font-size: 12px; }
+  .dev-q { border-left: 3px solid var(--amber, #e8a33d); padding: 6px 10px; margin: 6px 0; background: var(--amber-soft, var(--chip-bg)); border-radius: 6px; }
+  .dev-q textarea { width: 100%; margin-top: 6px; }
   /* E212: the Classified button */
   .cls-bar { padding: 2px 20px 8px; font-size: 12.5px; }
   .cls-sum { color: var(--muted); text-align: left; padding: 3px 0; line-height: 1.4; }
@@ -4009,7 +4011,7 @@ async function devPair(){
     toast('Paired — this device can file dev requests'); renderList();
   } catch(e){ toast(e.data?.pairing_required?'That code didn’t match':'Failed — '+e.message); }
 }
-const DEV_STATUS={open:['📬','open — waiting for Claude'],building:['🔨','building'],
+const DEV_STATUS={question:['❓','needs your answer'],open:['📬','open — waiting for Claude'],building:['🔨','building'],
   shipped:['✅','shipped'],declined:['🚫','declined']};
 function renderDev(){
   VISIBLE=[];
@@ -4019,13 +4021,18 @@ function renderDev(){
     const openReq=r.status==='open';
     return `<div class="wiz-tile" ${r.status==='shipped'||r.status==='declined'?'style="opacity:.65"':''}>
       <textarea class="sp-edit bd-text" onchange="devEdit(${r.id},this.value)" ${openReq&&devCode()?'':'disabled'}>${esc(r.text)}</textarea>
-      ${r.note?`<div class="meta" style="color:var(--ink)">💬 ${esc(r.note)}</div>`:''}
+      ${r.status==='question'?`<div class="dev-q"><b>❓ Claude asks:</b> ${esc(r.note||'')}
+          ${devCode()?`<textarea id="dev-ans-${r.id}" class="tp-notes" placeholder="Your answer… (⌘⏎ to send)"
+            onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))devAnswer(${r.id})"></textarea>
+          <div class="td-quick"><button class="qbtn" onclick="devAnswer(${r.id})">↩ Send answer</button></div>`
+          :'<div class="status">Pair this device (below) to answer.</div>'}</div>`
+        :r.note?`<div class="meta" style="color:var(--ink)">💬 ${esc(r.note)}</div>`:''}
       <div class="meta"><span class="chip">${ic} ${esc(label)}</span>
         <span class="chip">${esc(String(r.created_at).slice(0,10))}</span></div>
       <div class="acts">${openReq?`<button class="qbtn" onclick="devArchive(${r.id})" title="Withdraw the request">✕ Withdraw</button>`
         :`<button class="qbtn" onclick="devArchive(${r.id})">✕ Clear</button>`}</div></div>`;
   };
-  const act=DEVQ.filter(r=>['open','building'].includes(r.status));
+  const act=DEVQ.filter(r=>['question','open','building'].includes(r.status));
   const done=DEVQ.filter(r=>['shipped','declined'].includes(r.status));
   $('#list').innerHTML=`
     <div class="scope-head"><div class="sh-top"><span class="kind">🛠 Dev requests · ${act.length} in play</span></div>
@@ -4059,6 +4066,12 @@ async function devAdd(){
     DEV_DRAFT=''; toast('Filed — the next Claude session will pick it up');
     await loadDev(); renderList();
   } catch(e){ DEV_DRAFT=text; if(!devUnpaired(e)) toast('Failed — '+e.message); }
+}
+async function devAnswer(id){
+  const el=$('#dev-ans-'+id); const answer=(el?.value||'').trim(); if(!answer) return;
+  try { await post('/dev',{action:'answer',id,answer,account:ACCT},devHdr());
+    toast('Answered — it goes back to Claude on the next run'); await loadDev(); renderList();
+  } catch(e){ if(!devUnpaired(e)) toast('Not sent — '+e.message); }
 }
 async function devEdit(id,text){
   try { await post('/dev',{action:'update',id,text,account:ACCT},devHdr());
@@ -5954,6 +5967,8 @@ function paneShell(i, inner){
     ${tb('flag',i.type==='mail'?(i.pinned?'Unpin':'Pin'):(i.starred?'Unpin':'Pin'),`pinItem('${k}')`)}
     ${tb('check','Handled',`handledItem('${k}')`)}
     ${i.type==='mail'?tb('todo','Create or add to account todo',`todoPick(['${k}'])`):''}
+    ${i.type==='mail'?tb('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`,'warn'):''}
+    ${i.type==='mail'?`<button class="tool" onclick="paneMore('${k}',event)" title="More — star, label, note, contacts, Gmail…">${ic('more')}</button>`:''}
   </div>
   <!-- E207: an open email shows its labels again, and can be given one. The
        bounded-triage pass took this strip out along with the project and goal
@@ -7989,8 +8004,7 @@ function paneMore(key,ev){
      <button onclick="ctxClose();contactsDlg('${esc(key)}')">👥 Contacts in this thread</button>
      <button onclick="ctxClose();toggleMailRender()">◐ How bodies are drawn</button>
      <button onclick="ctxClose();window.open('${esc(i.raw.link||'#')}','_blank')">↗ Open in Gmail</button>
-     <hr><button onclick="ctxClose();dismissItem('${esc(key)}')">⊘ Dismiss from the board</button>
-     <button onclick="ctxClose();trashItem('${esc(key)}')">🗑 Trash (recoverable 30d)</button>`);
+     <hr><button onclick="ctxClose();trashItem('${esc(key)}')">🗑 Trash (recoverable 30d)</button>`);
 }
 
 /* ================= E188: browser notifications =================
@@ -8500,6 +8514,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch
   // E187: app shortcuts (long-press the icon) open a view directly.
   const go=p.get('go');
   if(go==='today') goToday(); else if(go==='todos') goTodos();
+  else if(go==='dev'){ const a=p.get('account'); if(a&&ACCOUNTS.includes(a)&&a!==ACCT) setAcct(a).then(()=>setScope('dev',null)); else setScope('dev',null); }
   else if(go==='inbox'){ setScope('inbox',null); TAB='all'; syncTabs(); renderList(); }
   const th=p.get('thread');
   if(th&&th.includes(':')) openItem('m:'+th);

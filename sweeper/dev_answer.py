@@ -5,8 +5,11 @@ only set status + note — never request text, which needs the pairing code.
 
     .venv/bin/python sweeper/dev_answer.py ID STATUS "note text"
 
-STATUS is building | shipped | declined | open (open only works on a request
-the worker marked building — handing it back to Bart with a question).
+STATUS is building | question | shipped | declined | open. Use `question`
+with the question as the note when a request is unclear: the card shows it
+to Bart with an answer box, the worker skips it until he answers, and his
+answer comes back appended to the request text. (`open` still hands a
+request back without a question.)
 """
 
 from __future__ import annotations
@@ -32,7 +35,7 @@ def _account_of(rid: int) -> str | None:
         conn.close()
     return row[0] if row else None
 
-STATUSES = ("building", "shipped", "declined", "open")
+STATUSES = ("building", "question", "shipped", "declined", "open")
 
 
 def main(argv: list[str]) -> int:

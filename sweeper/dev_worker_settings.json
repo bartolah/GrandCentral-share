@@ -20,6 +20,7 @@
       "Bash(git push origin main)",
       "Bash(.venv/bin/python sweeper/dev_check.py:*)",
       "Bash(.venv/bin/python sweeper/dev_answer.py:*)",
+      "Bash(.venv/bin/python -m unittest discover -s tests)",
       "Bash(launchctl kickstart -k gui/501/com.example.grandcentral.dashboard)"
     ],
     "deny": [

@@ -1187,7 +1187,7 @@ def dev_list(conn: sqlite3.Connection, account: str) -> list:
     return [dict(r) for r in conn.execute(
         "SELECT id, account, text, status, note, created_at, updated_at "
         "FROM dev_requests WHERE status != 'archived' AND account = ? "
-        "ORDER BY CASE status WHEN 'open' THEN 0 WHEN 'building' THEN 1 ELSE 2 END, id DESC",
+        "ORDER BY CASE status WHEN 'question' THEN 0 WHEN 'open' THEN 1 WHEN 'building' THEN 2 ELSE 3 END, id DESC",
         (account,))]
 
 
@@ -1208,7 +1208,7 @@ def dev_update(conn: sqlite3.Connection, rid: int, account: str,
     sets, vals = [], []
     if text is not None:
         sets.append("text = ?"); vals.append(text)
-    if status in ("open", "building", "shipped", "declined", "archived"):
+    if status in ("open", "building", "question", "shipped", "declined", "archived"):
         sets.append("status = ?"); vals.append(status)
     if note is not None:
         sets.append("note = ?"); vals.append(note)
@@ -1220,6 +1220,28 @@ def dev_update(conn: sqlite3.Connection, rid: int, account: str,
             f"UPDATE dev_requests SET {', '.join(sets)} WHERE id = ? AND account = ?",
             vals + [int(rid), account])
     return cur.rowcount > 0
+
+
+def dev_answer_question(conn: sqlite3.Connection, rid: int, account: str, answer: str) -> bool:
+    """Bart answers a question the worker asked on his request: the question
+    and his answer are appended to the request text (so the next session reads
+    both as Bart's words) and the card goes back in the queue."""
+    account = clean_account(account)
+    answer = (answer or "").strip()[:4000]
+    if not answer:
+        raise ValueError("empty answer")
+    row = conn.execute("SELECT text, note, status FROM dev_requests WHERE id = ? AND account = ?",
+                       (int(rid), account)).fetchone()
+    if row is None or row["status"] != "question":
+        raise ValueError("that request isn't waiting on an answer")
+    stamp = _now_iso()
+    text = (f"{row['text']}\n\n— Claude asked: {(row['note'] or '').strip()}"
+            f"\n— Bart answered ({stamp[:10]}): {answer}")[:12000]
+    with conn:
+        conn.execute("UPDATE dev_requests SET text = ?, status = 'open', note = ?, updated_at = ? "
+                     "WHERE id = ? AND account = ?",
+                     (text, "Answered — back in the queue for the next run.", stamp, int(rid), account))
+    return True
 
 
 def record_granola_meetings(conn: sqlite3.Connection, meetings: list,
