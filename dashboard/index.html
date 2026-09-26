@@ -824,6 +824,12 @@
   .msg .mav { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; vertical-align: middle; margin-right: 8px; position: relative; overflow: hidden; }
   .msg .mh b { font-size: 13.5px; }
   .msg .mh .t { color: var(--faint); font-size: 12px; }
+  .ua-list { display: flex; flex-direction: column; gap: 6px; padding: 8px 0 20px; }
+  .ua-row { display: flex; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: var(--r, 10px); padding: 8px 12px; background: var(--card); flex-wrap: wrap; }
+  .ua-main { flex: 1 1 260px; min-width: 0; }
+  .ua-t { font-weight: 600; }
+  .ua-meta { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+  .ua-notes { color: var(--muted); font-size: 12.5px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dev-q { border-left: 3px solid var(--amber, #e8a33d); padding: 6px 10px; margin: 6px 0; background: var(--amber-soft, var(--chip-bg)); border-radius: 6px; }
   .dev-q textarea { width: 100%; margin-top: 6px; }
   /* E212: the Classified button */
@@ -2516,6 +2522,7 @@ function renderRail(){
     sc('snoozed',null,'⏰','Snoozed', snoozedN||'') +
     sc('outbox',null,'🕐','Scheduled', pending||'') +
     sc('braindump',null,'💡','Braindump', (BRAIN||[]).filter(b=>b.status==='idea').length||'') +
+    (UNASG===null?(loadUnassigned(),''):UNASG.length?sc('unassigned',null,'◌','Unassigned todos',UNASG.length):'') +
     `<div class="rail-more">` +
     `<h4>Mail accounts</h4>` +
     accts.map(a=>sc('account',a,'',a,live.filter(x=>x.account===a).length,ACCT_COLOR[a]||'#999')).join('') +
@@ -2542,7 +2549,7 @@ function scopeTitle(kind,id){
     kind==='label'?'🏷 '+id:kind==='drafts'?'Drafts':kind==='sent'?'Sent':
     kind==='outbox'?'Scheduled':kind==='snoozed'?'⏰ Snoozed':
     kind==='todo'?'◯ Todo':kind==='goals'?'🎯 Goals':
-    kind==='braindump'?'💡 Braindump':kind==='dev'?'🛠 Dev requests':goalName(id).slice(0,40);
+    kind==='braindump'?'💡 Braindump':kind==='dev'?'🛠 Dev requests':kind==='unassigned'?'◌ Unassigned todos':goalName(id).slice(0,40);
 }
 /* E118: breadcrumb trail under the top bar — every crumb but the last is a
    way back, so navigation survives a collapsed rail. */
@@ -2870,6 +2877,7 @@ function renderList(){
   if (SCOPE.kind==='goals') return renderGoalsPage();
   if (SCOPE.kind==='braindump') return renderBraindump();
   if (SCOPE.kind==='dev') return renderDev();
+  if (SCOPE.kind==='unassigned') return renderUnassigned();
   const items = ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i));
   const vis = ITEMS.filter(i=>inScope(i)&&inQ(i));
   // E177: the tab counts are computed before any view takes over — the Inbox
@@ -4013,6 +4021,55 @@ async function devPair(){
 }
 const DEV_STATUS={question:['❓','needs your answer'],open:['📬','open — waiting for Claude'],building:['🔨','building'],
   shipped:['✅','shipped'],declined:['🚫','declined']};
+/* ================= legacy todos with no account (2026-09-26) =================
+   Bart: "Where did the old todos go? How do I bring them back in each of the
+   right accounts with their mapped emails?" Evidence-backed ones were placed
+   by sweeper/backfill_todo_accounts.py; these are the rest. They belong to no
+   account, so this list is the same in every account tab. Each is moved into
+   one account by Bart — a hint (old project, or an account named in the
+   text) only pre-selects the picker. */
+let UNASG=null;
+async function loadUnassigned(){
+  UNASG=UNASG||[];
+  try { const r=await fetch('/todos/unassigned',{cache:'no-store'}).then(r=>r.json());
+    if(r.ok){ UNASG=r.todos||[]; renderRail(); if(SCOPE.kind==='unassigned') renderList(); } }
+  catch(e){}
+}
+function renderUnassigned(){
+  VISIBLE=[];
+  const hinted=UNASG.filter(t=>t.hint&&ACCOUNTS.includes(t.hint));
+  const pick=t=>t.hint||(t.email_accounts.length===1?t.email_accounts[0]:'');
+  const row=t=>`<div class="ua-row" data-id="${t.id}">
+      <div class="ua-main"><div class="ua-t">${esc(t.text)}</div>
+        <div class="ua-meta">${t.due?`<span class="chip due">due ${esc(fmtDate(t.due))}</span>`:''}
+          ${t.email_accounts.length?`<span class="chip">✉ emails in ${t.email_accounts.map(a=>esc(acctLabel(a))).join(' + ')}</span>`:''}
+          ${t.hint?`<span class="chip" title="${esc(t.why||'')}">suggested: ${esc(acctLabel(t.hint))} — ${esc(t.why||'')}</span>`:''}
+          <span class="chip">${esc(String(t.created_at||'').slice(0,10))}</span></div>
+        ${t.notes?`<div class="ua-notes">${esc(t.notes)}</div>`:''}</div>
+      <select class="qbtn">${pick(t)?'':'<option value="">Choose an account…</option>'}${ACCOUNTS.map(a=>`<option value="${esc(a)}" ${a===pick(t)?'selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>
+      <button class="qbtn" onclick="uaMove(${t.id},this.previousElementSibling.value)">Move</button></div>`;
+  $('#list').innerHTML=`<div class="scope-head"><div class="sh-top"><span class="kind">◌ Unassigned todos · ${UNASG.length}</span></div>
+    <div class="status" style="margin-top:4px;text-transform:none;letter-spacing:0">Todos from before every todo belonged to an account.
+      The ones whose emails proved their account are already back in it. Put each of these in its account — its emails come with it.</div>
+    ${hinted.length?`<div class="td-quick" style="margin-top:8px"><button class="qbtn" onclick="uaAcceptAll()">✓ Accept all ${hinted.length} suggestions</button></div>`:''}</div>
+    ${UNASG.length?`<div class="ua-list">${UNASG.map(row).join('')}</div>`:'<div class="empty">All placed — nothing left without an account.</div>'}`;
+}
+async function uaMove(id,account,quiet){
+  if(!account){ toast('Pick an account first'); return false; }
+  try { await post('/task',{action:'update',id,fields:{account}});
+    UNASG=UNASG.filter(t=>t.id!==id);
+    if(!quiet){ toast('Moved to '+acctLabel(account)); renderRail(); renderList(); if(account===ACCT) loadMailTodos(); }
+    return true;
+  } catch(e){ if(!quiet) toast('Not moved — '+e.message); return false; }
+}
+async function uaAcceptAll(){
+  const todo=UNASG.filter(t=>t.hint&&ACCOUNTS.includes(t.hint));
+  let ok=0;
+  for(const t of todo) if(await uaMove(t.id,t.hint,true)) ok++;
+  toast(`Moved ${ok} of ${todo.length} to their suggested accounts`);
+  renderRail(); renderList(); loadMailTodos();
+}
+
 function renderDev(){
   VISIBLE=[];
   if(DEVQ===null){ $('#list').innerHTML='<div class="empty">Loading the queue…</div>'; loadDev(); return; }

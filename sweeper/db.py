@@ -527,6 +527,15 @@ CREATE TABLE IF NOT EXISTS class_accounts (
   updated_at TEXT NOT NULL
 );
 
+-- 2026-09-26: an account HINT for a legacy todo with none — written once by
+-- tools/suggest_todo_accounts.py (old project name, or an account named in
+-- the text). Only ever pre-selects a picker; Bart confirms every move.
+CREATE TABLE IF NOT EXISTS todo_account_hints (
+  engagement_id INTEGER PRIMARY KEY,
+  account       TEXT NOT NULL,
+  why           TEXT
+);
+
 -- Append-only audit of calendar event creates (E21, approved by Bart
 -- 2026-07-19; sweeper/calendar_writer.py via the gog CLI). Create-only:
 -- there is deliberately no update/delete verb and no attendee support.
@@ -2158,3 +2167,29 @@ def class_set_jev(conn, account: str, on: bool) -> None:
         conn.execute("INSERT INTO class_accounts (account, jev, updated_at) VALUES (?,?,?) "
                      "ON CONFLICT(account) DO UPDATE SET jev=excluded.jev, updated_at=excluded.updated_at",
                      (account, 1 if on else 0, _now_iso()))
+
+
+# --------------------------------------------------------------------------
+# Unassigned legacy todos (2026-09-26)
+# --------------------------------------------------------------------------
+def todo_hints_replace(conn, hints: list) -> None:
+    with conn:
+        conn.execute("DELETE FROM todo_account_hints")
+        conn.executemany("INSERT INTO todo_account_hints (engagement_id, account, why) VALUES (?,?,?)",
+                         hints)
+
+
+def todo_unassigned(conn) -> list:
+    """Open todos that belong to no account yet, with any hint and their
+    emails' accounts — no email content, just enough to place each one."""
+    out = []
+    for r in conn.execute(
+            "SELECT e.id, e.text, e.due, e.created_at, e.notes, h.account AS hint, h.why "
+            "FROM engagements e LEFT JOIN todo_account_hints h ON h.engagement_id = e.id "
+            "WHERE e.account IS NULL AND e.done_at IS NULL ORDER BY h.account IS NULL, h.account, e.id DESC"):
+        accts = [x[0] for x in conn.execute(
+            "SELECT DISTINCT account FROM engagement_threads WHERE engagement_id = ?", (r["id"],))]
+        out.append({"id": r["id"], "text": r["text"], "due": r["due"], "created_at": r["created_at"],
+                    "notes": (r["notes"] or "")[:200], "hint": r["hint"], "why": r["why"],
+                    "email_accounts": accts})
+    return out

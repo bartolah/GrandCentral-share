@@ -925,6 +925,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
+        if parsed.path == "/todos/unassigned":
+            # 2026-09-26: legacy todos that belong to no account yet. They
+            # belong to no account, so listing them crosses no boundary; each
+            # is moved into one account by an explicit /task update.
+            try:
+                import db
+                conn = db.connect()
+                try:
+                    self._json(200, {"ok": True, "todos": db.todo_unassigned(conn)})
+                finally:
+                    conn.close()
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
         if parsed.path == "/todos":
             # The Todos screen (E10) — DB-backed like /mail: every open todo
             # with its project/goal names, snooze state, and email link.
@@ -2027,6 +2041,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             clean["due"] = _clean(fields.get("due"), 10)
                         if "account" in fields:
                             clean["account"] = _clean(fields.get("account"), 40).lower()
+                            if not _account_known(conn, clean["account"]):
+                                raise ValueError(f"unknown account {clean['account']!r}")
                         if "starred" in fields:
                             clean["starred"] = fields.get("starred")
                         if "my_day" in fields:

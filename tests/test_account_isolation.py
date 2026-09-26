@@ -342,6 +342,15 @@ class HttpBoundary(unittest.TestCase):
         code, out = self.post("/dev", {"action": "answer", "id": 1, "account": A, "answer": "yes"})
         self.assertEqual(code, 403, out)
 
+    def test_a_todo_cannot_be_moved_to_an_unknown_account(self):
+        conn = db.connect(self.dbpath)
+        tid = db.add_engagement(conn, "legacy", account=A)
+        conn.close()
+        code, out = self.post("/task", {"action": "update", "id": tid, "fields": {"account": "nosuchacct"}})
+        self.assertEqual(code, 400, out)
+        code, out = self.get("/todos/unassigned")
+        self.assertEqual(code, 200, out)
+
     def test_task_add_without_account_is_refused(self):
         code, out = self.post("/task", {"action": "add", "text": "orphan"})
         self.assertEqual(code, 400, out)
