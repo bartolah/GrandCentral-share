@@ -12,9 +12,25 @@ the worker marked building — handing it back to Bart with a question).
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
 import sys
 import urllib.error
 import urllib.request
+
+DB = os.environ.get("GC_DB_PATH") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "grand_central.db")
+
+
+def _account_of(rid: int) -> str | None:
+    """Account-first (2026-09-25): POST /dev needs the card's own account.
+    Read it from the card itself, so the caller can't aim at another account."""
+    conn = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    try:
+        row = conn.execute("SELECT account FROM dev_requests WHERE id = ?", (rid,)).fetchone()
+    finally:
+        conn.close()
+    return row[0] if row else None
 
 STATUSES = ("building", "shipped", "declined", "open")
 
@@ -23,7 +39,11 @@ def main(argv: list[str]) -> int:
     if len(argv) not in (3, 4) or not argv[1].isdigit() or argv[2] not in STATUSES:
         print(__doc__)
         return 2
-    body = {"action": "update", "id": int(argv[1]), "status": argv[2]}
+    account = _account_of(int(argv[1]))
+    if not account:
+        print(f"no request {argv[1]} with an account")
+        return 1
+    body = {"action": "update", "id": int(argv[1]), "status": argv[2], "account": account}
     if len(argv) == 4:
         body["note"] = argv[3]
     req = urllib.request.Request("http://localhost:8080/dev", data=json.dumps(body).encode(),

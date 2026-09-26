@@ -480,6 +480,53 @@ CREATE TABLE IF NOT EXISTS wizard_scan (
   PRIMARY KEY (kind, ref)
 );
 
+-- E209: email classification (plan: "Email classification with Jev").
+-- Rules, model and Bart's corrections are stored apart and combined on read
+-- (correction > model > rule), so no re-run can overwrite his answer. Every
+-- row is (account, thread_id): the same Gmail thread id in two accounts is two
+-- classifications.
+CREATE TABLE IF NOT EXISTS mail_class (
+  account       TEXT NOT NULL,
+  thread_id     TEXT NOT NULL,
+  fingerprint   TEXT NOT NULL,          -- last_date|message_count when classified
+  version       TEXT NOT NULL,          -- ruleset version
+  roster        TEXT NOT NULL,          -- team-roster hash it was classified against
+  rules         TEXT NOT NULL,          -- JSON: the rule fields, reasons, confidence
+  model         TEXT,                   -- JSON: respond/priority/summary from a model
+  model_source  TEXT,                   -- 'haiku' today; 'jev' from phase 2
+  model_at      TEXT,
+  classified_at TEXT NOT NULL,
+  PRIMARY KEY (account, thread_id)
+);
+CREATE TABLE IF NOT EXISTS class_feedback (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  account   TEXT NOT NULL,
+  thread_id TEXT NOT NULL,
+  field     TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT NOT NULL,
+  ts        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_class_feedback ON class_feedback (account, thread_id);
+-- The team roster: who someone IS, shared by every account (no mail crosses).
+CREATE TABLE IF NOT EXISTS class_people (
+  email    TEXT PRIMARY KEY,            -- lowercased
+  name     TEXT,
+  added_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS class_groups (
+  domain   TEXT PRIMARY KEY,            -- lowercased, e.g. connectblue.com
+  grp      TEXT NOT NULL,               -- e.g. ConnectBlue group
+  added_at TEXT NOT NULL
+);
+-- §6 (2026-09-26): Jev sees an account's mail only while that account's
+-- switch is on. No row = off.
+CREATE TABLE IF NOT EXISTS class_accounts (
+  account    TEXT PRIMARY KEY,
+  jev        INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
+
 -- Append-only audit of calendar event creates (E21, approved by Bart
 -- 2026-07-19; sweeper/calendar_writer.py via the gog CLI). Create-only:
 -- there is deliberately no update/delete verb and no attendee support.
@@ -577,6 +624,11 @@ _MIGRATIONS = [
     # appear in any account queue; new rows always carry an explicit owner.
     ("dev_requests", "account",
      "ALTER TABLE dev_requests ADD COLUMN account TEXT"),
+    # E210: Jev's answers, kept beside the rules and Haiku so switching an
+    # account's Jev off puts the old answers straight back.
+    ("mail_class", "jev", "ALTER TABLE mail_class ADD COLUMN jev TEXT"),
+    ("mail_class", "jev_fp", "ALTER TABLE mail_class ADD COLUMN jev_fp TEXT"),
+    ("mail_class", "jev_at", "ALTER TABLE mail_class ADD COLUMN jev_at TEXT"),
 ]
 
 
@@ -1884,3 +1936,188 @@ def set_day_note(conn: sqlite3.Connection, date: str, text: str) -> None:
             "ON CONFLICT(date) DO UPDATE SET text=excluded.text, "
             "updated_at=excluded.updated_at",
             (date, str(text or "")[:20000], _now_iso()))
+
+
+# --------------------------------------------------------------------------
+# E209 — email classification
+# --------------------------------------------------------------------------
+CLASS_FIELDS = ("type", "relationship", "respond", "priority", "waiting_on", "follow_up")
+_CLASS_VALUES = {
+    "type": ("Correspondence", "Team collaboration", "Sales/outreach", "Update",
+             "Newsletter", "Receipt", "Calendar", "Promo", "Other"),
+    "relationship": ("teammate", "company", "frequent", "known", "new", "machine"),
+    "respond": ("yes", "no", "optional"),
+    "priority": ("0", "1", "2", "3"),
+    "waiting_on": ("none", "teammate", "outside"),
+}
+_DOMAIN_RE = re.compile(r"^[a-z0-9-]+(?:\.[a-z0-9-]+)+$")
+
+
+def class_write_rules(conn, account, thread_id, fields, fingerprint, version,
+                      roster_hash, stamp) -> None:
+    """Upsert the rule half of a classification; the model half is kept."""
+    conn.execute(
+        "INSERT INTO mail_class (account, thread_id, fingerprint, version, roster, rules, "
+        "classified_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(account, thread_id) DO UPDATE SET "
+        "fingerprint=excluded.fingerprint, version=excluded.version, roster=excluded.roster, "
+        "rules=excluded.rules, classified_at=excluded.classified_at",
+        (account, thread_id, fingerprint, version, roster_hash,
+         json.dumps(fields), stamp))
+
+
+def class_merge_model(conn, results: dict, source: str) -> int:
+    """{(account, thread_id): {summary, reply_needed, importance}} → the model
+    half of rows that exist. Returns rows updated."""
+    stamp, n = _now_iso(), 0
+    with conn:
+        for (account, thread_id), a in results.items():
+            model = {"summary": a.get("summary") or None,
+                     "respond": "yes" if a.get("reply_needed") else "no",
+                     "priority": a.get("importance")}
+            cur = conn.execute(
+                "UPDATE mail_class SET model=?, model_source=?, model_at=? "
+                "WHERE account=? AND thread_id=?",
+                (json.dumps(model), source, stamp, account, thread_id))
+            n += cur.rowcount
+    return n
+
+
+def class_pins(conn, account: str, thread_id: str | None = None) -> dict:
+    """{thread_id: {field: latest corrected value}} for one account."""
+    q = "SELECT thread_id, field, new_value FROM class_feedback WHERE account = ?"
+    args = [account]
+    if thread_id is not None:
+        q += " AND thread_id = ?"
+        args.append(thread_id)
+    out: dict = {}
+    for r in conn.execute(q + " ORDER BY id", args):
+        out.setdefault(r["thread_id"], {})[r["field"]] = r["new_value"]
+    return out
+
+
+JEV_CONF_FLOOR = 0.35     # a Jev answer less confident than this doesn't override
+
+
+def class_write_jev(conn, account, thread_id, answers: dict, fingerprint: str) -> None:
+    with conn:
+        conn.execute("UPDATE mail_class SET jev=?, jev_fp=?, jev_at=? WHERE account=? AND thread_id=?",
+                     (json.dumps(answers), fingerprint, _now_iso(), account, thread_id))
+
+
+def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
+    """correction > Jev (switch on, confident) > Haiku > rule, plus where each
+    value came from."""
+    rules = json.loads(row["rules"] or "{}")
+    model = json.loads(row["model"] or "{}") if row["model"] else {}
+    out, src = dict(rules), {f: "rules" for f in CLASS_FIELDS}
+    for f in ("respond", "priority", "summary"):
+        if model.get(f) is not None:
+            out[f], src[f] = model[f], row["model_source"] or "model"
+    jev = json.loads(row["jev"] or "{}") if use_jev and row["jev"] else {}
+    conf = jev.get("confidence") or {}
+    for f in ("type", "respond", "priority"):
+        c = conf.get(f)
+        if jev.get(f) is not None and c is not None and c >= JEV_CONF_FLOOR:
+            out[f], src[f] = jev[f], "jev"
+    if jev.get("expects_reply") is not None and out.get("waiting_on", "none") != "none" \
+            and jev["expects_reply"] < 0.3:
+        # Bart wrote last but asked nothing — there's nobody to chase
+        out["waiting_on"], out["waiting_who"], src["waiting_on"] = "none", None, "jev"
+    if jev:
+        out["jev_model"] = jev.get("model_id")
+    for f, v in pins.items():
+        out[f], src[f] = (int(v) if f == "priority" else v), "you"
+    # nothing owed and nobody to chase → nothing to follow up
+    if out.get("respond") == "no" and out.get("waiting_on", "none") == "none" \
+            and src.get("follow_up") != "you":
+        out["follow_up"] = None
+    out["source"] = src
+    return out
+
+
+def class_get(conn, account: str, thread_id: str) -> dict | None:
+    row = conn.execute("SELECT * FROM mail_class WHERE account=? AND thread_id=?",
+                       (account, thread_id)).fetchone()
+    if row is None:
+        return None
+    eff = class_effective(row, class_pins(conn, account, thread_id).get(thread_id, {}),
+                          use_jev=class_account_jev(conn, account))
+    eff.update(account=account, thread_id=thread_id, version=row["version"],
+               classified_at=row["classified_at"])
+    return eff
+
+
+def class_correct(conn, account: str, thread_id: str, field: str, value: str) -> dict:
+    """Bart's answer for one field. Pinned for good; logged for tuning."""
+    if field not in CLASS_FIELDS:
+        raise ValueError(f"unknown field {field!r}")
+    value = str(value).strip()
+    if field == "follow_up":
+        if value and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            raise ValueError("follow_up must be YYYY-MM-DD or empty")
+    elif value not in _CLASS_VALUES[field]:
+        raise ValueError(f"{field} must be one of {', '.join(_CLASS_VALUES[field])}")
+    cur = class_get(conn, account, thread_id)
+    if cur is None:
+        raise ValueError("that email has no classification in this account")
+    with conn:
+        conn.execute(
+            "INSERT INTO class_feedback (account, thread_id, field, old_value, new_value, ts) "
+            "VALUES (?,?,?,?,?,?)",
+            (account, thread_id, field, None if cur.get(field) is None else str(cur.get(field)),
+             value, _now_iso()))
+    return class_get(conn, account, thread_id)
+
+
+def class_roster(conn) -> dict:
+    return {"teammates": [dict(r) for r in conn.execute(
+                "SELECT email, name FROM class_people ORDER BY name, email")],
+            "groups": [dict(r) for r in conn.execute(
+                "SELECT domain, grp FROM class_groups ORDER BY grp, domain")]}
+
+
+def class_person_set(conn, email: str, name: str = "") -> str:
+    email = (email or "").strip().lower()
+    if not _EMAIL_RE.fullmatch(email):
+        raise ValueError("a full email address is required")
+    with conn:
+        conn.execute("INSERT INTO class_people (email, name, added_at) VALUES (?,?,?) "
+                     "ON CONFLICT(email) DO UPDATE SET name=excluded.name",
+                     (email, (name or "").strip()[:80], _now_iso()))
+    return email
+
+
+def class_group_set(conn, domain: str, grp: str) -> str:
+    domain = (domain or "").strip().lower().lstrip("@")
+    grp = (grp or "").strip()[:60]
+    if not _DOMAIN_RE.fullmatch(domain):
+        raise ValueError("a domain like example.com is required")
+    if not grp:
+        raise ValueError("a group name is required")
+    with conn:
+        conn.execute("INSERT INTO class_groups (domain, grp, added_at) VALUES (?,?,?) "
+                     "ON CONFLICT(domain) DO UPDATE SET grp=excluded.grp",
+                     (domain, grp, _now_iso()))
+    return domain
+
+
+def class_roster_remove(conn, kind: str, key: str) -> bool:
+    table, col = {"person": ("class_people", "email"),
+                  "group": ("class_groups", "domain")}.get(kind, (None, None))
+    if not table:
+        raise ValueError(f"unknown roster kind {kind!r}")
+    with conn:
+        cur = conn.execute(f"DELETE FROM {table} WHERE {col} = ?", ((key or "").strip().lower(),))
+    return cur.rowcount > 0
+
+
+def class_account_jev(conn, account: str) -> bool:
+    r = conn.execute("SELECT jev FROM class_accounts WHERE account = ?", (account,)).fetchone()
+    return bool(r and r["jev"])
+
+
+def class_set_jev(conn, account: str, on: bool) -> None:
+    with conn:
+        conn.execute("INSERT INTO class_accounts (account, jev, updated_at) VALUES (?,?,?) "
+                     "ON CONFLICT(account) DO UPDATE SET jev=excluded.jev, updated_at=excluded.updated_at",
+                     (account, 1 if on else 0, _now_iso()))

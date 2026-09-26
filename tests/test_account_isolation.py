@@ -315,6 +315,29 @@ class HttpBoundary(unittest.TestCase):
     def post(cls, path, body):
         return cls._req("POST", path, body)
 
+    def test_classify_routes_are_account_scoped_and_jev_needs_a_known_account(self):
+        # E209: reads need a known account; nothing is classified yet here
+        code, out = self.get(f"/classify?account={A}&thread_id={SAME_THREAD}")
+        self.assertEqual((code, out["classification"]), (200, None), out)
+        code, out = self.get(f"/classify?account=nosuchacct&thread_id={SAME_THREAD}")
+        self.assertEqual(code, 400, out)
+        code, out = self.post("/classify", {"action": "correct", "account": A,
+                                            "thread_id": SAME_THREAD, "field": "respond", "value": "no"})
+        self.assertEqual(code, 400, out)              # no classification to correct yet
+        # the Jev switch only exists for configured mail accounts
+        code, out = self.post("/classify", {"action": "jev", "account": A, "on": True})
+        self.assertEqual(code, 400, out)
+        # the roster round-trips; settings never carry a key value
+        code, out = self.post("/classify", {"action": "person-add", "email": "Sam@Team.com", "name": "Sam"})
+        self.assertEqual(code, 200, out)
+        code, out = self.get("/classify/settings")
+        self.assertEqual(code, 200, out)
+        self.assertIn({"email": "sam@team.com", "name": "Sam"}, out["teammates"])
+        self.assertIsInstance(out["jev_key_set"], bool)
+        self.assertNotIn("JEV_API_KEY", json.dumps(out))
+        code, out = self.post("/classify", {"action": "person-remove", "key": "sam@team.com"})
+        self.assertEqual((code, out["teammates"]), (200, []), out)
+
     def test_task_add_without_account_is_refused(self):
         code, out = self.post("/task", {"action": "add", "text": "orphan"})
         self.assertEqual(code, 400, out)

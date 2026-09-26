@@ -658,6 +658,36 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
+        if parsed.path in ("/classify", "/classify/settings"):
+            # E209: one email's classification (account-scoped), or the
+            # roster + per-account Jev switches for Settings. Never a key value.
+            try:
+                import db
+                qs = urllib.parse.parse_qs(parsed.query)
+                conn = db.connect()
+                try:
+                    if parsed.path == "/classify":
+                        account = _clean((qs.get("account") or [""])[0], 40)
+                        thread_id = _clean((qs.get("thread_id") or [""])[0], 40)
+                        if not account or not _account_known(conn, account) or not thread_id:
+                            raise ValueError("known account and thread_id required")
+                        self._json(200, {"ok": True,
+                                         "classification": db.class_get(conn, account, thread_id)})
+                    else:
+                        from common import load_env
+                        from sources import gmail_reader
+                        accts = list(gmail_reader.scan_accounts(load_env()))
+                        self._json(200, {"ok": True, **db.class_roster(conn),
+                                         "jev_key_set": bool((load_env().get("JEV_API_KEY") or "").strip()),
+                                         "accounts": [{"account": a, "jev": db.class_account_jev(conn, a)}
+                                                      for a in accts]})
+                finally:
+                    conn.close()
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
         if parsed.path == "/steward":
             # E59: pending sender suggestions awaiting Bart's verdict.
             try:
@@ -1446,6 +1476,53 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         self._json(200 if ok else 404, {"ok": ok})
                     else:
                         raise ValueError(f"unknown action {action!r}")
+                finally:
+                    conn.close()
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/classify":
+            # E209: correct a field, edit the team roster, or flip an
+            # account's Jev switch. The switch can't turn on without a key;
+            # agents can't reach this route (not in gc_client.ALLOWED).
+            try:
+                import db
+                action = _clean(payload.get("action"), 20)
+                conn = db.connect()
+                try:
+                    if action == "correct":
+                        account = _clean(payload.get("account"), 40)
+                        if not account or not _account_known(conn, account):
+                            raise ValueError("known account required")
+                        out = db.class_correct(conn, account, _clean(payload.get("thread_id"), 40),
+                                               _clean(payload.get("field"), 20),
+                                               _clean(payload.get("value"), 40))
+                        self._json(200, {"ok": True, "classification": out})
+                        return
+                    if action == "person-add":
+                        db.class_person_set(conn, _clean(payload.get("email"), 120),
+                                            _clean(payload.get("name"), 80))
+                    elif action == "group-add":
+                        db.class_group_set(conn, _clean(payload.get("domain"), 120),
+                                           _clean(payload.get("group"), 60))
+                    elif action in ("person-remove", "group-remove"):
+                        db.class_roster_remove(conn, action.split("-")[0],
+                                               _clean(payload.get("key"), 120))
+                    elif action == "jev":
+                        from common import load_env
+                        from sources import gmail_reader
+                        account = _clean(payload.get("account"), 40)
+                        if account not in gmail_reader.scan_accounts(load_env()):
+                            raise ValueError("known account required")
+                        on = payload.get("on") is True
+                        if on and not (load_env().get("JEV_API_KEY") or "").strip():
+                            raise ValueError("add a Jev API key in Connections first")
+                        db.class_set_jev(conn, account, on)
+                    else:
+                        raise ValueError(f"unknown action {action!r}")
+                    self._json(200, {"ok": True, **db.class_roster(conn)})
                 finally:
                     conn.close()
             except ValueError as e:

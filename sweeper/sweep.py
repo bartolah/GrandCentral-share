@@ -177,6 +177,14 @@ def main():
             assessed = assess_threads(records, env, log=log)
         except Exception as e:
             log(f"assess: FAILED ({e!r}) — board uses subjects, importance defaults")
+    if conn and assessed:
+        # E209: keep the assessor's judgement with the classification, so the
+        # Classified view shows respond / priority / summary between sweeps
+        try:
+            n = db.class_merge_model(conn, assessed, "haiku")
+            log(f"classify: stored assessor judgement on {n} thread(s)")
+        except Exception as e:
+            log(f"classify: storing assessor judgement FAILED ({e!r})")
 
     # ---- 3. assemble + atomic write ----------------------------------------
     # Guard: a run that swept NO source and gathered NO threads (e.g. before

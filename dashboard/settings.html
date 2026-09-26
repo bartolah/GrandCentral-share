@@ -28,6 +28,7 @@
   .cfg-in.sm { width:110px; } .cfg-in.md { width:200px; } .cfg-in.lg { flex:1; min-width:220px; }
   .btn { font:inherit; padding:5px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); cursor:pointer; }
   .btn:hover { border-color:var(--acc); } .del-btn { color:var(--err); }
+  .btn:disabled { opacity:.45; cursor:not-allowed; border-color:var(--line); }
   .idtag { font:12px ui-monospace, monospace; padding:1px 6px; border:1px solid var(--line); border-radius:6px; color:var(--mut); }
   .conn-pill { font-size:11px; padding:1px 7px; border-radius:999px; border:1px solid var(--line); }
   .conn-pill.on { color:var(--ok); border-color:var(--ok); } .conn-pill.off { color:var(--mut); }
@@ -122,7 +123,10 @@
       </div>`;
 
     const S = CONN.singles || {};
-    const singleOrder = ['anthropic', 'granola', 'calendar'];
+    // Known keys first in a stable order, then any other key the server
+    // offers — a hardcoded list here is how the Jev key (E210) went missing.
+    const known = ['anthropic', 'jev', 'granola', 'calendar'];
+    const singleOrder = [...known, ...Object.keys(S).filter(n => !known.includes(n)).sort()];
     p.innerHTML = `
       <div class="cfg-note">Sources &amp; credentials. Writes go only to <code>config/.env</code> (backed up, chmod 600) and take effect on the next sweep (mail ~3 min). Values are never shown back — to change one, paste a new value. Behind Cloudflare Access.</div>
 
@@ -280,8 +284,69 @@
     setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Delete'; }, 3000);
   }
 
+  // ---------- E209: Classification — team roster + per-account Jev ----------
+  // Who counts as a teammate and which domains are one company decides the
+  // "relationship" and "waiting on a teammate" fields. The roster is who
+  // someone IS, shared by every account; no email crosses accounts. Each
+  // account's Jev switch is off until turned on here (§6, 2026-09-26), and
+  // can't turn on before a Jev key is saved in Connections.
+  async function clsPost(body, statusEl) {
+    if (statusEl) { statusEl.textContent = 'working…'; statusEl.className = 'cfg-status'; }
+    try {
+      const res = await fetch('/classify', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                             body: JSON.stringify(body) });
+      const out = await res.json();
+      if (!out.ok) throw new Error(out.error || 'rejected');
+      renderClassificationTab(document.getElementById('pane'));
+      return out;
+    } catch (err) {
+      if (statusEl) { statusEl.textContent = err.message; statusEl.className = 'cfg-status err'; }
+      return null;
+    }
+  }
+  async function renderClassificationTab(p) {
+    let d;
+    try {
+      d = await (await fetch('/classify/settings', { cache: 'no-store' })).json();
+      if (!d.ok) throw new Error(d.error || 'failed');
+    } catch (err) { p.innerHTML = `<div class="empty" style="padding:16px 22px">Could not load — ${esc(err.message)}</div>`; return; }
+    const groups = {};
+    d.groups.forEach(g => { (groups[g.grp] = groups[g.grp] || []).push(g.domain); });
+    p.innerHTML = `
+      <p class="cfg-note">Grand Central classifies each email: its type, who the sender is to you, whether to respond, who you're waiting on, and when to follow up. These settings decide who counts as your team.</p>
+      <div class="cfg-group"><h3>Company group</h3>
+        <div class="cfg-note">Everyone at these domains counts as your company, e.g. ConnectBlue, Capitol Influence and Northwind Media.</div>
+        ${Object.keys(groups).length ? Object.entries(groups).map(([g, doms]) => `<div class="cfg-row"><b>${esc(g)}</b>${doms.map(dm =>
+          ` <span class="idtag">${esc(dm)}</span><button class="btn del-btn" onclick="clsDel('group','${esc(dm)}')" title="Remove ${esc(dm)}">✕</button>`).join('')}</div>`).join('')
+          : '<div class="empty">No domains yet.</div>'}
+        <div class="cfg-add" id="cls-grp">${inp('group', Object.keys(groups)[0] || '', 'md', 'Group name')}${inp('domain', '', 'md', 'domain.com')}
+          <button class="btn" onclick="clsAdd('group-add','cls-grp')">Add domain</button><span class="cfg-status"></span></div>
+      </div>
+      <div class="cfg-group"><h3>Teammates</h3>
+        <div class="cfg-note">People you work with directly, by email address. Mail you're waiting on from them follows up after 2 business days.</div>
+        ${d.teammates.length ? d.teammates.map(t => `<div class="cfg-row"><span class="conn-main">${esc(t.name || '')} <span class="conn-user">${esc(t.email)}</span></span>
+          <button class="btn del-btn" onclick="clsDel('person','${esc(t.email)}')">Remove</button></div>`).join('')
+          : '<div class="empty">No teammates yet.</div>'}
+        <div class="cfg-add" id="cls-ppl">${inp('name', '', 'md', 'Name')}${inp('email', '', 'md', 'name@domain.com')}
+          <button class="btn" onclick="clsAdd('person-add','cls-ppl')">Add teammate</button><span class="cfg-status"></span></div>
+      </div>
+      <div class="cfg-group"><h3>Jev, per account</h3>
+        <div class="cfg-note">When on, Jev (TypeSafe) classifies that account's person-to-person mail. For each thread it sees the subject, who's on it, who wrote last, and up to 400 characters of the latest message. Newsletters and automated mail are never sent, and neither are full messages or attachments. TypeSafe doesn't train on it; its retention period isn't fixed (zero retention is enterprise-only). ${d.jev_key_set ? '' : '<b>Add a Jev API key in Connections to turn any of these on.</b>'}</div>
+        ${d.accounts.map(a => `<div class="cfg-row"><span class="conn-main">${esc(a.account.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}</span>
+          ${a.jev ? '<span class="conn-pill on">Jev on</span>' : '<span class="conn-pill off">Jev off</span>'}
+          <button class="btn" ${!a.jev && !d.jev_key_set ? 'disabled' : ''} onclick="clsJev('${esc(a.account)}', ${!a.jev}, this)">${a.jev ? 'Turn off' : 'Turn on'}</button><span class="cfg-status"></span></div>`).join('')}
+      </div>`;
+  }
+  function clsAdd(action, rowId) {
+    const row = document.getElementById(rowId);
+    clsPost({ action, ...rowVals(row) }, row.querySelector('.cfg-status'));
+  }
+  function clsDel(kind, key) { clsPost({ action: kind + '-remove', key }, null); }
+  function clsJev(account, on, btn) { clsPost({ action: 'jev', account, on }, btn.nextElementSibling); }
+
   // ---------- shell ----------
-  const TABS = [['connections', 'Connections', renderConnectionsTab], ['context', 'Context', renderContextTab]];
+  const TABS = [['connections', 'Connections', renderConnectionsTab], ['context', 'Context', renderContextTab],
+                ['classification', 'Classification', renderClassificationTab]];
   function show(id) {
     const tab = TABS.find(t => t[0] === id) || TABS[0];
     banner('');
@@ -294,7 +359,8 @@
   }
   // Inline onclick handlers in the tab markup need these on window.
   Object.assign(window, { connTestGmail, connAddGmail, connRemoveGmail, connTestSingle,
-                          connSaveSingle, connClearSingle, ctxAdd, ctxSave, ctxToggle, ctxDelete });
+                          connSaveSingle, connClearSingle, ctxAdd, ctxSave, ctxToggle, ctxDelete,
+                          clsAdd, clsDel, clsJev });
   show(new URLSearchParams(location.search).get('tab'));
 })();
 </script>

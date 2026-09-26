@@ -49,6 +49,11 @@ SINGLE = {
     "granola":   {"key": "GRANOLA_TOKEN", "label": "Granola token",
                   "note": "Meeting notes → tasks. Reader is unverified; save even if the test can't confirm.",
                   "testable": True},
+    # E209/E210: nothing is sent to Jev unless that account's switch is on
+    # (Settings → Classification). §6, 2026-09-26.
+    "jev":       {"key": "JEV_API_KEY", "label": "Jev API key",
+                  "note": "TypeSafe (typesafe.ai) key for email classification. Used only for accounts switched on in Settings → Classification.",
+                  "testable": True},
     "calendar":  {"key": "GCAL_ICS_URLS", "label": "Calendar ICS URLs",
                   "note": "Comma-separated secret iCal URLs. Replace-only; treat as secrets.",
                   "testable": False, "islist": True},
@@ -282,7 +287,17 @@ def test_granola(token: str):
     return _auth_result(code, err, "token", tail=" — reader is unverified; you can still save")
 
 
-_SINGLE_TESTS = {"anthropic": test_anthropic, "granola": test_granola}
+def test_jev(key: str):
+    # E210: TypeSafe's model list — an auth ping that sends no mail content
+    key = (key or "").strip()
+    if not key:
+        return False, "paste a key first"
+    code, err = _http("GET", "https://api.typesafe.ai/v1/models",
+                      {"Authorization": f"Bearer {key}"})
+    return _auth_result(code, err, "key")
+
+
+_SINGLE_TESTS = {"anthropic": test_anthropic, "granola": test_granola, "jev": test_jev}
 
 
 # --------------------------------------------------------------------------

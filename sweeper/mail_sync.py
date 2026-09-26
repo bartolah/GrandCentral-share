@@ -478,6 +478,19 @@ def main(argv=None) -> int:
                 except Exception as e:
                     log(f"outbox pass FAILED: {e!r}")
                 try:
+                    # E209: classify threads that changed — rules only, no
+                    # model call, per account
+                    import mailclass
+                    mailclass.run(conn, env, accounts, log=log)
+                except Exception as e:
+                    log(f"classify pass FAILED: {e!r}")
+                try:
+                    # E210: Jev, only for accounts switched on in Settings
+                    import jev
+                    jev.run(conn, env, accounts, log=log)
+                except Exception as e:
+                    log(f"jev pass FAILED: {e!r}")
+                try:
                     # E81: warm the last-week thread-body cache (bounded)
                     import mail_cache
                     mail_cache.warm(env, log=log)

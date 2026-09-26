@@ -19,19 +19,33 @@ LOG=logs/devworker.log
 mkdir -p logs
 echo "[$(date '+%F %T')] dev-worker run" >> "$LOG"
 
-QUEUE=$(curl -s --max-time 10 http://localhost:8080/dev)
-if [ -z "$QUEUE" ]; then
+# Account-first (2026-09-25): the queue is per account, and GET /dev without
+# one answers 400 — which this script used to read as an empty queue. Ask
+# /accounts, then each account's queue; a failed read is logged, not "clear".
+REQUESTS=$(/usr/bin/python3 -c "
+import json, sys, urllib.request
+base = 'http://localhost:8080'
+get = lambda p: json.load(urllib.request.urlopen(base + p, timeout=10))
+try:
+    accounts = get('/accounts')['accounts']
+except Exception as e:
+    sys.exit(f'dashboard unreachable: {e}')
+for a in accounts:
+    try:
+        reqs = get('/dev?account=' + a).get('requests', [])
+    except Exception as e:
+        print(f'queue read failed for {a}: {e}', file=sys.stderr)
+        continue
+    for r in reqs:
+        if r['status'] != 'open':
+            continue
+        print(f'--- REQUEST {r[\"id\"]} ({a}, filed {r[\"created_at\"][:10]}) ---')
+        print(r['text'])
+        print(f'--- END REQUEST {r[\"id\"]} ---')
+" 2>>"$LOG")
+if [ $? -ne 0 ]; then
   echo "  dashboard unreachable — skipping" >> "$LOG"; exit 0
 fi
-
-REQUESTS=$(printf '%s' "$QUEUE" | /usr/bin/python3 -c "
-import json, sys
-open_reqs = [r for r in json.load(sys.stdin).get('requests', []) if r['status'] == 'open']
-for r in open_reqs:
-    print(f'--- REQUEST {r[\"id\"]} (filed {r[\"created_at\"][:10]}) ---')
-    print(r['text'])
-    print(f'--- END REQUEST {r[\"id\"]} ---')
-" 2>>"$LOG")
 
 if [ -z "$REQUESTS" ]; then
   echo "  queue clear" >> "$LOG"; exit 0

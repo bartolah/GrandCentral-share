@@ -333,10 +333,11 @@ class RetiredConceptsStayRetired(unittest.TestCase):
             if path != "/":
                 self.assertTrue(os.path.exists(os.path.join(ROOT, "dashboard", path.lstrip("/"))), path)
 
-    def test_settings_page_offers_only_connections_and_context(self):
+    def test_settings_page_offers_connections_context_and_classification(self):
         src = _read(os.path.join(ROOT, "dashboard", "settings.html"))
         self.assertIn("renderConnectionsTab", src)
         self.assertIn("renderContextTab", src)
+        self.assertIn("renderClassificationTab", src)   # E209: team roster + Jev switches
         for word in ("attio", "theater", "objective", "registry", "operation"):
             self.assertNotIn(word, src.lower())
 
