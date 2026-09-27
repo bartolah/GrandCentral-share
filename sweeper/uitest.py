@@ -93,7 +93,8 @@ return {
 INSET_PROBE = r"""
 const de = document.documentElement, box = e => e.getBoundingClientRect();
 const top = document.querySelector('.top');
-const dock = document.querySelector('.dockbar');
+const list = document.querySelector('#list');
+const dockbar = document.querySelector('.dockbar');
 // The first thing a thumb or an eye meets in the bar. Menus that live inside
 // .top are positioned out of flow and parked at 0 while closed — they are not
 // what the clock can collide with, so only in-flow, visible controls count.
@@ -111,11 +112,12 @@ const first = top ? [...top.querySelectorAll('button, input, .brand')]
   })
   .map(e => box(e).top).sort((a, b) => a - b)[0] : null;
 const cs = top ? getComputedStyle(top) : null;
-const dcs = dock ? getComputedStyle(dock) : null;
+const lcs = list ? getComputedStyle(list) : null;
 return {
   topPad: cs ? Math.round(parseFloat(cs.paddingTop)) : null,
   firstControlTop: first === undefined || first === null ? null : Math.round(first),
-  dockPadBottom: dcs ? Math.round(parseFloat(dcs.paddingBottom)) : null,
+  listPadBottom: lcs ? Math.round(parseFloat(lcs.paddingBottom)) : null,
+  dockbarShown: !!dockbar && getComputedStyle(dockbar).display !== 'none',
   bodyH: Math.round(box(document.body).height),
   winH: window.innerHeight,
   appH: getComputedStyle(de).getPropertyValue('--app-h').trim(),
@@ -148,9 +150,13 @@ def test_insets(b, fails: list[str]) -> int:
             bad.append(f"top bar padding {r['topPad']}px — the clock sits on the nav")
         if r["firstControlTop"] is not None and r["firstControlTop"] < FAKE_TOP:
             bad.append(f"first control at y={r['firstControlTop']}, inside the status bar")
-        checks += 1
-        if r["dockPadBottom"] is None or r["dockPadBottom"] < FAKE_BOT:
-            bad.append(f"dock bar bottom padding {r['dockPadBottom']}px — under the home indicator")
+        # E219: no bottom bar on a phone — the list runs to the edge, and its
+        # last row must still clear the home indicator.
+        checks += 2
+        if r["listPadBottom"] is None or r["listPadBottom"] < FAKE_BOT:
+            bad.append(f"list bottom padding {r['listPadBottom']}px — last row under the home indicator")
+        if r["dockbarShown"]:
+            bad.append("the bottom tab bar is back on a phone")
         print(f"    {'FAIL' if bad else 'ok  '}  {skin}")
         for m in bad:
             print(f"            {m}")

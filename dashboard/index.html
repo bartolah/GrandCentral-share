@@ -1042,6 +1042,7 @@
   .cal-monsel { border: 1px solid var(--line); border-radius: 7px; font-size: 11px; padding: 2px 2px; color: var(--muted); max-width: 82px; background: var(--input-bg); }
   .dock h3 .cal-nav { padding: 2px 5px; font-size: 12px; }
   .dk-x { display: none; }
+  .rail-panels { display: none; }   /* E219: phone/tablet only, see the 980px block */
   @media (max-width: 980px) {
     .dk-x { display: inline-flex; align-items: center; justify-content: center;
       width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px;
@@ -1168,18 +1169,19 @@
     body.nav-open .rail { transform: none; }
     body.nav-open #nav-back { display: block; position: fixed; inset: 0; z-index: 89; background: rgba(8,12,18,.55); }
     .pane { position: fixed; inset: 0; max-width: none; margin: 0; z-index: 70; border-radius: 0; }
-    /* dock buttons become a bottom tab bar; panels open full-screen above it */
-    .dockbar {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-      flex-direction: row; justify-content: space-around; align-items: center;
-      background: var(--card); border-top: 1px solid var(--line);
-      padding: 4px 10px calc(4px + var(--safe-bot));
-    }
+    /* E219 (Bart: "Why don't we remove the bottom bar, and instead let the
+       content flow down?"): no bottom tab bar. It was the one thing pinned to
+       the bottom edge, so whenever iOS handed the installed app a viewport
+       short of the screen (E206's diagnostics: 761 of 812, every time) the
+       bar sat stranded above the gap. The list now scrolls to the edge and
+       the five panels open from the ☰ drawer, full-screen, each with its ✕. */
+    .dockbar { display: none; }
+    .rail-panels { display: block; }
     .dock, .dock.open {
-      position: fixed; left: 0; right: 0; top: 0; margin: 0; flex: none;
-      bottom: calc(45px + var(--safe-bot)); z-index: 59;
+      position: fixed; inset: 0; margin: 0; flex: none; z-index: 59; border-radius: 0;
+      padding-top: var(--safe-top); padding-bottom: var(--safe-bot);
     }
-    .list { padding-bottom: calc(60px + var(--safe-bot)); }
+    .list { padding-bottom: calc(16px + var(--safe-bot)); }
     /* tab strip scrolls sideways instead of wrapping */
     .list-head { flex-wrap: nowrap; overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 10px 12px 8px; align-items: center; }
     .list-head::-webkit-scrollbar { display: none; }
@@ -1213,7 +1215,7 @@
     /* E200 — edge to edge, the way every other phone app does it: the list is the screen. Cards lose their side borders and radii and become full -bleed bands; the breathing room moves INSIDE the rows, where it helps reading, instead of outside them, where it just narrows the column. */
     .shell { padding: 0; }
     .main { padding: 0; }
-    .list { padding: 0 0 calc(64px + var(--safe-bot)); }
+    .list { padding: 0 0 calc(16px + var(--safe-bot)); }
     /* E201 — the view switcher, on its own line. The 760px block set the
        strip to nowrap but left .crumb at `flex: 1 1 100%` from the desktop
        rule, so the breadcrumb ate the whole row and pushed Todos and Starred
@@ -1955,7 +1957,7 @@
      and uitest.py forces --safe-top/--safe-bot and asserts it per skin. */
   @media (max-width: 760px) {
     html .top, html[data-skin] .top { padding-top: calc(8px + var(--safe-top)); }
-    html .dockbar, html[data-skin] .dockbar { padding-bottom: calc(4px + var(--safe-bot)); }
+    html .dock, html[data-skin] .dock { padding-top: var(--safe-top); padding-bottom: var(--safe-bot); }
     html .rail, html[data-skin] .rail { padding-top: calc(10px + var(--safe-top)); }
   }
   /* E208: same trap, different property. Below 980px the rail is the ☰
@@ -2078,13 +2080,39 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
         fetch('/diag', {method:'POST', headers:{'Content-Type':'application/json'},
                         body: JSON.stringify({samples: samples, ua: navigator.userAgent})})
           .then(r => r.json())
-          .then(j => { btn.textContent = j.ok ? '✓ sent — tell Claude to read it' : 'failed: ' + (j.error||''); })
+          .then(j => {
+            if (!j.ok) { btn.textContent = 'failed: ' + (j.error||''); return; }
+            // E218: once the report is in, the overlay has done its job. It
+            // sits over the dock and the menus, so it disarms itself rather
+            // than leaving Bart unable to reach the switch that turns it off.
+            localStorage.removeItem('gc2_diag');
+            btn.textContent = '✓ sent — diagnostics off. Tell Claude to read it';
+            setTimeout(() => { box.remove(); if (typeof diagState === 'function') diagState(); }, 2500);
+          })
           .catch(e => { btn.textContent = 'failed: ' + e; });
       };
       box.appendChild(btn);
     } else { box.appendChild(btn); }
+    // E218: the overlay covers the bottom of the phone, including the avatar
+    // menu's "Viewport diagnostics" switch — so the off switch lives here too.
+    let off = document.getElementById('diag-off');
+    if (!off) {
+      off = document.createElement('button');
+      off.id = 'diag-off';
+      off.textContent = '✕ Turn diagnostics off';
+      off.style.cssText = 'margin-top:6px;padding:8px 12px;background:#222;color:#0f0;'
+        + 'border:1px solid #0f0;border-radius:6px;font:600 12px system-ui;width:100%';
+      off.onclick = () => {
+        localStorage.removeItem('gc2_diag');
+        box.remove();
+        if (typeof diagState === 'function') diagState();
+      };
+    }
+    box.appendChild(off);
   };
-  const sample = (label) => { read(label); paint(); };
+  // E218: a sample landing after the overlay was dismissed must not redraw it.
+  const armed = () => location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') === '1';
+  const sample = (label) => { read(label); if (armed()) paint(); };
   document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(probe);
     sample('domready');
@@ -2543,6 +2571,13 @@ function renderRail(){
     sc('braindump',null,'💡','Braindump', (BRAIN||[]).filter(b=>b.status==='idea').length||'') +
     (UNASG===null?(loadUnassigned(),''):UNASG.length?sc('unassigned',null,'◌','Unassigned todos',UNASG.length):'') +
     sc('contacts',null,'👥','Contacts',CONTACTS[ACCT]?CONTACTS[ACCT].length:'') +
+    // E219: the bottom tab bar is gone on a phone; its panels live here.
+    `<div class="rail-panels"><h4>Panels</h4>` +
+    [['brief','◎',"Today's brief"],['cal','📅','Calendar'],['todos','◯','Todo panel'],
+     ['wait','⏳','Waiting on'],['ask','✨','Ask Grand Central']].map(([k,ic,nm])=>
+      `<button class="scope ${DOCK===k?'on':''}" title="${esc(nm)}" onclick="closeNav();openDock('${k}')">
+        <span class="ic">${ic}</span><span class="nm">${esc(nm)}</span><span class="ct"></span></button>`).join('') +
+    `</div>` +
     `<div class="rail-more">` +
     `<h4>Mail accounts</h4>` +
     accts.map(a=>sc('account',a,'',a,live.filter(x=>x.account===a).length,ACCT_COLOR[a]||'#999')).join('') +
@@ -3521,9 +3556,7 @@ $('#list').addEventListener('scroll',()=>{ if(NEW_COUNT&&$('#list').scrollTop<60
    opening it. Grand Central already computes all four — this is that model,
    rendered. */
 let TODAY_VIEW = localStorage.getItem('gc2_today_view') || 'inbox';
-let IB_PINNED_ONLY = false;
 function setTodayView(v){ TODAY_VIEW=v; localStorage.setItem('gc2_today_view',v); renderList(); }
-function ibPinnedOnly(){ IB_PINNED_ONLY=!IB_PINNED_ONLY; renderList(); }
 const IB_BUNDLES={
   newsletter:{name:'Newsletters', color:'#f4511e', icon:'🗞'},
   notification:{name:'Updates', color:'#f4511e', icon:'⚑'},
@@ -3554,15 +3587,6 @@ function ibHighlights(i){
   }
   if(i.snip) h.push(`<span class="h ai">✨ ${esc(i.snip.slice(0,130))}</span>`);
   return h.length?`<div class="ib-hl">${h.join('')}</div>`:'';
-}
-async function pinItem(key){
-  const i=findItem(key); if(!i) return;
-  if(i.type==='todo'){ starItem(key); return; }   // a todo's ★ is its pin
-  const next=!i.pinned;
-  try {
-    await post('/mail/triage',{action:next?'pin':'unpin',thread_id:i.raw.thread_id,account:i.account});
-    i.pinned=i.raw.pinned=next; renderList();
-  } catch(e){ toast('Pin failed — '+e.message); }
 }
 // E175: the Inbox view renders the SAME row as everywhere else.
 const ibRow = i => rowHtml(i);
@@ -3646,7 +3670,7 @@ async function ibSweepBucket(name){
 function ibItems(){
   return ITEMS.filter(i=>!i.snoozed&&inAcct(i)&&inQ(i)
     &&(i.type==='todo' ? (i.due||i.my_day||i.starred) : inboxLive(i))
-    &&(!IB_PINNED_ONLY||i.pinned));
+    );
 }
 function ibBuckets(){
   const byB=new Map();
@@ -3687,7 +3711,6 @@ function renderTodayInbox(){
       <span class="t">${esc(acctName(ACCT))} · ${ibItems().length} item${ibItems().length===1?'':'s'}</span>
       <span class="sp"></span>
       <span class="ib-toggle">
-        <button class="${IB_PINNED_ONLY?'on':''}" onclick="ibPinnedOnly()" title="Show only pinned — Inbox's pin switch">📌 Pinned</button>
         <button class="on" title="Inbox layout">▤</button>
         <button onclick="setTodayView('list')" title="The plain Grand Central list">☰</button>
       </span></div>
@@ -4648,7 +4671,7 @@ function rowHtml(i, idx){
   const acts=actBtn('reply','Reply / draft',`replyOptions('${k}')`)
     + actBtn('archive','Archive',`archiveItem('${k}')`)
     + actBtn('clock','Snooze',`snoozeDlg('${k}')`)
-    + actBtn('flag',i.pinned?'Unpin':'Pin',`pinItem('${k}')`)
+    + actBtn(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)
     + actBtn('check','Handled',`handledItem('${k}')`)
     + actBtn('todo','Create or add to an account todo',`todoPick(['${k}'])`)
     + actBtn('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`).replace('<button ','<button class="warn" ')
@@ -4672,7 +4695,7 @@ function todoRowHtml(i,open,sel,kb){
   const k=esc(i.key), n=(i.threads||[]).length, uns=todoUnsnoozed(i);
   const act=todoActivity(i);
   const overdue=i.due&&i.due<dOff(0), dueTxt=i.due?(overdue?'overdue ':'due ')+fmtDate(i.due):'';
-  const acts=actBtn('flag',i.starred?'Unpin':'Pin',`pinItem('${k}')`)
+  const acts=actBtn(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)
     + actBtn('clock','Snooze',`snoozeDlg('${k}')`)
     + actBtn('check','Handled',`handledItem('${k}')`);
   const when = uns ? `<span class="when snz">${ic('clock','sm')} ${uns} Unsnoozed</span>`
@@ -4718,10 +4741,7 @@ function mailCtxHtml(i){
     _mi('✍ Reply / draft',`replyOptions('${k}')`),
     _mi('🗄 Archive',`archiveItem('${k}')`),
     _mi('⏰ Snooze…',`snoozeDlg('${k}')`),
-    _mi(i.pinned?'⚑ Unpin':'⚐ Pin',`pinItem('${k}')`),
-    // E207: star and label return alongside pin, for the same reason trash
-    // does. Pin is local to the board; star and label are the two that write
-    // through to Gmail, which is precisely why they are worth having here.
+    // Star writes through to Gmail; pin is retired (star does the same job).
     _mi(i.starred?'★ Unstar':'☆ Star',`starItem('${k}')`),
     _mi('🏷 Label…',`labelDlg('${k}')`),
     _mi('✓ Handled',`handledItem('${k}')`),
@@ -4741,7 +4761,7 @@ function todoCtxHtml(i){
   const k=esc(i.key);
   return [
     _mi('📖 Open',`openItem('${k}')`),
-    _mi(i.starred?'⚑ Unpin':'⚐ Pin',`pinItem('${k}')`),
+    _mi(i.starred?'★ Unstar':'☆ Star',`starItem('${k}')`),
     _mi('⏰ Snooze…',`snoozeDlg('${k}')`),
     _mi('✓ Handled',`handledItem('${k}')`),
   ].join('');
@@ -6118,7 +6138,7 @@ function paneShell(i, inner){
     ${i.type==='mail'?tb('reply','Reply / draft',`replyOptions('${k}')`):''}
     ${i.type==='mail'?tb('archive','Archive',`archiveItem('${k}')`):''}
     ${tb('clock','Snooze',`snoozeDlg('${k}')`)}
-    ${tb('flag',i.type==='mail'?(i.pinned?'Unpin':'Pin'):(i.starred?'Unpin':'Pin'),`pinItem('${k}')`)}
+    ${tb(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)}
     ${tb('check','Handled',`handledItem('${k}')`)}
     ${i.type==='mail'?tb('todo','Create or add to account todo',`todoPick(['${k}'])`):''}
     ${i.type==='mail'?tb('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`,'warn'):''}
@@ -7276,6 +7296,12 @@ document.querySelectorAll('.dk').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.dk').forEach(x=>x.classList.toggle('on',DOCK===x.dataset.dock));
   $('#dock').classList.toggle('open',!!DOCK); renderDock();
 });
+// E219: the ☰ drawer's Panels section opens the same panels by name.
+function openDock(k){
+  DOCK=k;
+  document.querySelectorAll('.dk').forEach(x=>x.classList.toggle('on',DOCK===x.dataset.dock));
+  $('#dock').classList.add('open'); renderDock();
+}
 // E90: on a phone the dock is full-screen — without this there is no
 // visible way back (Bart: "the tabs in the mobile view trap you").
 function closeDock(){
@@ -8474,7 +8500,7 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Enter'||e.key==='o') openItem(cur.key);
   if(e.key==='e'&&cur.type==='mail') archiveItem(cur.key);
   if(e.key==='h') handledItem(cur.key);
-  if(e.key==='p') pinItem(cur.key);
+  if(e.key==='f') starItem(cur.key);
   if(e.key==='r'&&cur.type==='mail') replyOptions(cur.key);
   if(e.key==='s') snoozeDlg(cur.key);
   if(e.key==='x') toggleSel(cur.key);

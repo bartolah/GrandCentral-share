@@ -268,7 +268,7 @@ def test_wiring():
         check("the phone's top bar keeps its status-bar inset",
               bool(last_padding) and "--safe-top" in last_padding[-1],
               f"last padding declaration is {last_padding[-1].strip() if last_padding else 'absent'}")
-        # the dock bar's inset lives in the ≤980px block, which also covers
+        # the dock panel's inset lives in the ≤980px block, which also covers
         # phones — look across every mobile block, not just the 760 one
         mobile = "".join(m.group(1) for m in
                          re.finditer(r"@media \(max-width: (?:760|980|640)px\) \{(.*?)\n  \}\n", html, re.S))
@@ -281,9 +281,10 @@ def test_wiring():
         check("no selector is declared twice in the phone block", not repeats,
               f"repeated: {', '.join(repeats[:6])}")
 
-        for sel, inset in [(r"\.dockbar", "--safe-bot"), (r"\.pane", "--safe-top")]:
+        # E219: the bottom bar is gone; the full-screen panels carry the inset.
+        for sel, inset in [(r"\.dock, \.dock\.open", "--safe-bot"), (r"\.pane", "--safe-top")]:
             block = re.findall(sel + r" \{([^}]*)\}", mobile)
-            check(f"{sel.strip(chr(92) + '.')} keeps its inset on a phone",
+            check(f"{sel.replace(chr(92), '').lstrip('.')} keeps its inset on a phone",
                   any(inset in b for b in block), "inset missing")
 
     # E203: every earlier fix went into the phone media block, and a skin's

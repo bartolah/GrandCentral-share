@@ -83,15 +83,15 @@ class UiAccountScope(unittest.TestCase):
         self.assertGreater(html.count("paneMore("), 1)
 
     def test_active_mail_rows_expose_the_triage_strip(self):
-        # Six fast verbs + trash and "…" (Bart, dev #27, 2026-09-26). Star and
-        # label live behind "…"; retired project/goal verbs never come back.
+        # Six fast verbs + trash and "…" (Bart, dev #27, 2026-09-26).
+        # Star replaced pin (2026-09-26). Label lives behind "…"; retired project/goal verbs never come back.
         html = open(os.path.join(ROOT, "dashboard", "index.html"), encoding="utf-8").read()
         start = html.index("// Bounded account triage: six fast verbs")
         block = html[start:html.index("const when =", start)]
-        for action in ("replyOptions", "archiveItem", "snoozeDlg", "pinItem",
+        for action in ("replyOptions", "archiveItem", "snoozeDlg", "starItem",
                        "handledItem", "todoPick", "trashItem", "rowMore"):
             self.assertIn(action, block)
-        for retired in ("labelDlg", "starItem", "refileDlg", "tagGoal", "dismissItem"):
+        for retired in ("labelDlg", "refileDlg", "tagGoal", "dismissItem"):
             self.assertNotIn(retired, block)
 
 

@@ -45,6 +45,11 @@ then today's calendar. Group by account when more than one has something.
 Board deep links are worth giving: `?alt=today|mail|todos`,
 `?alt=mail&group=labels&label=_VIPs`.
 
+Brief tuning (Bart, 2026-09-26): never mention birthdays, on any day. On
+Saturdays and Sundays, keep updates light and centered on family and friends
+events from the Personal calendar. Leave out work mail, work todos, and
+work or CrowdBlue calendar items unless something is genuinely urgent.
+
 ## Judgment
 
 - **Drafting.** If you composed the reply in chat or Bart dictated it, use
