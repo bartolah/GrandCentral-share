@@ -35,12 +35,15 @@ COMMAND_MODEL = "claude-sonnet-5"
 
 # Models Bart can pick from in the Ask panel (E26). Sonnet 5 is the default:
 # near-Opus quality on this kind of tool-calling work at a fraction of the
-# cost. Opus 4.8 and Fable 5 are there for the hard questions.
-#   NOTE on Fable 5: thinking is always on and an explicit `thinking` param
-#   is REJECTED — this module never sends one, so it stays compatible. It can
-#   also decline a request outright (stop_reason "refusal"), which is handled
+# cost. Opus 5.5 and Fable 5.1 are there for the hard questions (Dev #35,
+# 2026-09-28: "update the models … to be the latest including Opus 5.5").
+#   NOTE on Opus 5.5 / Fable 5.1: thinking can't be turned off and an
+#   explicit disabled/budget `thinking` param is REJECTED, as is a forced
+#   tool_choice — this module sends neither. Opus 5.5's effort default is
+#   medium, one below the others, so effort is always sent explicitly. Both
+#   can decline a request outright (stop_reason "refusal"), which is handled
 #   in run_command rather than surfacing as an empty answer.
-ALLOWED_MODELS = {"claude-sonnet-5", "claude-opus-4-8", "claude-fable-5"}
+ALLOWED_MODELS = {"claude-sonnet-5", "claude-opus-5-5", "claude-fable-5-1"}
 # effort rides in output_config; higher = deeper thinking, slower, pricier
 ALLOWED_EFFORT = {"low", "medium", "high", "xhigh", "max"}
 DEFAULT_EFFORT = "high"   # the API's own default for these models
@@ -517,7 +520,7 @@ def run_command(text: str, selection: dict | None = None, env: dict | None = Non
     `history` is prior turns as [{"role": "user"|"assistant", "text": str}] —
     the Ask panel keeps the transcript client-side and posts it back, so the
     server stays stateless (no sessions table, nothing to expire or clean up).
-    Only the plain text of past turns is replayed, not their tool traffic:
+    Only the plain text of past turns is replayed, not their tool tSamc:
     the model re-reads live data rather than trusting a stale tool result
     from three questions ago.
 

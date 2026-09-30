@@ -71,7 +71,13 @@ class QuestionLoop(unittest.TestCase):
         with open(os.path.join(ROOT, "sweeper", "dev_worker.sh"), encoding="utf-8") as f:
             src = f.read()
         self.assertIn("dev_answer.py ID question", src)
-        self.assertIn("if r['status'] != 'open':", src)        # questions aren't re-picked
+        # questions aren't re-picked: since triage (2026-09-28) the worker
+        # builds only what dev_triage.py --queue hands it, which reads open
+        # cards alone
+        self.assertIn("dev_triage.py --queue", src)
+        import dev_triage
+        db.dev_update(self.conn, self.rid, A, status="question", note="Which screen?")
+        self.assertEqual(dev_triage._open_cards(self.conn), [])
 
     def test_bart_is_told_once_per_question(self):
         db.dev_update(self.conn, self.rid, A, status="question", note="Which screen?")

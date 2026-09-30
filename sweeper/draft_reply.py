@@ -269,6 +269,58 @@ def compose_draft(account: str, to: str, subject: str, body: str,
             pass
 
 
+def replace_draft(account: str, draft_uid: str, gm_msgid: str, body: str,
+                  to: str, subject: str, cc: str = None, bcc: str = None,
+                  in_reply_to: str = "", references: str = "",
+                  env: dict | None = None, log=print) -> dict:
+    """Save an edited Gmail draft (E224, Dev #19). IMAP has no edit-in-place,
+    so the new version is APPENDed first and only then is the old one moved
+    to Trash (Bart 2026-09-27: "it's ok to delete and resave"). A reply keeps
+    its In-Reply-To/References so Gmail keeps it on its thread. If the old
+    draft can't be removed, the new one is already safe and the caller hears
+    about the leftover copy."""
+    import mail_actions
+    if not (body or "").strip():
+        raise ValueError("empty draft body")
+    if not (to or "").strip():
+        raise ValueError("'to' is required")
+    env = env or load_env()
+    imap, user = mc.connect(account, env)
+    try:
+        msg = EmailMessage()
+        msg["From"] = user
+        msg["To"] = to
+        if cc:
+            msg["Cc"] = cc
+        if bcc:
+            msg["Bcc"] = bcc
+        msg["Subject"] = " ".join((subject or "").split())
+        if in_reply_to:
+            msg["In-Reply-To"] = in_reply_to
+            msg["References"] = references or in_reply_to
+        msg.set_content(body)
+        drafts = mc.find_folder(imap, "\\Drafts", "[Gmail]/Drafts")
+        typ, _ = imap.append(f'"{drafts}"', r"(\Draft)",
+                             imaplib.Time2Internaldate(time.time()),
+                             msg.as_bytes())
+        if typ != "OK":
+            raise RuntimeError(f"APPEND to {drafts} failed")
+    finally:
+        try:
+            imap.logout()
+        except Exception:
+            pass
+    out = {"to": to, "cc": cc or "", "subject": msg["Subject"], "preview": body[:200]}
+    try:
+        mail_actions.trash_draft(account, draft_uid, gm_msgid, env=env, log=log)
+        out["replaced"] = True
+    except Exception as e:
+        out["replaced"] = False
+        out["warning"] = f"saved, but the old copy is still in Drafts ({e})"
+    log(f"draft_reply: replaced draft {draft_uid} in {account} ({len(body)} chars)")
+    return out
+
+
 def draft_reply(thread_id: str, account: str, env: dict | None = None,
                log=print, model: str = DRAFT_MODEL) -> dict:
     """AI-draft a reply and save it straight to Drafts (the one-click path).

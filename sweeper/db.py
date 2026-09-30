@@ -407,6 +407,17 @@ CREATE TABLE IF NOT EXISTS day_plans (
   created_at TEXT NOT NULL
 );
 
+-- E249: Home's few-sentence note for the day. scope '' = the cross-account
+-- Home (BUILD_SPEC §6, 2026-09-29); an account slug = that account's Home,
+-- written from that account's data only.
+CREATE TABLE IF NOT EXISTS home_notes (
+  date       TEXT NOT NULL,
+  scope      TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (date, scope)
+);
+
 -- E101: sent messages already mined for commitments (one look, ever).
 CREATE TABLE IF NOT EXISTS commit_scan (
   account TEXT NOT NULL,
@@ -560,6 +571,49 @@ CREATE TABLE IF NOT EXISTS calendar_writes (
   end_at    TEXT,
   ts        TEXT NOT NULL
 );
+-- Projects (BUILD_SPEC §6, 2026-09-29; spec in ACCOUNT_FIRST.md). A project
+-- belongs to no account and only POINTS at things: each item names the
+-- account it lives in (null only for a contact, which is shared) and its id
+-- there. Filing never moves, labels or re-owns anything. These are new
+-- tables, unrelated to the retired theaters/operations ones.
+CREATE TABLE IF NOT EXISTS projects (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  name          TEXT NOT NULL,
+  color         TEXT,
+  description   TEXT,
+  target_date   TEXT,                  -- YYYY-MM-DD, optional
+  status        TEXT NOT NULL DEFAULT 'open',   -- open | done
+  completed_at  TEXT,
+  pin_rank      INTEGER,               -- 1..3 when pinned in the top bar
+  last_account  TEXT,                  -- default for a new todo made here
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_items (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL,
+  kind        TEXT NOT NULL,           -- thread | todo | event | contact
+  account     TEXT,                    -- the item's own account (null: contact)
+  ref         TEXT NOT NULL,           -- thread_id | todo id | event uid | email
+  title       TEXT,                    -- a snapshot, for items GC can't re-read
+  added_at    TEXT NOT NULL,
+  UNIQUE (project_id, kind, account, ref)
+);
+CREATE INDEX IF NOT EXISTS idx_project_items_ref ON project_items (kind, account, ref);
+
+-- Notes live in the database (Bart 2026-09-29). A note written in a project
+-- carries its project_id; deleting the project keeps the note, with the
+-- project's name in from_project.
+CREATE TABLE IF NOT EXISTS notes (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id    INTEGER,
+  title         TEXT,
+  body          TEXT NOT NULL DEFAULT '',
+  from_project  TEXT,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+);
 """
 
 # Schema evolution (E4-P1, the repo's first ALTERs): executescript's CREATE
@@ -655,6 +709,19 @@ _MIGRATIONS = [
     ("class_people", "grp", "ALTER TABLE class_people ADD COLUMN grp TEXT"),
     ("class_people", "teammate",
      "ALTER TABLE class_people ADD COLUMN teammate INTEGER NOT NULL DEFAULT 1"),
+    # Dev #16 (§6 Calendar RSVP, 2026-09-27): the audit table also records
+    # RSVPs. NULL = an E21 create; 'rsvp:accepted|tentative|declined' = a reply.
+    ("calendar_writes", "action", "ALTER TABLE calendar_writes ADD COLUMN action TEXT"),
+    # Dev triage (2026-09-28, Bart: "Do it" — a triage pass before the worker
+    # builds). Labels only; the request text is never touched by triage.
+    ("dev_requests", "priority", "ALTER TABLE dev_requests ADD COLUMN priority TEXT"),
+    ("dev_requests", "size", "ALTER TABLE dev_requests ADD COLUMN size TEXT"),
+    ("dev_requests", "verdict", "ALTER TABLE dev_requests ADD COLUMN verdict TEXT"),
+    ("dev_requests", "triage_note", "ALTER TABLE dev_requests ADD COLUMN triage_note TEXT"),
+    ("dev_requests", "dup_of", "ALTER TABLE dev_requests ADD COLUMN dup_of INTEGER"),
+    ("dev_requests", "triage_hash", "ALTER TABLE dev_requests ADD COLUMN triage_hash TEXT"),
+    ("dev_requests", "triaged_at", "ALTER TABLE dev_requests ADD COLUMN triaged_at TEXT"),
+    ("dev_requests", "triage_by", "ALTER TABLE dev_requests ADD COLUMN triage_by TEXT"),
 ]
 
 
@@ -1002,6 +1069,33 @@ def notify_pref_set(conn: sqlite3.Connection, kind: str, imessage: bool, push: b
     return True
 
 
+def acct_order(conn: sqlite3.Connection) -> list:
+    """Dev #42: Bart's dragged account-tab order, kept here (not per browser)
+    so every device and session shows the same tabs in the same order."""
+    row = conn.execute("SELECT value FROM meta WHERE key = 'acct_order'").fetchone()
+    try:
+        order = json.loads(row["value"]) if row else []
+    except (TypeError, ValueError):
+        return []
+    return [a for a in order if isinstance(a, str)] if isinstance(order, list) else []
+
+
+def acct_order_set(conn: sqlite3.Connection, order: list) -> list:
+    if not isinstance(order, list):
+        raise ValueError("order must be a list of account ids")
+    clean = []
+    for a in order[:50]:
+        a = str(a or "").strip()[:64]
+        if a and a not in clean:
+            clean.append(a)
+    with conn:
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('acct_order', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (json.dumps(clean),))
+    return clean
+
+
 def todo_view(conn: sqlite3.Connection, done_days: int = 3,
               account: str | None = None) -> list:
     """The Todos screen's list (E10): every open todo (snoozed included —
@@ -1205,9 +1299,11 @@ def dev_list(conn: sqlite3.Connection, account: str) -> list:
     """One account's non-archived requests; never return ownerless legacy rows."""
     account = clean_account(account)
     return [dict(r) for r in conn.execute(
-        "SELECT id, account, text, status, note, created_at, updated_at "
+        "SELECT id, account, text, status, note, created_at, updated_at, "
+        "priority, size, verdict, triage_note, dup_of, triaged_at, triage_by "
         "FROM dev_requests WHERE status != 'archived' AND account = ? "
-        "ORDER BY CASE status WHEN 'question' THEN 0 WHEN 'open' THEN 1 WHEN 'building' THEN 2 ELSE 3 END, id DESC",
+        "ORDER BY CASE status WHEN 'question' THEN 0 WHEN 'open' THEN 1 WHEN 'building' THEN 2 ELSE 3 END, "
+        "CASE WHEN status IN ('open','question','building') THEN COALESCE(priority,'p9') ELSE 'p9' END, id DESC",
         (account,))]
 
 
@@ -1239,6 +1335,41 @@ def dev_update(conn: sqlite3.Connection, rid: int, account: str,
         cur = conn.execute(
             f"UPDATE dev_requests SET {', '.join(sets)} WHERE id = ? AND account = ?",
             vals + [int(rid), account])
+    return cur.rowcount > 0
+
+
+DEV_PRIORITIES = ("p1", "p2", "p3")
+DEV_SIZES = ("s", "m", "l")
+DEV_VERDICTS = ("build", "ask", "session", "duplicate", "done")
+
+
+def dev_text_hash(text: str) -> str:
+    import hashlib
+    return hashlib.sha256((text or "").encode()).hexdigest()[:16]
+
+
+def dev_set_triage(conn: sqlite3.Connection, rid: int, *, priority=None, size=None,
+                   verdict=None, note=None, dup_of=None, text_hash=None, by="claude") -> bool:
+    """Write a triage label onto one request. Never touches text or status.
+    A label Bart set by hand (triage_by='bart') is not overwritten by the
+    automatic pass until the request text changes."""
+    if priority is not None and priority not in DEV_PRIORITIES:
+        raise ValueError("bad priority")
+    if size is not None and size not in DEV_SIZES:
+        raise ValueError("bad size")
+    if verdict is not None and verdict not in DEV_VERDICTS:
+        raise ValueError("bad verdict")
+    sets, vals = [], []
+    for col, v in (("priority", priority), ("size", size), ("verdict", verdict),
+                   ("triage_note", note), ("dup_of", dup_of), ("triage_hash", text_hash)):
+        if v is not None:
+            sets.append(f"{col} = ?"); vals.append(v)
+    if not sets:
+        return False
+    sets += ["triaged_at = ?", "triage_by = ?"]; vals += [_now_iso(), by]
+    with conn:
+        cur = conn.execute(f"UPDATE dev_requests SET {', '.join(sets)} WHERE id = ?",
+                           vals + [int(rid)])
     return cur.rowcount > 0
 
 
@@ -2083,8 +2214,11 @@ def class_for_threads(conn, account: str) -> dict:
     out = {}
     for r in conn.execute("SELECT * FROM mail_class WHERE account = ?", (account,)):
         e = class_effective(r, pins.get(r["thread_id"], {}), use_jev=use_jev)
-        out[r["thread_id"]] = {"type": e.get("type"), "respond": e.get("respond"),
-                               "respond_src": (e.get("source") or {}).get("respond"),
+        src = e.get("source") or {}
+        out[r["thread_id"]] = {"type": e.get("type"), "type_src": src.get("type"),
+                               "priority": e.get("priority"),
+                               "respond": e.get("respond"),
+                               "respond_src": src.get("respond"),
                                "value": e["value"], "follow_up": e.get("follow_up"),
                                "waiting_on": e.get("waiting_on")}
     return out

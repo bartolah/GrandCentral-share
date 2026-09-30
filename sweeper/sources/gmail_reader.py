@@ -217,7 +217,8 @@ def _fetch_headers(imap: imaplib.IMAP4_SSL, uids: list, include_flags: bool = Fa
     flags_item = "FLAGS X-GM-LABELS BODYSTRUCTURE " if include_flags else ""
     fields = (f"(X-GM-THRID {flags_item}INTERNALDATE BODY.PEEK[HEADER.FIELDS "
               "(FROM TO CC SUBJECT DATE MESSAGE-ID LIST-UNSUBSCRIBE LIST-ID "
-              "PRECEDENCE CONTENT-TYPE AUTO-SUBMITTED X-AUTOREPLY X-AUTORESPOND)])")
+              "PRECEDENCE CONTENT-TYPE AUTO-SUBMITTED X-AUTOREPLY X-AUTORESPOND "
+              "FEEDBACK-ID)])")
     # chunk to keep FETCH command sizes sane
     for i in range(0, len(uids), 200):
         chunk = uids[i : i + 200]
@@ -248,6 +249,9 @@ def _fetch_headers(imap: imaplib.IMAP4_SSL, uids: list, include_flags: bool = Fa
                 rec["flags"] = fl_m.group(1) if fl_m else ""
                 rec["labels"] = _labels_from_meta(meta)
                 rec["list_unsub"] = bool(hdr.get("List-Unsubscribe"))
+                # E223: the sending platform, for spotting fundraising blasts.
+                rec["list_unsub_url"] = str(hdr.get("List-Unsubscribe", "") or "")[:500]
+                rec["feedback_id"] = str(hdr.get("Feedback-ID", "") or "")[:200]
                 rec["content_type"] = (hdr.get("Content-Type", "") or "").lower()
                 rec["attach_count"] = _attach_count(meta)
             out[uid_m.group(1)] = rec

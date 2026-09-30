@@ -322,18 +322,31 @@ def trash_thread(thread_id: str, account: str, env: dict | None = None,
         trash = mc.find_folder(imap, "\\Trash", "[Gmail]/Trash")
         uids = mc.search_thread_uids(imap, all_mail, thread_id, readonly=dry_run)
         if not uids:
+            # 2026-09-29: a thread trashed twice (a single delete racing a
+            # bundle's Delete all) used to fail here, and the board then put the
+            # row back although the mail was in Trash. Already there = done.
+            if mc.search_thread_uids(imap, trash, thread_id, readonly=True):
+                log(f"mail_actions: thread {thread_id} in {account} was already in Trash")
+                return {"messages": 0, "already": True}
             raise RuntimeError("thread not found in All Mail")
         if dry_run:
             log(f"[dry-run] COPY {len(uids)} message(s) to {account}:{trash} "
                 f"for thread {thread_id}")
             return {"dry_run": True, "messages": len(uids)}
+        moved = 0
         for uid in uids:
             typ, _ = imap.uid("COPY", uid, f'"{trash}"')
-            if typ != "OK":
+            if typ == "OK":
+                moved += 1
+                continue
+            # the message left All Mail between SEARCH and COPY — another
+            # action trashed it; only a message still here is a real failure
+            typ, data = imap.uid("SEARCH", None, "UID", uid)
+            if typ == "OK" and data and data[0] and uid in data[0].split():
                 raise RuntimeError(f"COPY to Trash failed on uid {uid!r}")
-        log(f"mail_actions: trashed {len(uids)} message(s) in {account} "
+        log(f"mail_actions: trashed {moved} message(s) in {account} "
             f"for thread {thread_id} (recoverable from Trash 30d)")
-        return {"messages": len(uids)}
+        return {"messages": moved}
     finally:
         try:
             imap.logout()
@@ -527,7 +540,7 @@ def list_drafts(account: str, env: dict | None = None,
         out = []
         for uid in reversed(uids[-limit:]):          # newest first
             typ, d = imap.uid("FETCH", uid,
-                              "(X-GM-THRID INTERNALDATE BODY.PEEK[])")
+                              "(X-GM-THRID X-GM-MSGID INTERNALDATE BODY.PEEK[])")
             if typ != "OK" or not d or not isinstance(d[0], tuple):
                 continue
             head = d[0][0].decode("utf-8", "replace")
@@ -544,6 +557,9 @@ def list_drafts(account: str, env: dict | None = None,
                 "snippet": " ".join(body.split())[:200],
                 "date": dt_m.group(1) if dt_m else "",
                 "link": f"https://mail.google.com/mail/?authuser={user}#drafts",
+                # E224: opening a draft in GC needs to name it exactly. Gmail's
+                # own message id — drafts APPENDed over IMAP carry no Message-ID.
+                "gm_msgid": (re.search(r"X-GM-MSGID (\d+)", head) or [None, ""])[1],
             })
         log(f"drafts:{account} -> {len(out)}")
         return out
@@ -554,19 +570,125 @@ def list_drafts(account: str, env: dict | None = None,
             pass
 
 
-def list_sent(account: str, env: dict | None = None,
-              limit: int = 30, log=print) -> list:
-    """Recent messages from one account's Sent folder (E73, mirrors the E23
-    Drafts pattern: read-only, on-demand, never synced). Newest first:
-    {thread_id, account, to, subject, snippet_date, link}. Sent mail that
-    is part of an inbox thread also lives in mail_threads; this view is the
-    complete outbound record regardless of inbox state."""
+_UID_RE = re.compile(r"^\d{1,12}$")
+
+
+def _draft_msg(imap, drafts: str, uid: str, gm_msgid: str):
+    """Fetch one draft by UID and confirm it is still the draft Bart opened.
+    UIDs can be reused after a mailbox rebuild, so Gmail's own message id
+    (X-GM-MSGID — unique and fixed; IMAP-saved drafts have no Message-ID)
+    must match before anything reads or removes it."""
+    if not _UID_RE.match(str(uid)):
+        raise ValueError("bad draft uid")
+    if not re.match(r"^\d{1,25}$", str(gm_msgid or "")):
+        raise ValueError("gm_msgid is required to name a draft")
+    typ, d = imap.uid("FETCH", str(uid), "(X-GM-THRID X-GM-MSGID BODY.PEEK[])")
+    if typ != "OK" or not d or not isinstance(d[0], tuple):
+        raise RuntimeError("draft not found — it may have been sent or deleted in Gmail")
+    head = d[0][0].decode("utf-8", "replace")
+    got = re.search(r"X-GM-MSGID (\d+)", head)
+    if not got or got.group(1) != str(gm_msgid):
+        raise RuntimeError("that draft changed in Gmail — refresh Drafts and open it again")
+    thr = re.search(r"X-GM-THRID (\d+)", head)
+    return email.message_from_bytes(d[0][1]), (thr.group(1) if thr else "")
+
+
+def get_draft(account: str, uid: str, gm_msgid: str,
+              env: dict | None = None) -> dict:
+    """One Gmail draft, whole, so GC's composer can open it (E224, Dev #19).
+    Read-only. Plain-text body: formatting from Gmail is not carried over."""
     env = env or load_env()
     try:
-        from sources.gmail_reader import _fetch_headers
-    except ImportError:  # pragma: no cover - package-relative fallback
-        from .sources.gmail_reader import _fetch_headers
+        from sources.gmail_reader import _decode, _payload_text
+    except ImportError:  # pragma: no cover
+        from .sources.gmail_reader import _decode, _payload_text
+    imap, _user = mc.connect(account, env)
+    try:
+        drafts = mc.find_folder(imap, "\\Drafts", "[Gmail]/Drafts")
+        typ, _ = imap.select(f'"{drafts}"', readonly=True)
+        if typ != "OK":
+            raise RuntimeError(f"cannot open {drafts}")
+        msg, thread_id = _draft_msg(imap, drafts, uid, gm_msgid)
+        return {
+            "account": account, "draft_uid": str(uid), "thread_id": thread_id,
+            "gm_msgid": str(gm_msgid),
+            "to": _decode(msg.get("To", "")), "cc": _decode(msg.get("Cc", "")),
+            "bcc": _decode(msg.get("Bcc", "")),
+            "subject": _decode(msg.get("Subject", "")),
+            "in_reply_to": (msg.get("In-Reply-To") or "").strip(),
+            "references": " ".join((msg.get("References") or "").split()),
+            "body": (_payload_text(msg) or "").rstrip(),
+        }
+    finally:
+        try:
+            imap.logout()
+        except Exception:
+            pass
 
+
+def trash_draft(account: str, uid: str, gm_msgid: str,
+                env: dict | None = None, log=print) -> dict:
+    """Move ONE superseded draft to Gmail Trash (E224, Bart 2026-09-27: "it's
+    ok to delete and resave"). Only ever called after its replacement was
+    saved, or after it was sent. Works only inside Drafts, only on the draft
+    whose Gmail message id matches, and only by COPY to Trash — recoverable 30 days,
+    like every delete here. Human click only: not an Ask or agent tool."""
+    env = env or load_env()
+    imap, _user = mc.connect(account, env)
+    try:
+        drafts = mc.find_folder(imap, "\\Drafts", "[Gmail]/Drafts")
+        trash = mc.find_folder(imap, "\\Trash", "[Gmail]/Trash")
+        typ, _ = imap.select(f'"{drafts}"', readonly=False)
+        if typ != "OK":
+            raise RuntimeError(f"cannot open {drafts}")
+        _draft_msg(imap, drafts, uid, gm_msgid)
+        typ, _ = imap.uid("COPY", str(uid), f'"{trash}"')
+        if typ != "OK":
+            raise RuntimeError("COPY to Trash failed")
+        log(f"mail_actions: old draft {uid} in {account} moved to Trash")
+        return {"trashed": 1}
+    finally:
+        try:
+            imap.logout()
+        except Exception:
+            pass
+
+
+SENT_PAGE = 50
+SENT_PREVIEW_BYTES = 8000     # enough of a message for its first lines
+_QUOTE_START = re.compile(r"^(On .{4,200}wrote:|-{2,} ?Original Message|From: .+)$", re.I)
+
+
+def _sent_preview(msg) -> str:
+    """What Bart wrote, one line: the body up to the quoted history."""
+    text = mc.body_text(msg, cap=4000, keep_newlines=True)
+    keep = []
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith(">") or _QUOTE_START.match(s):
+            break
+        keep.append(s)
+    return " ".join(x for x in keep if x)[:220]
+
+
+def list_sent(account: str, env: dict | None = None,
+              limit: int = SENT_PAGE, before_uid: int | None = None, log=print) -> dict:
+    """One page of an account's Sent folder, newest first (E73; Dev #41).
+
+    Read-only (readonly SELECT, BODY.PEEK). Each row: thread_id, uid, to,
+    cc, subject, date (ISO UTC, from the Date header — the old rows asked
+    for a `date` key the header fetch never had, so nothing was dated and
+    the newest-first sort did nothing), a one-line preview of what Bart
+    wrote (quoted history cut), and a link. `before_uid` pages further back.
+    Returns {"rows": [...], "next_before": uid or None}.
+    """
+    env = env or load_env()
+    try:
+        from sources.gmail_reader import _decode, _dt_from, _fetch_headers
+    except ImportError:  # pragma: no cover - package-relative fallback
+        from .sources.gmail_reader import _decode, _dt_from, _fetch_headers
+
+    limit = max(1, min(int(limit or SENT_PAGE), 100))
     imap, user = mc.connect(account, env)
     try:
         sent = mc.find_folder(imap, "\\Sent", "[Gmail]/Sent Mail")
@@ -575,18 +697,43 @@ def list_sent(account: str, env: dict | None = None,
             raise RuntimeError(f"cannot open {sent}")
         typ, data = imap.uid("SEARCH", None, "ALL")
         uids = data[0].split() if typ == "OK" and data and data[0] else []
+        if before_uid:
+            uids = [u for u in uids if int(u) < int(before_uid)]
         take = uids[-limit:]
         headers = _fetch_headers(imap, take)
-        rows = sorted(headers.values(),
-                      key=lambda m: m.get("date") or "", reverse=True)
-        return [{
-            "thread_id": m.get("thrid", ""),
-            "account": account,
-            "to": m.get("to", ""),
-            "subject": m.get("subject", "") or "(no subject)",
-            "date": m.get("date", ""),
-            "link": ("https://mail.google.com/mail/?authuser=%s#sent" % user),
-        } for m in rows]
+        previews = {}
+        for i in range(0, len(take), 25):
+            chunk = take[i:i + 25]
+            typ, d = imap.uid("FETCH", b",".join(chunk), f"(BODY.PEEK[]<0.{SENT_PREVIEW_BYTES}>)")
+            if typ != "OK" or not d:
+                continue
+            for item in d:
+                if not isinstance(item, tuple):
+                    continue
+                m = re.search(rb"UID (\d+)", item[0])
+                if not m:
+                    continue
+                try:
+                    previews[m.group(1).decode()] = _sent_preview(email.message_from_bytes(item[1]))
+                except Exception:
+                    pass
+        rows = []
+        for uid, m in headers.items():
+            dt = _dt_from(m)
+            rows.append({
+                "thread_id": m.get("thrid", ""),
+                "uid": int(uid),
+                "account": account,
+                "to": " ".join(_decode(m.get("to", "")).split()),     # unfold long headers
+                "cc": " ".join(_decode(m.get("cc", "")).split()),
+                "subject": m.get("subject", "") or "(no subject)",
+                "date": dt.strftime("%Y-%m-%dT%H:%M:%SZ") if dt.year > 1970 else "",
+                "snippet": previews.get(uid, ""),
+                "link": ("https://mail.google.com/mail/?authuser=%s#sent" % user),
+            })
+        rows.sort(key=lambda r: (r["date"], r["uid"]), reverse=True)
+        more = len(uids) > len(take)
+        return {"rows": rows, "next_before": (int(take[0]) if more and take else None)}
     finally:
         try:
             imap.logout()

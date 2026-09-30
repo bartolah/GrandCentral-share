@@ -174,7 +174,7 @@ def build_state(records: list, assessed: dict, reg: dict,
     # Bulk/marketing mail (List-Unsubscribe / List-Id / Precedence / no-reply
     # senders) categorically isn't owed a reply — suppressed here with a
     # visible count. Automated mail (receipts, newsletters, notifications,
-    # calendar traffic) is suppressed via the Mail screen's deterministic
+    # calendar tSamc) is suppressed via the Mail screen's deterministic
     # category; only person-to-person threads accrue reply debt. Fail open: a
     # thread mail_sync hasn't categorized yet is treated as a person.
     reply_debt = []

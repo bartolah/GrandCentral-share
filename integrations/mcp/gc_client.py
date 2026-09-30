@@ -68,11 +68,15 @@ ALLOWED = {
 # survives refactoring. "*" bans every method; otherwise the ban is per-method.
 DENIED: dict[tuple[str, str], str] = {
     ("*", "/send"): (
-        "send is the dashboard's human-confirmed dialog only (BUILD_SPEC §6, "
-        "2026-07-10, widened for new mail 2026-07-29 — both say 'never a "
-        "command-bar/Claude/OpenClaw tool'). Draft it instead and hand Bart the link."
+        "send is a human's Send click in the dashboard composer only (BUILD_SPEC §6, "
+        "2026-07-10, widened for new mail 2026-07-29, one click + Undo 2026-09-29 — "
+        "all say 'never a command-bar/Claude/OpenClaw tool'). Draft it instead and hand Bart the link."
     ),
     ("*", "/mail/bulk"): "no bulk archive/trash from an agent, ever (§6).",
+    ("*", "/draft/replace"): "replacing a draft trashes the old copy — dashboard click only (E224).",
+    ("*", "/projects"): "projects are filed by Bart on the board — an agent creating or filing into one needs its own decision (§6, 2026-09-29).",
+    ("*", "/calendar/rsvp"): "RSVP tells the organizer — dashboard click only (§6 Calendar RSVP, 2026-09-27).",
+    ("*", "/draft/discard"): "removing a draft is a Trash write — dashboard click only (E224).",
     ("*", "/outbox"): "scheduled sends are dashboard-only territory.",
     ("*", "/connections"): "credential writes are explicitly not an agent tool (E51).",
     ("*", "/command"): (
@@ -80,6 +84,11 @@ DENIED: dict[tuple[str, str], str] = {
         "calling it would nest an agent inside an agent."
     ),
     ("*", "/upload"): "writes files to disk; not an agent path.",
+    ("*", "/home"): (
+        "the cross-account Home is a view for Bart only; no agent tool gains a "
+        "cross-account read (BUILD_SPEC §6, 2026-09-29)."
+    ),
+    ("*", "/home/note"): "the cross-account day note is for Bart's Home only (§6, 2026-09-29).",
     ("*", "/dev"): (
         "the dev-request queue is executed unattended by a Claude Code worker that "
         "edits code. Nothing that reads email may write into it."

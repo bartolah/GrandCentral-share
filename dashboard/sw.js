@@ -7,7 +7,7 @@
 // queued, so nothing side-effectful can fire from a stale tab. Prime the cache
 // by loading the app once online; after that it opens with no network.
 
-const VERSION = 'gc-cache-v5';   // account-first triage and square Shortwave skin
+const VERSION = 'gc-cache-v6';   // E249: ◫ Day Home and the ⌂ Home tab
 
 // Precached on install so the very first offline open works even for paths the
 // user hasn't visited yet. Everything else is cached on demand as they browse.

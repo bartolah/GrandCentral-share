@@ -102,9 +102,17 @@ def read_range(env: dict, start, days: int, log=print) -> list:
                 continue
             title = str(ev.get("SUMMARY", "")).strip() or "(untitled)"
             dtstart = ev.get("DTSTART").dt
+            end = ""
             if isinstance(dtstart, datetime):
                 local = dtstart.astimezone(tz)
                 day, when, sort_key = local.date(), local.strftime("%H:%M"), local.strftime("%H%M")
+                # E249: Home's day timeline draws real blocks, so an event
+                # carries its end time too (same day only; "" when unknown).
+                dtend = ev.get("DTEND")
+                if dtend is not None and isinstance(dtend.dt, datetime):
+                    end_local = dtend.dt.astimezone(tz)
+                    if end_local.date() == day and end_local > local:
+                        end = end_local.strftime("%H:%M")
             else:  # date-only VEVENT = all-day
                 day, when, sort_key = dtstart, "all-day", "0000"
             if day not in per_day:
@@ -118,7 +126,7 @@ def read_range(env: dict, start, days: int, log=print) -> list:
             # E66 (OpenClaw feedback): location + a description snippet ride
             # along — "Flight NY > SF" with nothing else forced an agent into
             # a fruitless Gmail dig for the airline/flight number.
-            per_day[day].append({"time": when, "title": title, "cal": label,
+            per_day[day].append({"time": when, "end": end, "title": title, "cal": label,
                                  "location": str(ev.get("LOCATION", "")).strip()[:200],
                                  "detail": " ".join(str(ev.get("DESCRIPTION", "")).split())[:300],
                                  "attendees": _emails(ev.get("ATTENDEE")),

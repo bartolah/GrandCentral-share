@@ -326,6 +326,16 @@
     html[data-rail="slim"] .rail .scope:hover { transform: translateX(3px); }
     html[data-rail="slim"] .rail .scope:hover .ic { transform: scale(1.25); }
     html[data-rail="slim"] .rail .scope.on { box-shadow: inset 2px 0 0 var(--blue), 0 1px 2px rgba(20,30,50,.06); }
+    /* E221 (Dev #18, Bart: "the active state should be centered better"):
+       a full-width pill with a left edge light read as off-centre around a
+       centred icon, and the hover nudge left it shifted under the pointer.
+       Slim rows are now a centred 38px square; the active one is a plain
+       lifted square, and hover scales the icon without moving the row. */
+    html[data-rail="slim"] .rail .scope { width: 38px; height: 38px; margin: 2px auto; padding: 0; line-height: 1; }
+    html[data-rail="slim"] .rail .scope .ic { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+    html[data-rail="slim"] .rail .scope:hover { transform: none; }
+    html[data-rail="slim"] .rail .scope.on { box-shadow: 0 1px 3px rgba(20,30,50,.12); }
+    html[data-skin="shortwave"][data-rail="slim"] .rail .scope { border-radius: 11px; }
     html[data-skin="lcars"][data-rail="slim"] .rail .scope .ic { display: inline; color: #000; }
     html[data-skin="lcars"][data-rail="slim"] .rail .scope { border-radius: 16px 0 0 16px; }
     @media (prefers-reduced-motion: reduce) {
@@ -333,6 +343,11 @@
       html[data-rail="slim"] .rail .scope:hover, html[data-rail="slim"] .rail .scope:hover .ic { transform: none; }
     }
   }
+  /* E221 (Dev #18): the slim rail's labels, shown at once beside the icon —
+     the native title tooltip took a second and a half to appear. Fixed
+     position so the rail's overflow can't clip it. */
+  #railtip { position: fixed; z-index: 9000; pointer-events: none; padding: 4px 9px; border-radius: 7px; background: var(--ink); color: var(--bg, #fff); font-size: 12px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.18); opacity: 0; transform: translateY(-50%); transition: opacity .08s; }
+  #railtip.on { opacity: 1; }
 
   /* ---------- list ---------- */
   .main { flex: 1 1 auto; min-width: 0; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
@@ -419,6 +434,108 @@
      overflow+ellipsis does the rest. */
   .home-grid > * { min-width: 0; }
   @media (max-width: 1150px) { }
+  /* E249: ◫ Day — Home's two-column layout (Bart's mockup, 2026-09-29):
+     the day's note and Ask on the left over the account sections, the day
+     calendar on the right. The same layout is every account's Home and the
+     read-only Home tab across accounts (BUILD_SPEC §6, 2026-09-29). */
+  body.homeall-on .rail, body.homeall-on .list-head, body.homeall-on .pane { display: none !important; }
+  body.homeall-on .main { max-width: none; }
+  .hday { max-width: 1320px; margin: 0 auto; padding: 8px 18px 40px; }
+  .hday .hgreet { margin: 18px 4px 22px; }
+  .hday .hgreet b { font-size: 25px; }
+  .hday .hgreet span:not(.htrain) { font-size: 13.5px; }
+  .hday .hgreet .hg-sub { display: block; }
+  .hday-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 40px; align-items: start; }
+  .hday-left { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .hday-note { border: 1px solid var(--note-line); background: var(--note-bg); border-radius: 12px; padding: 14px 18px; }
+  .hday-note .k { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 700; color: var(--note-head); }
+  .hday-note .k button { margin-left: auto; border: none; background: none; color: var(--note-head); cursor: pointer; font-size: 13px; opacity: .7; }
+  .hday-note .k button:hover { opacity: 1; }
+  .hday-note p { margin: 6px 0 0; color: var(--note-ink); font-size: 14.5px; line-height: 1.6; }
+  .hday-note p.wait { color: var(--note-head); font-style: italic; font-size: 13px; }
+  .hday .hask { margin: 0; }
+  .hday-h { font-size: 11px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--faint); font-weight: 700; margin: 6px 2px -6px; }
+  .hday-acct { border: 1px solid var(--line); background: var(--card); border-radius: 12px; }
+  .hday-acct-top { display: flex; align-items: center; gap: 14px; padding: 12px 16px; }
+  .hday-acct-top .tg { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; min-height: 32px;
+    border: none; background: none; padding: 0; color: var(--ink); cursor: pointer; text-align: left; font: inherit; }
+  .hday-acct-top .tg b { font-size: 15.5px; font-weight: 650; }
+  .hday-acct-top .tg .chev { color: var(--faint); font-size: 12px; width: 12px; }
+  .hday-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; display: inline-block; }
+  .hday-counts { display: flex; gap: 16px; font-size: 12.5px; white-space: nowrap; }
+  .hday-counts a { color: var(--blue); cursor: pointer; text-decoration: none; }
+  .hday-counts a:hover { text-decoration: underline; }
+  .hday-counts a b { font-weight: 650; }
+  .hday-body { border-top: 1px solid var(--line); padding: 4px 8px 10px; }
+  .hday-sub { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 10px 4px; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .hday-sub a { letter-spacing: 0; text-transform: none; font-weight: 500; font-size: 12px; color: var(--blue); cursor: pointer; }
+  .hday-m { display: flex; gap: 12px; padding: 9px 10px; border-radius: 9px; cursor: pointer; }
+  .hday-m:hover, .hday-f:hover, .hday-todo:hover { background: var(--hover); }
+  .hday-av { width: 32px; height: 32px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 11.5px; flex: 0 0 auto; }
+  .hday-m .b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  .hday-m .l1 { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+  .hday-m .l1 .t { color: var(--faint); font-weight: 400; font-size: 12px; }
+  .hday-m .l2 { color: var(--subj); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hday-m .l3 { display: flex; gap: 8px; align-items: center; color: var(--faint); font-size: 12.5px; white-space: nowrap; }
+  .hday-m .l3 .p { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+  .hday-owe { color: var(--red); font-size: 11.5px; }
+  .hday-v { min-width: 28px; text-align: center; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; flex: 0 0 auto; }
+  .hday-v.hi { background: var(--blue); color: var(--card); }
+  .hday-v.mid { background: var(--blue-soft); color: var(--blue); }
+  .hday-v.lo { background: var(--chip-bg); color: var(--muted); }
+  .hday-f { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; cursor: pointer; font-size: 13px; }
+  .hday-f .hday-av { width: 22px; height: 22px; font-size: 9px; }
+  .hday-f .who { font-weight: 600; white-space: nowrap; }
+  .hday-f .s { flex: 1 1 auto; min-width: 0; color: var(--subj); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hday-f .st { white-space: nowrap; font-size: 11.5px; }
+  .hday-f .st.owed { color: var(--red); } .hday-f .st.chase { color: var(--note-head); }
+  .hday-none { padding: 6px 10px; color: var(--faint); font-size: 12.5px; }
+  .hday-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .hday-tiles a { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px 16px; color: var(--ink); text-decoration: none; cursor: pointer; }
+  .hday-tiles a:hover { border-color: var(--blue); }
+  .hday-tiles b { display: block; font-size: 22px; font-weight: 650; }
+  .hday-tiles span { color: var(--muted); font-size: 12.5px; }
+  .hday-right { display: flex; flex-direction: column; gap: 12px; }
+  .hday-right .rtop { display: flex; justify-content: space-between; align-items: baseline; }
+  .hday-right .rtop b { font-size: 16px; font-weight: 650; }
+  .hday-right .rtop a { font-size: 12.5px; color: var(--blue); cursor: pointer; }
+  .hday-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; font-size: 11.5px; color: var(--muted); }
+  .hday-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .hday-cal { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 14px 14px 18px; }
+  .hday-todo { display: flex; align-items: center; gap: 9px; padding: 5px 6px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+  .hday-todo input { width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  .hday-todo .x { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hday-todo .a { display: inline-flex; align-items: center; gap: 5px; color: var(--faint); font-size: 11px; white-space: nowrap; }
+  .hday-over { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 8px 0 14px; padding: 8px 11px; border-radius: 8px; background: var(--hover); font-size: 12.5px; cursor: pointer; }
+  .hday-over b { color: var(--red); font-weight: 650; }
+  .hday-over span.m { color: var(--muted); }
+  .hday-allday { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .hday-allday span { font-size: 11.5px; padding: 2px 8px; border-radius: 6px; background: var(--chip-bg); color: var(--muted); border-left: 3px solid var(--line); }
+  .hday-tl { position: relative; margin-left: 44px; }
+  .hday-hr { position: absolute; left: -44px; right: 0; display: flex; align-items: flex-start; gap: 6px; pointer-events: none; }
+  .hday-hr span { width: 38px; margin-top: -7px; text-align: right; font-size: 10.5px; color: var(--faint); }
+  .hday-hr i { flex: 1 1 auto; border-top: 1px solid var(--line); opacity: .6; }
+  .hday-ev { position: absolute; box-sizing: border-box; border-left: 3px solid; border-radius: 6px; padding: 3px 7px; overflow: hidden; font-size: 12px; line-height: 1.3; cursor: pointer; }
+  .hday-ev b { display: block; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hday-ev span { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .hday-ev.other { cursor: default; }
+  .hday-now { position: absolute; left: -5px; right: 0; display: flex; align-items: center; pointer-events: none; }
+  .hday-now i:first-child { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  .hday-now i:last-child { flex: 1 1 auto; border-top: 2px solid var(--red); }
+  .hday-clash { margin-top: 12px; padding: 8px 11px; border-radius: 8px; background: var(--note-bg); border: 1px solid var(--note-line); color: var(--note-ink); font-size: 12px; }
+  .acct-tab.home-tab { font-weight: 600; }
+  @media (max-width: 980px) {
+    .hday-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .hday-counts { gap: 10px; font-size: 12px; }
+    .hday-acct-top { flex-wrap: wrap; }
+  }
+  @media (max-width: 700px) {
+    .hday { padding: 4px 10px 30px; }
+    .hday .hgreet .hwit { display: none; }
+    .hday .hgreet .htrain { display: none; }
+    .hday-tiles { gap: 6px; }
+    .hday-tiles a { padding: 10px 12px; }
+  }
   .hask { display: flex; align-items: center; gap: 10px; margin: 12px 10px 0; border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 11px 14px; }
   .hask input { flex: 1; border: none; outline: none; background: none; color: var(--ink); font-size: 13.5px; }
   .hask:focus-within { border-color: var(--blue); box-shadow: var(--glow); }
@@ -438,6 +555,10 @@
   /* E137: the wit rides beside the greeting — small, up and to the right */
   .hwit.side { margin-left: auto; max-width: 46%; display: flex; align-items: baseline; gap: 8px; font-size: 12px; animation: rise-in .45s ease both; }
   .hwit.side i { font-size: 12px; color: var(--muted); }
+  .hwit .hw-q { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .hwit .hw-by { font-size: 11px; color: var(--faint); }
+  .hwit .hw-copy { border: none; background: none; cursor: pointer; font-size: 12px; opacity: .55; padding: 0 2px; align-self: center; }
+  .hwit .hw-copy:hover { opacity: 1; }
   @media (max-width: 980px) { .hwit.side { display: none; } }
   /* E137: the numbers, calmly — one card, yesterday deltas */
   .hstats .hs-row { display: flex; align-items: center; gap: 8px; padding: 4.5px 2px; border-bottom: 1px solid var(--line-soft); cursor: pointer; font-size: 12.5px; }
@@ -898,6 +1019,123 @@
     padding: 3px 6px 3px 11px; font-size: 12.5px; font-weight: 500;
   }
   .rchip.bad { background: var(--red-soft); color: var(--red); }
+  .acct-tab.dragging { opacity: .45; }
+  /* Projects (2026-09-29) */
+  .pj-dot { display: inline-block; border-radius: 3px; flex: 0 0 auto; }
+  .pj-tsep { width: 1px; align-self: stretch; background: var(--line); margin: 8px 6px; flex: 0 0 auto; }
+  .acct-tab.pj-tab { display: inline-flex; align-items: center; gap: 6px; }
+  .pj-acc { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 11px; color: var(--muted); white-space: nowrap; margin-left: 6px; flex: 0 0 auto; }
+  .pj-acc i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .pj-top { display: flex; align-items: center; gap: 10px; padding: 14px 14px 6px; }
+  .pj-top .t { font-size: 17px; font-weight: 700; }
+  .pj-top .sp, .pj-h1 .sp, .pj-dk1 .sp { flex: 1; }
+  .pj-filters { display: flex; gap: 6px; padding: 4px 14px 10px; }
+  .sm-a.on { border-color: var(--blue); color: var(--blue); }
+  .sm-a[disabled] { opacity: .45; cursor: default; }
+  .pj-row { display: grid; grid-template-columns: 22px minmax(0,1.6fr) minmax(0,1.2fr) 90px 90px 70px; gap: 10px; align-items: center; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--line-soft, var(--line)); }
+  .pj-row:hover { background: var(--hover); }
+  .pj-row.done { opacity: .6; }
+  .pj-rn { min-width: 0; } .pj-rn b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pj-accs { display: flex; flex-wrap: wrap; gap: 3px; } .pj-accs .pj-acc { margin: 0; }
+  .pj-tg { color: var(--muted); font-size: 12.5px; }
+  .pj-bar { display: block; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .pj-bar b { display: block; height: 100%; background: var(--blue); }
+  .pj-bar.big { width: min(360px, 100%); margin-top: 10px; }
+  .pj-ra { display: flex; gap: 2px; justify-content: flex-end; }
+  .pj-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--line); }
+  .pj-h1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pj-name { font-size: 20px; font-weight: 700; cursor: text; }
+  .pj-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; } .pj-meta .pj-acc { margin: 0; }
+  .pj-desc { color: var(--muted); margin-top: 8px; font-size: 13px; white-space: pre-wrap; }
+  .pj-item { position: relative; }
+  .pj-item .pj-x { opacity: 0; margin-left: 4px; }
+  .pj-item:hover .pj-x { opacity: 1; }
+  .pj-ck { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--blue); flex: 0 0 auto; margin: 3px 6px 0 8px; cursor: pointer; }
+  .pj-ck.on { background: var(--blue); }
+  .pj-done .who { text-decoration: line-through; color: var(--muted); }
+  .pj-fold { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+  .pj-fold div { font-size: 12.5px; color: var(--muted); padding: 2px 8px; border-left: 2px solid var(--line); cursor: pointer; }
+  .pj-fold div:hover { color: var(--ink); border-left-color: var(--blue); }
+  .pj-fold span { color: var(--faint); }
+  .pj-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 4px 14px 12px; }
+  .pj-note { border: 1px solid var(--line); background: var(--card); border-radius: var(--r, 10px); padding: 10px 12px; cursor: pointer; }
+  .pj-note:hover { border-color: var(--blue); }
+  .pj-note div { color: var(--muted); font-size: 12.5px; margin: 4px 0; white-space: pre-wrap; max-height: 5.4em; overflow: hidden; }
+  .pj-swatches { display: flex; gap: 8px; }
+  .pj-sw { width: 24px; height: 24px; border-radius: 7px; border: 2px solid transparent; }
+  .pj-sw.on { border-color: var(--ink); }
+  .pj-find { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; margin-bottom: 8px; background: var(--input-bg, var(--card)); color: var(--ink); }
+  .pj-dk { padding: 7px 8px; border-radius: 8px; cursor: pointer; } .pj-dk:hover, .pj-dk.on { background: var(--hover); }
+  .pj-dk1 { display: flex; align-items: center; gap: 7px; } .pj-dk .pj-bar { margin-top: 6px; }
+  .pj-pick { width: 280px; padding: 4px; }
+  .pj-pick-h { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--faint); padding: 4px 6px 6px; }
+  .pj-opt { display: flex !important; align-items: center; gap: 8px; width: 100%; text-align: left; }
+  .pj-opt .sp { flex: 1; } .pj-opt b { color: var(--blue); }
+  .pj-opt.pj-new { color: var(--blue) !important; border-top: 1px solid var(--line); margin-top: 4px; }
+  .pj-dk-h { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--faint); margin: 14px 8px 4px; }
+  @media (max-width: 760px) { .pj-row { grid-template-columns: 22px minmax(0,1fr) 70px 50px; } .pj-row .pj-accs, .pj-row .pj-bar { display: none; } }
+  .snap-bar { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 131; display: flex; gap: 10px; align-items: center;
+    background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; box-shadow: 0 10px 34px rgba(15,25,40,.28); font-size: 13px; max-width: 92vw; }
+  /* Dev #50: Shortwave-style composer toolbar */
+  .rb-body.rb-solo { border-radius: 9px; }
+  .rb-body blockquote { border-left: 3px solid var(--line); margin: 4px 0; padding-left: 10px; color: var(--muted); }
+  .rb-body code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; background: var(--chip-bg); padding: 1px 4px; border-radius: 4px; }
+  .cbar { display: flex; align-items: center; gap: 1px; flex-wrap: wrap; margin-top: 8px; }
+  .cbar .cb { min-width: 32px; height: 32px; padding: 0 6px; border-radius: 8px; color: var(--muted); font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 1px; }
+  .cbar .cb:hover { background: var(--hover); color: var(--ink); }
+  #composer .cbar, #cw .cbar { position: sticky; bottom: 0; z-index: 2; background: var(--card); padding: 6px 0; margin-bottom: -6px; box-shadow: 0 -8px 12px -10px rgba(0,0,0,.25); }
+  .cbar .cb-sep { width: 1px; height: 20px; background: var(--line); margin: 0 5px; }
+  .cbar .sp { flex: 1; }
+  .cbar .cb-when { font-size: 12px; color: var(--blue); margin-right: 2px; }
+  .cbar .cb-send { display: inline-flex; margin-left: 6px; }
+  .cbar .cb-send .btn { border-radius: 9px 0 0 9px; }
+  .cbar .cb-send .cb-more { border-radius: 0 9px 9px 0; padding-left: 8px; padding-right: 8px; margin-left: 1px; }
+  .emo-grid { display: grid; grid-template-columns: repeat(8, 32px); gap: 2px; padding: 4px; }
+  .emo-grid button { font-size: 18px; height: 32px; border-radius: 6px; }
+  .emo-grid button:hover { background: var(--hover); }
+  .snip-box { width: 300px; padding: 4px; }
+  .snip-box input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; margin-bottom: 4px; background: var(--input-bg); color: var(--ink); }
+  .snip-row { display: flex; align-items: stretch; }
+  .snip-use { flex: 1; text-align: left; display: flex; flex-direction: column; padding: 5px 8px !important; }
+  .snip-use span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+  .snip-x { color: var(--faint); padding: 0 8px !important; }
+  .snip-new { color: var(--blue) !important; }
+  /* Dev #50: the compose window */
+  .cw { position: fixed; right: 20px; bottom: 0; z-index: 85; width: min(600px, calc(100vw - 24px)); max-height: min(82vh, 760px);
+    display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-bottom: none;
+    border-radius: 12px 12px 0 0; box-shadow: 0 12px 48px rgba(15,25,40,.32); }
+  .cw[hidden] { display: none; }
+  .cw-bar { display: flex; align-items: center; gap: 2px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--line); cursor: default; }
+  .cw-bar .cw-t { font-weight: 650; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+  .cw-bar .sp { flex: 1; }
+  .cw-bar .tool { width: 28px; height: 28px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+  .cw-bar .tool:hover { background: var(--hover); color: var(--ink); }
+  .cw .cw-body.dlg { width: auto; max-height: none; box-shadow: none !important; border-radius: 0; overflow-y: auto; flex: 1; padding: 12px 18px 16px; background: transparent; }
+  .cw.min { width: 300px; max-height: none; }
+  .cw.min .cw-body { display: none; }
+  .cw.min .cw-bar { cursor: pointer; border-bottom: none; }
+  .cw.full { right: 4vw; left: 4vw; top: 4vh; bottom: 4vh; width: auto; max-height: none; border-radius: 14px; border-bottom: 1px solid var(--line); }
+  body.cw-full::after { content: ''; position: fixed; inset: 0; background: rgba(25,32,45,.4); z-index: 84; }
+  .cw.full #cp-body { min-height: 45vh; }
+  @media (max-width: 640px) { .cw:not(.min) { right: 0; left: 0; top: 0; bottom: 0; width: auto; max-height: none; border-radius: 0; } }
+  /* E244: the strip is solid card, runs across the list's side padding and
+     fills the list's top padding above it, so rows no longer show through
+     between the breadcrumb and the anchors as they scroll under. */
+  .sm-anchors { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 20px;
+    margin: 0 -8px; background: var(--card); box-shadow: 0 -6px 0 var(--card); border-bottom: 1px solid var(--line); }
+  .sm-a { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 4px 11px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  .sm-a:hover { border-color: var(--blue); }
+  .sm-a .n { color: var(--muted); font-size: 11.5px; margin-left: 2px; }
+  .dev-tri { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; font-size: 12px; }
+  .dev-tri.muted { color: var(--faint); }
+  .dev-tri .status { flex-basis: 100%; text-transform: none; letter-spacing: 0; }
+  .dev-pri { font: inherit; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); }
+  .keys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; }
+  .keys-h { font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--faint); font-weight: 700; margin-bottom: 4px; }
+  .keys-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 13px; }
+  .keys-row i { color: var(--faint); font-style: normal; font-size: 11px; }
+  kbd { font: 600 11.5px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--card); color: var(--ink); }
+  .rchip .rc-em { color: var(--muted); font-weight: 400; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .rchip b { cursor: pointer; color: var(--muted); font-size: 13px; padding: 0 4px; border-radius: 50%; }
   .rchip b:hover { color: var(--red); }
   .chip-in { flex: 1 1 120px; min-width: 120px; border: none !important; outline: none; background: none; padding: 3px 2px !important; font-size: 13px; }
@@ -1216,6 +1454,7 @@
     .shell { padding: 0; }
     .main { padding: 0; }
     .list { padding: 0 0 calc(16px + var(--safe-bot)); }
+    .sm-anchors { margin: 0; padding: 8px 12px; }
     /* E201 — the view switcher, on its own line. The 760px block set the
        strip to nowrap but left .crumb at `flex: 1 1 100%` from the desktop
        rule, so the breadcrumb ate the whole row and pushed Todos and Starred
@@ -1459,6 +1698,12 @@
   /* the todo place — Shortwave's todo page */
   .tp { padding: 4px 0 0; }
   .tp-bar { display: flex; align-items: center; gap: 4px; padding: 8px 12px 4px 8px; }
+  /* Dev #16: the invitation bar at the top of an invite's thread */
+  .rsvp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 12px 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+  .rsvp-bar .rsvp-q { flex: 1 1 220px; font-size: 13px; }
+  .rsvp-bar .rsvp-b { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rsvp-bar .qbtn.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .rsvp-bar .status { flex-basis: 100%; }
   .tp-bar .sp { flex: 1; }
   .tp-bar .ib { width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
   .tp-bar .ib:hover { background: var(--hover); color: var(--ink); }
@@ -2189,7 +2434,6 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
            sideways on a line of their own, under the breadcrumb. -->
       <div class="ltabs">
         <button class="ltab on" data-tab="all">Everything <span class="n" id="n-all"></span></button>
-        <button class="ltab" data-tab="today">Today <span class="n" id="n-today"></span></button>
         <button class="ltab" data-tab="mail">Mail <span class="n" id="n-mail"></span></button>
         <button class="ltab" data-tab="todos">Todos <span class="n" id="n-todos"></span></button>
         <button class="ltab" data-tab="star">★ Starred <span class="n" id="n-star"></span></button>
@@ -2220,6 +2464,7 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
     <button class="dk" data-dock="brief" title="Today's brief — the plan, what's due, what's drifting">◎</button>
     <button class="dk" data-dock="cal" title="Calendar">📅</button>
     <button class="dk" data-dock="todos" title="Todos">◯</button>
+    <button class="dk" data-dock="proj" title="Projects">📁</button>
     <button class="dk" data-dock="wait" title="Waiting on">⏳</button>
     <button class="dk" data-dock="ask" title="Ask Grand Central">✨</button>
   </div>
@@ -2246,6 +2491,13 @@ const POLL_MS = 60_000, BOARD_MS = 300_000;
 let MAIL = [], TODOS = [], BOARD = {}, OUTBOX = [], DRAFTS = null, SENT = null, CONN = null;
 let ITEMS = [], PNAME = {}, OWN = new Set();
 let SCOPE = { kind:'home', id:null }, TAB='all', GROUP='smart', Q='', OPEN=null, DOCK=null;
+/* Dev #49 (Bart: "default the Inbox view to the classic … view where it's
+   starred, and then the full inbox by date. Then create a new Smart Inbox in
+   the left nav … with the sections … as anchors … with the number of emails
+   in each"): Smart Inbox is a mode of the inbox scope, so search, tabs, keys
+   and bundles all carry over. Only accounts with Jev switched on have it. */
+let SMART=false;
+const smartOn = () => SMART && SCOPE.kind==='inbox' && !!JEV_ON[ACCT];
 /* ================= accounts (account-first, 2026-09-24) =================
    An account is a real mail account (personal, connectblue, …) — the primary
    navigation and the ownership boundary. Mail and todos are only ever seen
@@ -2256,14 +2508,35 @@ let SCOPE = { kind:'home', id:null }, TAB='all', GROUP='smart', Q='', OPEN=null,
 let ACCOUNTS=[];
 let ACCT = localStorage.getItem('gc2_acct') || '';
 const acctLabel = id => String(id||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-function acctIds(){ return ACCOUNTS.slice(); }
+/* Dev #40: the account tabs can be dragged into Bart's order, and it sticks.
+   Dev #42: the order is saved on the server (/accounts/order) so it follows
+   Bart across browsers and sessions; localStorage is only this browser's
+   cache of it. Accounts not in the saved order — a newly added one — go on
+   the end. */
+function acctIds(){
+  let saved=[]; try { saved=JSON.parse(localStorage.getItem('gc2_acct_order')||'[]'); } catch(e){}
+  const known=saved.filter(a=>ACCOUNTS.includes(a));
+  return [...known, ...ACCOUNTS.filter(a=>!known.includes(a))];
+}
 const mailAcctInAcct = a => !!ACCT && a===ACCT;
 const sentInAcct = row => mailAcctInAcct(row.account);
 const inAcctId = pid => !!ACCT && pid===ACCT;
 const inAcct = i => !!ACCT && i.account===ACCT;
 const acctName = id => acctLabel(id);
+/* E249: the ⌂ Home tab is a VIEW across accounts, never an account of its
+   own: ACCT stays the last real account (so every scoped fetch and action
+   keeps its one-account rule), and HOME_ALL only swaps what #list draws.
+   Each account keeps one colour everywhere — tab dot, section, calendar. */
+let HOME_ALL = localStorage.getItem('gc2_home_all')==='1';
+const ACCT_COLORS=['#3b82f6','#e07a2f','#15998a','#8b5cf6','#a07c4a','#d6457a','#5b8c2a','#2b7f8f'];
+const acctColor = id => ACCT_COLORS[Math.max(0,acctIds().indexOf(id))%ACCT_COLORS.length];
 async function setAcct(id){
-  if(!ACCOUNTS.includes(id) || id===ACCT) return;
+  if(!ACCOUNTS.includes(id)) return;
+  if(PROJ){ leaveProj(); if(id===ACCT&&!HOME_ALL){ renderAcctTabs(); renderRail(); renderCrumbs(); renderList(); return; } }
+  // E249: leaving the cross-account Home tab lands on the account clicked.
+  if(HOME_ALL){ leaveHomeAll();
+    if(id===ACCT){ renderAcctTabs(); renderRail(); renderCrumbs(); renderList(); return; } }
+  else if(id===ACCT) return;
   ACCT=id; localStorage.setItem('gc2_acct',id);
   // Account changes invalidate every account-owned cache before repainting.
   DRAFTS=null; SENT=null; DEVQ=null; SEL.clear(); KB=-1; closePane();
@@ -2278,12 +2551,42 @@ function acctCount(id){
   const n=ITEMS.filter(i=>!i.snoozed&&inAcct(i)&&inboxLive(i)&&(i.type==='todo'?isToday(i):(i.needs||i.unread))).length;
   ACCT=was; return n;
 }
+function saveAcctOrder(order){
+  try { localStorage.setItem('gc2_acct_order',JSON.stringify(order)); } catch(_){}
+  post('/accounts/order',{order}).catch(e=>fbErr('http','acct order not saved: '+e.message));
+}
 function renderAcctTabs(){
   const el=$('#acct-tabs'); if(!el) return;
   const tab=(id,label)=>{ const n=acctCount(id);
-    return `<button class="acct-tab ${ACCT===id?'on':''}" onclick="setAcct('${esc(id)}')" title="${esc(acctName(id))}">
-      <span>${esc(label)}</span>${n?`<span class="n">${n}</span>`:''}</button>`; };
-  el.innerHTML = acctIds().map(id=>tab(id,acctLabel(id).slice(0,22))).join('');
+    return `<button class="acct-tab ${ACCT===id&&!HOME_ALL&&!PROJ?'on':''}" draggable="true" data-acct="${esc(id)}" onclick="setAcct('${esc(id)}')" title="${esc(acctName(id))} — drag to reorder">
+      <span class="hday-dot" style="background:${acctColor(id)}"></span><span>${esc(label)}</span>${n?`<span class="n">${n}</span>`:''}</button>`; };
+  // E249: ⌂ Home — every account at once, read-only (BUILD_SPEC §6, 2026-09-29)
+  // Projects: up to 3 pinned after the accounts, behind a divider, then 📁 all
+  const pins=(PROJECTS||[]).filter(p=>p.pin_rank&&p.status==='open').sort((a,b)=>a.pin_rank-b.pin_rank);
+  const onP=PROJ&&PROJ.view==='page'?PROJ.id:null;
+  el.innerHTML = `<button class="acct-tab home-tab ${HOME_ALL&&!PROJ?'on':''}" onclick="showHomeAll()" title="Home — your day across every account">⌂ Home</button>`
+    + acctIds().map(id=>tab(id,acctLabel(id).slice(0,22))).join('')
+    + `<span class="pj-tsep"></span>`
+    + pins.map(p=>`<button class="acct-tab pj-tab ${onP===p.id?'on':''}" onclick="openProject(${p.id})" title="Project: ${esc(p.name)}">${projDot(p.color,8)}<span>${esc(p.name.slice(0,22))}</span></button>`).join('')
+    + `<button class="acct-tab pj-tab ${PROJ&&PROJ.view==='list'?'on':''}" onclick="showProjects()" title="All projects">📁${pins.length?'':' Projects'}</button>`;
+  if(!el._dnd){ el._dnd=true;
+    let from=null;
+    el.addEventListener('dragstart',e=>{ const t=e.target.closest('.acct-tab[data-acct]'); if(!t) return;
+      from=t.dataset.acct; t.classList.add('dragging'); e.dataTransfer.effectAllowed='move';
+      try { e.dataTransfer.setData('text/plain',from); } catch(_){} });
+    el.addEventListener('dragover',e=>{ if(!from) return; e.preventDefault();
+      const t=e.target.closest('.acct-tab[data-acct]'); const d=el.querySelector('.dragging');
+      if(!t||!d||t===d) return;
+      const r=t.getBoundingClientRect();
+      el.insertBefore(d, e.clientX<r.left+r.width/2 ? t : t.nextSibling); });
+    const done=()=>{ if(!from) return; from=null;
+      el.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));
+      const order=[...el.querySelectorAll('.acct-tab[data-acct]')].map(x=>x.dataset.acct);
+      saveAcctOrder(order);
+      renderAcctTabs(); };
+    el.addEventListener('drop',e=>{ e.preventDefault(); done(); });
+    el.addEventListener('dragend',done);
+  }
 }
 /* ================= E164: ⚑ flag it from the screen =================
    NewsBot/SalesDB grammar: say what is wrong WHERE it is wrong, and let the
@@ -2372,13 +2675,16 @@ function fallbackCopy(s,done){
   try{ document.execCommand('copy'); done(); }catch(e){ toast('Copy failed'); }
   ta.remove();
 }
-async function post(url, body, headers){
+async function post(url, body, headers, opts){
   // E155: name the two connection-loss shapes plainly. A dropped Cloudflare
   // tunnel either rejects the fetch outright or answers a 5xx HTML page that
   // used to surface as "Unexpected token '<'" — either way Bart needs to know
   // the change did NOT land, and that what he typed is still on screen.
   let r;
-  try { r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json',...(headers||{})}, body: JSON.stringify(body) }); }
+  const payload=JSON.stringify(body);
+  // keepalive lets a held send finish if the tab closes (browsers cap it at 64 KB)
+  const keepalive=!!(opts&&opts.keepalive)&&payload.length<60000;
+  try { r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json',...(headers||{})}, body: payload, keepalive }); }
   catch(e){ throw new Error('connection lost — NOT saved. Your text is still here; retry once the red bar clears'); }
   let out;
   try { out = await r.json(); }
@@ -2392,6 +2698,13 @@ async function loadAccounts(){
   const out=await fetch('/accounts').then(r=>r.json());
   if(!out.ok) throw new Error(out.error||'could not load accounts');
   ACCOUNTS=out.accounts||[];
+  if(Array.isArray(out.order) && out.order.length){
+    try { localStorage.setItem('gc2_acct_order',JSON.stringify(out.order)); } catch(_){}
+  } else {
+    // First load after #42: lift this browser's saved order to the server.
+    let local=[]; try { local=JSON.parse(localStorage.getItem('gc2_acct_order')||'[]'); } catch(_){}
+    if(Array.isArray(local) && local.length) saveAcctOrder(local);
+  }
   if(!ACCOUNTS.length) throw new Error('no account has synced mail or todos yet');
   if(!ACCOUNTS.includes(ACCT)) ACCT=ACCOUNTS[0];
   localStorage.setItem('gc2_acct',ACCT);
@@ -2410,6 +2723,7 @@ async function loadMailTodos(){
   MAIL = (m.threads||[]).filter(x=>x.account===account&&(x.in_inbox || x.moved_at) && !x.done_at);
   OUTBOX = (m.outbox||[]).filter(x=>x.account===account);
   SYNC = m.sync||SYNC||{};
+  JEV_ON[account]=!!m.jev;
   noteNewMail();
   TODOS = (t.todos||[]).filter(x=>x.account===account&&x.state==='open');
   rebuild();
@@ -2455,7 +2769,7 @@ function rebuild(){
   ITEMS = [
     ...MAIL.map(x=>({
       type:'mail', key:'m:'+x.account+':'+x.thread_id, raw:x,
-      who:x.who||x.last_from||'', title:x.subject||'(no subject)', snip:x.snippet||'',
+      ...mailWho(x), title:x.subject||'(no subject)', snip:x.snippet||'',
       account:x.account, project:x.account, goals:[],
       labels:(x.labels||[]).filter(l=>!l.startsWith('GC/')),
       date:x.last_date, unread:!!x.unread, starred:!!x.starred, pinned:!!x.pinned,
@@ -2554,26 +2868,34 @@ function renderRail(){
       <span class="ic">⌂</span><span class="nm">Home</span><span class="ct"></span></button>
     <button class="scope ${SCOPE.kind==='wizard'?'on':''}" title="Wizard" onclick="setScope('wizard',null)">
       <span class="ic">🧙</span><span class="nm">Wizard</span><span class="ct">${(typeof WIZ!=='undefined'&&WIZ.filter(wizInAcct).length)||''}</span></button>
-    <button class="scope ${todayOn?'on':''}" title="Today" onclick="goToday()">
-      <span class="ic">☀</span><span class="nm">Today</span>
-      <span class="ct">${live.filter(isToday).length}</span></button>
     <button class="scope ${todosOn?'on':''}" title="Todos" onclick="goTodos()">
       <span class="ic">◯</span><span class="nm">Todos</span>
       <span class="ct">${live.filter(i=>i.type==='todo').length}</span></button>
-    <button class="scope ${SCOPE.kind==='inbox'&&!todayOn&&!todosOn?'on':''}" title="Inbox" onclick="setScope('inbox',null);TAB='all';syncTabs();renderList();renderRail()">
+    <button class="scope ${SCOPE.kind==='inbox'&&!todayOn&&!todosOn&&!smartOn()?'on':''}" title="Inbox" onclick="goInbox()">
       <span class="ic">📥</span><span class="nm">Inbox</span>
       <span class="ct">${live.length}</span></button>` +
+    (JEV_ON[ACCT]?`<button class="scope ${smartOn()&&!todosOn?'on':''}" title="Smart Inbox — sorted by Jev" onclick="goSmart()">
+      <span class="ic">🧠</span><span class="nm">Smart Inbox</span>
+      <span class="ct">${live.filter(i=>i.type==='mail'&&!i.starred&&!i.attached&&!GRP_KIND[i.raw.category]
+          &&!JEV_TYPE_GRP[i.cls?.type]&&(i.needs||(i.cls?.priority??-1)>=3)).length||''}</span></button>`:'') +   // = Needs you
     sc('allmail',null,'🗄','All mail',MAIL.length) +
     sc('drafts',null,'📝','Drafts', DRAFTS?DRAFTS.length:'') +
-    sc('sent',null,'📤','Sent', SENT?SENT.length:'') +
+    sc('sent',null,'➤','Sent', SENT?SENT.length:'') +   // E221 (Dev #23): 📤 read as a twin of Inbox's 📥
     sc('snoozed',null,'⏰','Snoozed', snoozedN||'') +
     sc('outbox',null,'🕐','Scheduled', pending||'') +
     sc('braindump',null,'💡','Braindump', (BRAIN||[]).filter(b=>b.status==='idea').length||'') +
     (UNASG===null?(loadUnassigned(),''):UNASG.length?sc('unassigned',null,'◌','Unassigned todos',UNASG.length):'') +
     sc('contacts',null,'👥','Contacts',CONTACTS[ACCT]?CONTACTS[ACCT].length:'') +
     // E219: the bottom tab bar is gone on a phone; its panels live here.
+    // Projects (2026-09-29): outside the accounts, like the ⌂ Home tab
+    `<div class="rail-proj"><h4>Projects</h4>` +
+    (PROJECTS||[]).filter(p=>p.status==='open').slice(0,8).map(p=>
+      `<button class="scope ${PROJ&&PROJ.view==='page'&&PROJ.id===p.id?'on':''}" title="${esc(p.name)}" onclick="openProject(${p.id})">
+        <span class="ic">${projDot(p.color,9)}</span><span class="nm">${esc(p.name)}</span><span class="ct">${(p.counts&&p.counts.todos_total-p.counts.todos_done)||''}</span></button>`).join('') +
+    `<button class="scope" title="New project" onclick="projEditDlg()"><span class="ic">＋</span><span class="nm" style="color:var(--blue)">New project</span><span class="ct"></span></button>
+     <button class="scope ${PROJ&&PROJ.view==='list'?'on':''}" title="All projects" onclick="showProjects()"><span class="ic">📁</span><span class="nm">All projects</span><span class="ct">${(PROJECTS||[]).filter(p=>p.status==='open').length||''}</span></button></div>` +
     `<div class="rail-panels"><h4>Panels</h4>` +
-    [['brief','◎',"Today's brief"],['cal','📅','Calendar'],['todos','◯','Todo panel'],
+    [['brief','◎',"Today's brief"],['cal','📅','Calendar'],['todos','◯','Todo panel'],['proj','📁','Projects'],
      ['wait','⏳','Waiting on'],['ask','✨','Ask Grand Central']].map(([k,ic,nm])=>
       `<button class="scope ${DOCK===k?'on':''}" title="${esc(nm)}" onclick="closeNav();openDock('${k}')">
         <span class="ic">${ic}</span><span class="nm">${esc(nm)}</span><span class="ct"></span></button>`).join('') +
@@ -2589,6 +2911,22 @@ function renderRail(){
         ||'<div style="padding:4px 10px;color:var(--faint);font-size:12px">No labels in view</div>'; })() +
     `</div>`;
 }
+/* E221 (Dev #18): instant labels on the slim rail. One floating tip, driven
+   by delegation, so renderRail's innerHTML rewrites need no rebinding. The
+   native title stays for the wide rail and for touch/assistive tech. */
+(()=>{
+  const tip=()=>document.getElementById('railtip')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'railtip'}));
+  const hide=()=>{ const t=document.getElementById('railtip'); if(t) t.classList.remove('on'); };
+  document.addEventListener('mouseover',e=>{
+    const b=e.target.closest&&e.target.closest('#rail .scope, #rail .rail-toggle');
+    if(!b||document.documentElement.dataset.rail!=='slim'||!matchMedia('(min-width: 981px)').matches) return hide();
+    const r=b.getBoundingClientRect(), t=tip();
+    t.textContent=b.getAttribute('title')||''; if(!t.textContent) return hide();
+    t.style.left=(r.right+8)+'px'; t.style.top=(r.top+r.height/2)+'px'; t.classList.add('on');
+  });
+  document.addEventListener('scroll',hide,true);
+  document.addEventListener('click',hide,true);
+})();
 /* E114: collapse/expand the rail; remembered across sessions. */
 function toggleRail(){
   const el=document.documentElement;
@@ -2599,7 +2937,7 @@ function toggleRail(){
 function scopeTitle(kind,id){
   return kind==='home'?'⌂ Home':
     kind==='wizard'?'🧙 Wizard':
-    kind==='inbox'?'Inbox':kind==='allmail'?'All mail':kind==='account'?id:
+    kind==='inbox'?(smartOn()?'🧠 Smart Inbox':'Inbox'):kind==='allmail'?'All mail':kind==='account'?id:
     kind==='project'?(id==='__none'?'◌ Uncategorized':theaterName(id)):
     kind==='label'?'🏷 '+id:kind==='drafts'?'Drafts':kind==='sent'?'Sent':
     kind==='outbox'?'Scheduled':kind==='snoozed'?'⏰ Snoozed':
@@ -2611,6 +2949,14 @@ function scopeTitle(kind,id){
 function renderCrumbs(){
   const {kind,id}=SCOPE;
   const c=[];
+  if(PROJ){                                   // Projects sit outside any account
+    c.push({t:'⌂',go:"setScope('home',null)",tip:'Home'});
+    c.push({t:'📁 Projects',go:'showProjects()'});
+    if(PROJ.view==='page'){ const p=projById(PROJ.id)||(PROJ_PAGE[PROJ.id]&&PROJ_PAGE[PROJ.id].data); c.push({t:p?p.name.slice(0,44):'Project'}); }
+    $('#scope-name').innerHTML=c.map((x,ix)=>{ const last=ix===c.length-1;
+      return (ix?'<span class="cr-sep">›</span>':'')+`<span class="cr ${last?'on':''}"${x.go&&!last?` onclick="${x.go}"`:''}${x.tip?` title="${esc(x.tip)}"`:''}>${esc(x.t)}</span>`; }).join('');
+    return;
+  }
   if(kind!=='home') c.push({t:'⌂',go:"setScope('home',null)",tip:'Home'});
   // E171: the account is the context everything below sits in — say so. On
   // Home the tab strip says it loudly enough; elsewhere it belongs in the trail.
@@ -2661,6 +3007,8 @@ async function setScope(kind,id){
   // filters — picking a project from inside one narrows it instead of
   // dumping you back into everything. Mail and Starred stay filters.
   if(kind!==SCOPE.kind||id!==SCOPE.id) TAB=(TAB==='today'||TAB==='todos')?TAB:'all';
+  if(kind!=='inbox') SMART=false;
+  leaveProj();
   SCOPE={kind,id}; SEL.clear(); KB=-1; SEARCH_ROWS=null; closePane();
   sfx('nav'); renderCrumbs();
   if (kind==='drafts' && !DRAFTS){
@@ -2670,7 +3018,7 @@ async function setScope(kind,id){
   }
   if (kind==='sent' && !SENT){
     $('#list').innerHTML='<div class="empty">Loading sent mail from Gmail…</div>';
-    try { const d=await fetch('/sent?account='+encodeURIComponent(ACCT)).then(r=>r.json()); SENT=(d.sent||[]).filter(x=>x.account===ACCT); }
+    try { const d=await fetch('/sent?account='+encodeURIComponent(ACCT)).then(r=>r.json()); SENT=(d.sent||[]).filter(x=>x.account===ACCT); SENT_NEXT=d.next_before||null; }
     catch(e){ SENT=[]; toast('Could not load sent — '+e.message); }
   }
   renderRail(); renderList(); renderBulk();
@@ -2731,7 +3079,7 @@ let _QC={q:null,terms:[]};
 function parseQ(q){
   if(_QC.q===q) return _QC.terms;
   const terms=[]; let m;
-  const re=/(-)?(?:(from|to|subject|label|project|account|is|has|before|after|in):)?(?:"([^"]*)"|(\S+))/gi;
+  const re=/(-)?(?:(from|to|subject|label|project|account|is|has|before|after|in|type|priority|needs):)?(?:"([^"]*)"|(\S+))/gi;
   while(m=re.exec(q)){
     const val=(m[3]!==undefined?m[3]:m[4]||'').toLowerCase();
     if(!val) continue;
@@ -2758,6 +3106,17 @@ function qMatch(i,t){
       if(v==='needs'||v==='unreplied') return !!i.needs;
       if(v==='pinned') return !!i.pinned;
       return false;
+    // Jev-led filters (GC-only: stripped before a Gmail search)
+    case 'type': {
+      const al={pitch:'cold pitch',cold:'cold pitch',team:'team collaboration',prospect:'prospect',
+                spam:'spam',update:'update',newsletter:'newsletter',correspondence:'correspondence'};
+      return (i.cls?.type||'').toLowerCase().includes(al[v]||v);
+    }
+    case 'priority': {
+      const p=i.cls?.priority; if(p==null) return false;
+      return v==='urgent'?p>=3:v==='high'?p>=2:v==='low'?p<=1:String(p)===v;
+    }
+    case 'needs': return (v==='reply'||v==='you')&&!!i.needs;
     case 'has':
       if(v==='attachment'||v==='attachments') return !!i.attachments;
       if(v==='note') return !!i.note;
@@ -2822,7 +3181,7 @@ function groupItems(items){
     if(i.type==='todo') todos.push(i);
     else if(attached.has(i.key)) return;
     else if(i.starred) starred.push(i);          // E86: star outranks category
-    else if(GRP_KIND[i.raw.category]) (groups[i.raw.category]=groups[i.raw.category]||[]).push(i);
+    else if(grpKey(i)){ const g=grpKey(i); (groups[g]=groups[g]||[]).push(i); }
     else flow.push(i);
   });
   todos.sort((a,b)=>String(todoActivity(b)).localeCompare(String(todoActivity(a))));
@@ -2841,6 +3200,24 @@ function groupItems(items){
   let st=starred;
   if (TAB!=='star' && st.length>10){ const extra=st.length-10; st=starred.slice(0,10); st._more=extra; st._tab='star'; st._word='starred'; }
   if(st.length) out.push(['Starred',st]);
+  if(smartOn()){
+    // Jev-led Smart: what needs you, then who it's with, most important
+    // first; the bundles (cold pitches, spam, updates, …) sit underneath.
+    const pri=i=>i.cls?.priority??-1;
+    const byP=(a,b)=>pri(b)-pri(a)||(b.cls?.value??-1)-(a.cls?.value??-1)||byD(a,b);
+    const sec={'Needs you':[],'Team':[],'Prospects':[],'Correspondence':[]};
+    flow.forEach(i=>{
+      const t=i.cls?.type;
+      if(i.needs||pri(i)>=3) sec['Needs you'].push(i);
+      else if(t==='Team collaboration') sec['Team'].push(i);
+      else if(t==='Prospect'||t==='Sales/outreach') sec['Prospects'].push(i);
+      else sec['Correspondence'].push(i);
+    });
+    Object.entries(sec).forEach(([n,rows])=>{ if(rows.length){ rows.sort(byP); out.push([n,rows]); } });
+    const bundles=entries.filter(e=>e.row.grp).map(e=>e.row);
+    if(bundles.length) out.push(['Bundled',bundles]);
+    return out;
+  }
   const age=d=>{ const iso=String(d||'').slice(0,10);
     return iso>=dOff(-7)?'Last 7 days':iso>=dOff(-30)?'Earlier this month':'Older'; };
   const buckets=new Map();
@@ -2856,9 +3233,31 @@ const GRP_KIND={
   newsletter:{name:'Newsletters',icon:'news'},
   receipt:{name:'Receipts',icon:'receipt'},
   calendar:{name:'Calendar',icon:'calendar'},
+  pitch:{name:'Cold pitches',icon:'tag'},     // Jev-led accounts only
+  spam:{name:'Spam',icon:'trash'},
 };
 const GRP_BULK={newsletter:'📰 Newsletters',notification:'🔔 Updates & notifications',
-  receipt:'🧾 Receipts',calendar:'📅 Calendar mail',promo:'🛍 Promos'};   // BUNDLE_NAME's keys
+  receipt:'🧾 Receipts',calendar:'📅 Calendar mail',promo:'🛍 Promos',
+  pitch:'🎣 Cold pitches',spam:'🚫 Spam'};   // BUNDLE_NAME's keys
+/* Jev-led grouping (Bart 2026-09-28: "switch our sorting logic to use the
+   Jev context"). On an account with Jev switched on, a person email's type
+   is the classifier's effective answer — your correction, else Jev when
+   confident, else the rules — and that decides its bundle and section.
+   Bulk mail never goes to Jev (§6), so its bundle still comes from the
+   categorizer. Accounts without Jev keep exactly the old behaviour. */
+const JEV_ON={};
+const JEV_TYPE_GRP={'Cold pitch':'pitch','Spam':'spam','Update':'notification','Newsletter':'newsletter'};
+// A bundle Jev filled offers Archive all but not Delete all: a model's call
+// shouldn't be one click from Trash for every thread in it.
+const JEV_TYPE_GRP_KEYS=new Set(['pitch','spam']);
+// Dev #49: Jev's bundles (cold pitches, spam) belong to Smart Inbox; the
+// classic Inbox bundles by the rules alone.
+const jevLed = i => smartOn() && !!JEV_ON[i.account] && !!i.cls && ['jev','you'].includes(i.cls.type_src);
+function grpKey(i){
+  if(i.type!=='mail') return null;
+  if(GRP_KIND[i.raw.category]) return i.raw.category;           // bulk: the rules' call
+  return jevLed(i) ? (JEV_TYPE_GRP[i.cls.type]||null) : null;
+}
 /* One group row. The two senders with the most mail get their NAME (with a
    face); everyone else is just a face — Bart: "I love how it will show the
    name of the most prominent emails within a grouping, and then icons for
@@ -2881,7 +3280,7 @@ function grpRowHtml(g){
         <span class="gw">${fmtDate(g.date)}</span>
         <span class="acts">
           ${actBtn('check','Archive all '+g.rows.length+' in Gmail',`bundleBulk('${bulk}','archive')`)}
-          ${actBtn('trash','Delete all — Gmail Trash, recoverable 30d',`bundleTrash('${bulk}')`)}</span></div>
+          ${JEV_TYPE_GRP_KEYS.has(g.grp)?'':actBtn('trash','Delete all — Gmail Trash, recoverable 30d',`bundleTrash('${bulk}')`)}</span></div>
       <div class="g2">${named}${rest?'<span class="gbar"></span>'+rest:''}</div>
     </div></div>`;
 }
@@ -2892,7 +3291,7 @@ function closeSplit(){ SPLIT=null; renderList(); }
 function closePaneQuiet(){ OPEN=null; if(!(PREVIEW&&innerWidth>980)){ document.body.classList.remove('pane-open'); $('#pane').classList.remove('open'); } }
 function renderSplit(){
   const k=GRP_KIND[SPLIT.cat]||{name:SPLIT.cat,icon:'label'};
-  const rows=ITEMS.filter(i=>inScope(i)&&inQ(i)&&i.type==='mail'&&!i.attached&&!i.starred&&i.raw.category===SPLIT.cat)
+  const rows=ITEMS.filter(i=>inScope(i)&&inQ(i)&&i.type==='mail'&&!i.attached&&!i.starred&&grpKey(i)===SPLIT.cat)
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   if(!rows.length){ SPLIT=null; return renderList(); }
   VISIBLE=rows.slice();
@@ -2939,6 +3338,12 @@ function renderList(){
   if(dn) dn.hidden = true;
   // wizard gets its own class: full-page like Home but WITHOUT home-on's
   // .pane{display:none} — "open the email" must show the reading pane
+  // E249: the ⌂ Home tab draws over whatever account scope is underneath
+  document.body.classList.toggle('proj-on', !!PROJ);
+  if (PROJ) { document.body.classList.remove('home-on','wiz-on','homeall-on');
+    return PROJ.view==='page' ? renderProjectPage() : renderProjectsPage(); }
+  document.body.classList.toggle('homeall-on', HOME_ALL);
+  if (HOME_ALL) { document.body.classList.remove('home-on','wiz-on'); return renderHomeAll(); }
   document.body.classList.toggle('home-on', SCOPE.kind==='home');
   document.body.classList.toggle('wiz-on', SCOPE.kind==='wizard');
   if (SCOPE.kind==='home') return renderHome();
@@ -2957,7 +3362,9 @@ function renderList(){
   // E177: the tab counts are computed before any view takes over — the Inbox
   // layouts used to return early and leave the strip showing stale numbers.
   $('#n-all').textContent = vis.length;
-  $('#n-today').textContent = vis.filter(isToday).length;
+  // Dev #39 (Bart: "I don't think we need Today — Home is better"): no Today
+  // tab or rail row any more; Home's "due today" links still open the list.
+  if($('#n-today')) $('#n-today').textContent = vis.filter(isToday).length;
   $('#n-mail').textContent = vis.filter(i=>i.type==='mail').length;
   $('#n-todos').textContent = vis.filter(i=>i.type==='todo').length;
   $('#n-star').textContent = vis.filter(i=>i.starred).length||'';
@@ -2968,8 +3375,13 @@ function renderList(){
   const groups = groupItems(items);
   VISIBLE = [];
   const sweepable = name => ['Last 7 days','Earlier this month','Older'].includes(name);
+  // Dev #48 (Bart: "keep the Starred and Todos collapsed by default in the
+  // Inbox"): on the All tab those two sections start folded; a click opens
+  // them (FOLDS holds the inversion, as for the bundles). Their own tabs
+  // (Todos, Starred) still show them open.
+  const foldsFirst = name => TAB==='all' && (name==='Todos' || name==='Starred');
   let html = groups.map(([name,rows])=>{
-    const folded=FOLDS.has(name);
+    const folded=FOLDS.has(name)!==foldsFirst(name);
     const rowOut = r => r.grp ? grpRowHtml(r) : rowHtml(r);
     if(!folded) rows.forEach(r=>{ if(r.grp) return; VISIBLE.push(r); });
     const more = rows._more
@@ -2996,6 +3408,14 @@ function renderList(){
       <span class="ib-toggle">
         <button onclick="setTodayView('inbox')" title="Inbox layout — time buckets and bundles">▤</button>
         <button class="on" title="The plain Grand Central list">☰</button></span></div>` + html;
+  }
+  if (smartOn() && !SEARCH_ROWS){
+    // Dev #49: the sections as jump links, with how many are in each
+    const skip=new Set(['Todos','Starred','Due & My Day']);
+    const chips=groups.filter(([n])=>!skip.has(n)).map(([n,rows])=>{
+      const count=n==='Bundled'?rows.reduce((a,g)=>a+(g.rows?g.rows.length:1),0):rows.length;
+      return `<button class="sm-a" onclick="smartJump(${esc(JSON.stringify(n))})">${esc(n)} <span class="n">${count}</span></button>`; }).join('');
+    if(chips) html = `<div class="sm-anchors">${chips}</div>` + html;
   }
   if (SEARCH_ROWS){
     html = `<div class="sec">Gmail search · ${SEARCH_ROWS.length} <span class="fold" onclick="SEARCH_ROWS=null;renderList()">✕ clear</span></div>` +
@@ -3160,6 +3580,14 @@ const WITS=[
   ["Even a stone can reach the mountaintop, provided someone files it under the right project.",""],
 ];
 let WIT_IX=null;
+const witBy = a => a ? a : '— Grand Central original';
+function witCopy(){
+  const [q,a]=witPick();
+  const txt=`“${q}” ${witBy(a)}`;
+  (navigator.clipboard?.writeText(txt)||Promise.reject()).then(()=>toast('Quote copied'),()=>{
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('Quote copied'); } catch(e){ toast('Could not copy'); } ta.remove(); });
+}
 function witPick(rand){
   const day=Math.floor(Date.now()/864e5);
   if(rand||WIT_IX==null) WIT_IX=rand?Math.floor(Math.random()*WITS.length):day%WITS.length;
@@ -3202,6 +3630,8 @@ function homeAsk(q){
    highlights and previews. Everything computed from data already in
    memory; every number is a link into the scoped view. ------- */
 function renderHome(){
+  // E249: ◫ Day is the default Home layout; Feed and Cards stay one click away
+  if(HOME_VIEW==='day') return renderHomeDay();
   // E100.1 (Bart): the plan lives on Home, not in the inbox
   if(PLAN===undefined){ PLAN=null;
     fetch('/plan').then(r=>r.json()).then(r=>{ PLAN=r.plan||null; if(SCOPE.kind==='home') renderHome(); }).catch(()=>{}); }
@@ -3268,8 +3698,13 @@ function renderHome(){
     <span class="ht" style="cursor:pointer" onclick="event.stopPropagation();openItem('${esc(i.key)}')">${esc(i.title.slice(0,44))}</span>
     <span class="hd">${i.my_day?'☀ ':''}${i.due?esc(String(i.due).slice(5)):''}</span></div>`;
   const [wq,wa]=witPick();
+  // Dev #51 (Bart: "copy the insight quotes and also see who wrote them"):
+  // the credit shows — a book's line is credited to it, the rest are
+  // originals written for Grand Central (E97) — and 📋 copies both. A
+  // click elsewhere on the quote still deals another one.
   const wit=`<div class="hwit side" onclick="event.stopPropagation();witPick(true);renderHome()" title="Another one">🎭
-    <i>“${esc(wq)}”</i></div>`;
+    <span class="hw-q"><i>“${esc(wq)}”</i><span class="hw-by">${esc(witBy(wa))}</span></span>
+    <button class="hw-copy" title="Copy the quote" onclick="event.stopPropagation();witCopy()">📋</button></div>`;
   const evLine=e=>`<div class="hcal-ev"><span>${esc(e.time)}</span> ${esc(e.title.slice(0,44))}</div>`;
   const calCard=`<div class="hcard sq" onclick="openCalPage()" style="animation-delay:0ms">
     <div class="hc-top"><span class="hc-name">📅 Calendar</span>
@@ -3353,14 +3788,18 @@ function renderHome(){
    Order is the design: what needs you now, the plan for the day, what is
    already late, who you are waiting on, then the quiet stuff as chips. Every
    row is a door, the same ones the cards opened. */
-let HOME_VIEW = localStorage.getItem('gc2_home_view') || 'feed';
+// E249 (Bart: "make this design the default for each of the account home
+// pages"): a new key, so a Feed/Cards choice saved before ◫ Day existed does
+// not hide it; picking Feed or Cards again still sticks.
+let HOME_VIEW = localStorage.getItem('gc2_home_view2') || 'day';
 /* E169 (Bart: "I don't seem to have a way to get to the new feed"): the
    switch has to live in BOTH views. E166 put it only in the feed's header,
    so anyone whose Home opened as cards had no way out. */
 const homeViewToggle = () => `<div class="fd-view">
+    <button class="${HOME_VIEW==='day'?'on':''}" onclick="setHomeView('day')" title="Day — the day's note, your top mail and the calendar, side by side">◫ Day</button>
     <button class="${HOME_VIEW==='feed'?'on':''}" onclick="setHomeView('feed')" title="Feed — one ordered read of the day">☰ Feed</button>
     <button class="${HOME_VIEW==='cards'?'on':''}" onclick="setHomeView('cards')" title="Cards — the project grid, drag to reorder">⊞ Cards</button></div>`;
-function setHomeView(v){ HOME_VIEW=v; localStorage.setItem('gc2_home_view',v); renderList(); }
+function setHomeView(v){ HOME_VIEW=v; localStorage.setItem('gc2_home_view2',v); renderList(); }
 const fdAge = d => { const t=Date.parse(d); return isFinite(t)?Math.max(0,Math.round((Date.now()-t)/864e5)):null; };
 // E180: Home's bands are the same header as every other list's groups.
 function fdBand(label,count,go,urgent){
@@ -3463,6 +3902,563 @@ function renderHomeFeed(d){
   hydrateAvatars($('#list'));   // E174: the feed carries avatars too
 }
 
+/* ================= E249: ◫ Day — the two-column Home =================
+   Bart's mockup (2026-09-29): a few sentences about the day and the Ask bar
+   on the left over the mail that matters; a calendar of the whole day on the
+   right with today's todos and what is overdue. Two ways in:
+     - an account's own Home (◫ Day, the default layout): that account only;
+       other accounts' meetings are faint grey "busy" blocks, never titles.
+     - the ⌂ Home tab: every account at once, each in its own collapsible
+       section. A read-only view (BUILD_SPEC §6, 2026-09-29): nothing is mixed
+       into one list, and opening anything happens inside its own account.
+   The data comes from GET /home (built one account at a time on the server)
+   and GET /home/note; the calendar is the sweep's, from BOARD. */
+let HOME_DATA = {};       // '' (all) | account -> {at, data}
+let HOME_NOTE = {};       // same keys -> {at, note, pending}
+let HOME_OPEN = null;     // account -> expanded? (the ⌂ Home sections)
+function homeOpenMap(){
+  if(HOME_OPEN) return HOME_OPEN;
+  try { HOME_OPEN=JSON.parse(localStorage.getItem('gc2_home_open')||'null'); } catch(e){ HOME_OPEN=null; }
+  // Bart: "the top 3 accounts start expanded" — the first three tabs, in his order
+  if(!HOME_OPEN || typeof HOME_OPEN!=='object'){ HOME_OPEN={}; acctIds().forEach((a,ix)=>{ HOME_OPEN[a]=ix<3; }); }
+  return HOME_OPEN;
+}
+function homeToggleAcct(a){
+  const m=homeOpenMap(); m[a]=!(a in m ? m[a] : acctIds().indexOf(a)<3);
+  try { localStorage.setItem('gc2_home_open',JSON.stringify(m)); } catch(e){}
+  renderList();
+}
+function showHomeAll(){
+  leaveProj();
+  HOME_ALL=true; localStorage.setItem('gc2_home_all','1');
+  closePane(); renderAcctTabs(); renderList();
+  if(typeof closeNav==='function') closeNav();
+}
+function leaveHomeAll(){
+  HOME_ALL=false; localStorage.setItem('gc2_home_all','0');
+  document.body.classList.remove('homeall-on');
+}
+/* ================= Projects (step 2, 2026-09-29) =================
+   Spec: ACCOUNT_FIRST.md "Projects — spec"; BUILD_SPEC §6 2026-09-29. A
+   project is a view across accounts, like the ⌂ Home tab: PROJ swaps what
+   #list draws, ACCT stays the last real account, and every item keeps its
+   own account — its email opens in the reading pane with that account, its
+   todo opens inside its account. Nothing here writes to Gmail. */
+let PROJ=null;              // null | {view:'list', filter} | {view:'page', id}
+let PROJECTS=null, PROJ_PAGE={};   // list cache; id -> {at, data}
+const PROJ_PALETTE=['#d97757','#6a9bcc','#788c5d','#8b6ac8','#c9a82d','#3d7be0','#b05e43'];
+async function loadProjects(){
+  try { const r=await fetch('/projects',{cache:'no-store'}).then(r=>r.json()); if(r.ok) PROJECTS=r.projects; }
+  catch(e){ PROJECTS=PROJECTS||[]; }
+  renderAcctTabs(); renderRail(); if(PROJ) renderList(); if(DOCK==='proj') renderDock();
+  return PROJECTS;
+}
+async function loadProject(id){
+  try { const r=await fetch('/project?id='+id,{cache:'no-store'}).then(r=>r.json());
+    if(!r.ok) throw new Error(r.error); PROJ_PAGE[id]={at:Date.now(), data:r.project}; }
+  catch(e){ PROJ_PAGE[id]={at:Date.now(), error:e.message}; }
+  if(PROJ&&PROJ.view==='page'&&PROJ.id===id) renderList();
+}
+const projById = id => (PROJECTS||[]).find(p=>p.id===id);
+function enterProj(p){
+  if(HOME_ALL) leaveHomeAll();
+  PROJ=p; SPLIT=null; closePane(); closeNav&&closeNav();
+  renderAcctTabs(); renderRail(); renderCrumbs(); renderList(); $('#list').scrollTop=0;
+}
+function showProjects(filter){ enterProj({view:'list', filter:filter||'open'}); loadProjects(); }
+function openProject(id){ enterProj({view:'page', id}); loadProject(id); }
+function leaveProj(){ if(!PROJ) return; PROJ=null; document.body.classList.remove('proj-on'); }
+async function projAct(body, msg){
+  try { const out=await post('/projects', body); if(msg) toast(msg); return out; }
+  catch(e){ toast(e.message); throw e; }
+}
+async function projRefresh(id){ await loadProjects(); if(id) await loadProject(id); }
+const projDot = (c,sz=10) => `<span class="pj-dot" style="background:${esc(c||'#888')};width:${sz}px;height:${sz}px"></span>`;
+const acctChip = a => `<span class="pj-acc" title="Lives in ${esc(acctLabel(a))}"><i style="background:${acctColor(a)}"></i>${esc(acctLabel(a))}</span>`;
+function projProgress(p){ const c=p.counts||{}; return c.todos_total?Math.round(100*c.todos_done/c.todos_total):0; }
+
+// ---- dialogs
+function projEditDlg(id){
+  const p=id?projById(id)||(PROJ_PAGE[id]&&PROJ_PAGE[id].data):null;
+  const col=(p&&p.color)||PROJ_PALETTE[(PROJECTS||[]).length%PROJ_PALETTE.length];
+  dlg(`<h3>${p?'Edit project':'New project'}</h3>
+    <label>Name</label><input type="text" id="pj-name" value="${esc(p?p.name:'')}" placeholder="e.g. Fall Launch">
+    <label>Target date <span class="status" style="text-transform:none;letter-spacing:0">(optional)</span></label>
+    <input type="date" id="pj-target" value="${esc(p&&p.target_date||'')}">
+    <label>Colour</label><div class="pj-swatches">${PROJ_PALETTE.map(c=>`<button type="button" class="pj-sw ${c===col?'on':''}" data-c="${c}" style="background:${c}" onclick="this.parentNode.querySelectorAll('.pj-sw').forEach(x=>x.classList.remove('on'));this.classList.add('on')"></button>`).join('')}</div>
+    <label>What it's for <span class="status" style="text-transform:none;letter-spacing:0">(optional)</span></label>
+    <textarea id="pj-desc" rows="3">${esc(p&&p.description||'')}</textarea>
+    <div class="foot"><button class="btn" onclick="projSave(${id||0})">${p?'Save':'Create project'}</button>
+      <button class="btn sec2" onclick="window._pjPendingAdd=null;closeDlg()">Cancel</button><span class="status" id="pj-st"></span></div>`);
+  setTimeout(()=>$('#pj-name')?.focus(),30);
+}
+async function projSave(id){
+  const f={name:$('#pj-name').value.trim(), target_date:$('#pj-target').value||'',
+    color:document.querySelector('.pj-sw.on')?.dataset.c||'', description:$('#pj-desc').value};
+  if(!f.name){ $('#pj-st').textContent='A name, please'; return; }
+  try {
+    if(id){ await post('/projects',{action:'update',id,fields:f}); closeDlg(); toast('Saved'); projRefresh(id); }
+    else { const out=await post('/projects',{action:'create',...f}); closeDlg();
+      const add=window._pjPendingAdd; window._pjPendingAdd=null;
+      if(add){ await post('/projects',{action:'add',id:out.id,kind:add.kind,account:add.account,ref:add.ref,title:add.title});
+        toast(`Project “${f.name}” created — with this ${add.kind==='todo'?'todo':'email'} in it`); loadProjects(); }
+      else { await loadProjects(); openProject(out.id); } }
+  } catch(e){ $('#pj-st').textContent=e.message; }
+}
+async function projPin(id,on){
+  try { await projAct({action:'pin',id,on}, on?'Pinned to the top bar':'Unpinned'); projRefresh(id); } catch(e){}
+}
+function projComplete(id){
+  const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data;
+  const open=p?p.open_todos||[]:[];
+  const go=async ids=>{
+    closeDlg();
+    try {
+      if(ids&&ids.length) await post('/task',{action:'done',ids});
+      await projAct({action:'complete',id}, 'Project complete'+(ids&&ids.length?` — and ${ids.length} todo${ids.length>1?'s':''}`:''));
+      projRefresh(id); loadMailTodos();
+    } catch(e){}
+  };
+  if(!open.length) return go([]);
+  window._pjDone=open.map(t=>t.id); window._pjGo=go;
+  // Bart: ask — never complete todos behind his back
+  dlg(`<h3>${open.length} todo${open.length>1?'s are':' is'} still open</h3>
+    <div class="status" style="text-transform:none;letter-spacing:0;margin-bottom:8px">${open.slice(0,6).map(t=>'◯ '+esc(t.text.slice(0,60))+' · '+esc(acctLabel(t.account))).join('<br>')}</div>
+    <div class="foot"><button class="btn" onclick="_pjGo(_pjDone)">Complete them too</button>
+      <button class="btn sec2" onclick="_pjGo([])">Just the project</button>
+      <button class="btn sec2" onclick="closeDlg()">Cancel</button></div>`);
+}
+async function projReopen(id){ try { await projAct({action:'reopen',id},'Reopened'); projRefresh(id); } catch(e){} }
+function projDeleteDlg(id){
+  const p=projById(id)||(PROJ_PAGE[id]&&PROJ_PAGE[id].data)||{name:'this project',counts:{}};
+  const nn=(p.counts&&p.counts.note)||0;
+  dlg(`<h3>Delete “${esc(p.name)}”?</h3>
+    <div class="status" style="text-transform:none;letter-spacing:0;margin:4px 0 10px">Only the project goes. Its emails, todos and meetings stay exactly where they are${nn?`, and its ${nn} note${nn>1?'s move':' moves'} to Notes`:''}.</div>
+    <div class="foot"><button class="btn warn" onclick="projDelete(${id})">Delete project</button><button class="btn sec2" onclick="closeDlg()">Cancel</button></div>`);
+}
+async function projDelete(id){
+  closeDlg();
+  try { const out=await projAct({action:'delete',id}); toast('Project deleted'+(out.notes_kept?` — ${out.notes_kept} note${out.notes_kept>1?'s':''} kept in Notes`:''));
+    delete PROJ_PAGE[id]; await loadProjects(); if(PROJ&&PROJ.view==='page'&&PROJ.id===id) showProjects(); } catch(e){}
+}
+function projMore(ev,id){
+  const p=projById(id)||(PROJ_PAGE[id]&&PROJ_PAGE[id].data); if(!p) return;
+  const r=ev.currentTarget.getBoundingClientRect();
+  ctxOpen(Math.max(8,r.right-250),r.bottom+4,[
+    _mi('✏️ Name, colour, target date…',`projEditDlg(${id})`),
+    _mi(p.pin_rank?'📌 Unpin from the top bar':'📌 Pin to the top bar',`projPin(${id},${!p.pin_rank})`),
+    _mi(p.status==='done'?'↺ Reopen':'✓ Mark complete',p.status==='done'?`projReopen(${id})`:`openProject(${id});setTimeout(()=>projComplete(${id}),400)`),
+    '<hr>', _mi('🗑 Delete project — keeps its content',`projDeleteDlg(${id})`,'warn')].join(''));
+}
+function projAddMenu(ev,id){
+  const r=ev.currentTarget.getBoundingClientRect();
+  ctxOpen(Math.max(8,r.right-260),r.bottom+4,[
+    _mi('◯ New todo in this project…',`projNewTodoDlg(${id})`),
+    _mi('🗒 New note',`projNoteDlg(${id})`),
+    '<hr><div class="status" style="padding:4px 10px;text-transform:none;letter-spacing:0">Emails, todos, events and people: use 📁 on them anywhere</div>'].join(''));
+}
+function projNewTodoDlg(id){
+  const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data; const def=(p&&p.last_account)||ACCT;
+  // Bart: a new todo made here asks which account, starting on the last one used
+  dlg(`<h3>New todo in ${esc(p?p.name:'this project')}</h3>
+    <label>Todo</label><input type="text" id="pj-td" placeholder="What needs doing?">
+    <label>Account</label><select id="pj-td-acct">${acctIds().map(a=>`<option value="${esc(a)}" ${a===def?'selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>
+    <div class="foot"><button class="btn" onclick="projNewTodo(${id})">Add todo</button><button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="pj-st"></span></div>`);
+  setTimeout(()=>$('#pj-td')?.focus(),30);
+}
+async function projNewTodo(id){
+  const text=$('#pj-td').value.trim(), account=$('#pj-td-acct').value;
+  if(!text){ $('#pj-st').textContent='What needs doing?'; return; }
+  try { const out=await post('/task',{action:'add',text,account});
+    await post('/projects',{action:'add',id,kind:'todo',ref:String(out.id)});
+    closeDlg(); toast('Todo added in '+acctLabel(account)); projRefresh(id); if(account===ACCT) loadMailTodos();
+  } catch(e){ $('#pj-st').textContent=e.message; }
+}
+function projNoteDlg(id, noteId){
+  const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data; const n=noteId&&p?(p.notes||[]).find(x=>x.id===noteId):null;
+  dlg(`<h3>${n?'Note':'New note'} · ${esc(p?p.name:'')}</h3>
+    <label>Title</label><input type="text" id="pj-nt" value="${esc(n&&n.title||'')}">
+    <label>Note</label><textarea id="pj-nb" rows="10">${esc(n&&n.body||'')}</textarea>
+    <div class="foot"><button class="btn" onclick="projNoteSave(${id},${noteId||0})">Save</button>
+      ${n?`<button class="btn sec2 warn" onclick="projNoteDel(${id},${noteId})">Delete note</button>`:''}
+      <button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="pj-st"></span></div>`);
+  setTimeout(()=>$(n?'#pj-nb':'#pj-nt')?.focus(),30);
+}
+async function projNoteSave(id,noteId){
+  const title=$('#pj-nt').value, body=$('#pj-nb').value;
+  try { await post('/projects', noteId?{action:'note-update',note_id:noteId,title,body}:{action:'note-add',id,title,body});
+    closeDlg(); projRefresh(id); } catch(e){ $('#pj-st').textContent=e.message; }
+}
+async function projNoteDel(id,noteId){
+  if(!confirm('Delete this note? This can’t be undone.')) return;
+  try { await post('/projects',{action:'note-delete',note_id:noteId}); closeDlg(); toast('Note deleted'); projRefresh(id); } catch(e){ toast(e.message); }
+}
+async function projRemove(id,itemId){
+  try { await projAct({action:'remove',id,item_id:itemId},'Removed from the project — the item itself is untouched'); projRefresh(id); } catch(e){}
+}
+async function projTodoDone(id,todoId){
+  try { await post('/task',{action:'done',id:todoId}); toast('Todo done'); projRefresh(id); loadMailTodos(); } catch(e){ toast(e.message); }
+}
+// an item opens where it lives: mail in the reading pane with its own account;
+// a todo inside its own account
+function projOpenMail(a,tid){ openItem('m:'+a+':'+tid); }
+function projOpenTodo(a,id){ leaveProj(); const go=()=>openItem('t:'+id); a===ACCT?go():setAcct(a).then(go); }
+
+// ---- 📁 Add to project, from anywhere (step 3)
+// Bart: promote a task, note, calendar entry, contact or email into a
+// project. The item doesn't move; the project points at it.
+function projItemOf(key){
+  const i=findItem(key); if(!i) return null;
+  if(i.type==='mail') return {kind:'thread', account:i.account, ref:i.raw.thread_id, title:i.title};
+  if(i.type==='todo') return {kind:'todo', account:i.account, ref:String(i.raw.id), title:i.title};
+  return null;
+}
+function projPickKey(ev,key){ const it=projItemOf(key); if(it) projPick(ev,it); }
+async function projPick(ev,it,q=''){
+  const anchor=ev&&ev.currentTarget&&ev.currentTarget.getBoundingClientRect?ev.currentTarget.getBoundingClientRect():null;
+  const [x,y]=anchor?[anchor.right-290,anchor.bottom+4]:[LASTXY[0]-40,LASTXY[1]+8];
+  window._pjItem=it;
+  let inMap={};
+  try { const r=await fetch('/projects?'+new URLSearchParams({kind:it.kind,account:it.account||'',ref:it.ref}),{cache:'no-store'}).then(r=>r.json());
+    if(r.ok){ PROJECTS=r.projects; inMap=r.in||{}; } } catch(e){}
+  window._pjIn=inMap;
+  const draw=()=>{
+    const ql=q.toLowerCase();
+    const open=(PROJECTS||[]).filter(p=>p.status==='open'&&(!ql||p.name.toLowerCase().includes(ql)));
+    ctxOpen(x,y,`<div class="pj-pick keep">
+      <div class="pj-pick-h">Add to project</div>
+      <input id="pj-pick-q" class="pj-find" placeholder="Find or create…" value="${esc(q)}"
+        onkeydown="if(event.key==='Enter'){const b=document.querySelector('.pj-pick .pj-opt');if(b)b.click();else projPickNew()}">
+      ${open.map(p=>{ const on=inMap[p.id]; return `<button class="pj-opt ${on?'on':''}" onclick="ctxClose();projPickToggle(${p.id})">
+        ${projDot(p.color,9)}<span>${esc(p.name)}</span><span class="sp"></span>${on?'<b>✓</b>':''}</button>`; }).join('')
+        ||`<div class="status" style="padding:4px 8px;text-transform:none;letter-spacing:0">${q?'No project matches':'No projects yet'}</div>`}
+      <button class="pj-opt pj-new" onclick="ctxClose();projPickNew()">＋ New project “${esc((q||it.title||'').slice(0,40))}”…</button></div>`);
+    const i=$('#pj-pick-q'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length);
+      i.oninput=()=>{ q=i.value; draw(); }; }
+  };
+  draw();
+}
+async function projPickToggle(pid){
+  const it=window._pjItem, on=window._pjIn&&window._pjIn[pid], p=projById(pid);
+  try {
+    if(on) await post('/projects',{action:'remove',id:pid,item_id:on});
+    else await post('/projects',{action:'add',id:pid,kind:it.kind,account:it.account,ref:it.ref,title:it.title});
+    toast(on?`Removed from ${p?p.name:'the project'}`:`Added to ${p?p.name:'the project'} — it stays where it is`);
+    loadProjects(); if(PROJ&&PROJ.view==='page'&&PROJ.id===pid) loadProject(pid);
+  } catch(e){ toast(e.message); }
+}
+function projPickNew(){
+  const it=window._pjItem; const q=$('#pj-pick-q')?.value||'';
+  window._pjPendingAdd=it;
+  projEditDlg();
+  setTimeout(()=>{ const n=$('#pj-name'); if(n&&!n.value) n.value=(q||it.title||'').replace(/^(re|fwd?):\s*/i,'').slice(0,80); },40);
+}
+
+// ---- the Projects page
+function renderProjectsPage(){
+  VISIBLE=[];
+  const all=PROJECTS; const f=PROJ.filter||'open';
+  if(all===null){ $('#list').innerHTML='<div class="empty">Loading projects…</div>'; return; }
+  const rows=all.filter(p=>f==='done'?p.status==='done':f==='pinned'?p.pin_rank:p.status==='open');
+  const cnt=k=>all.filter(p=>k==='done'?p.status==='done':k==='pinned'?p.pin_rank:p.status==='open').length;
+  const row=p=>{ const c=p.counts||{}, parts=[c.todo&&`${c.todo} todo${c.todo>1?'s':''}`, c.thread&&`${c.thread} email${c.thread>1?'s':''}`,
+      c.note&&`${c.note} note${c.note>1?'s':''}`, c.event&&`${c.event} meeting${c.event>1?'s':''}`, c.contact&&`${c.contact} ${c.contact>1?'people':'person'}`].filter(Boolean).join(' · ')||'empty so far';
+    return `<div class="pj-row ${p.status==='done'?'done':''}" onclick="openProject(${p.id})">
+      <span>${p.status==='done'?'✓':projDot(p.color,11)}</span>
+      <div class="pj-rn"><b>${esc(p.name)}</b><div class="status" style="text-transform:none;letter-spacing:0">${p.status==='done'&&p.completed_at?'completed '+esc(fmtDate(p.completed_at))+' · ':''}${esc(parts)}</div></div>
+      <span class="pj-accs">${(p.accounts||[]).map(acctChip).join('')}</span>
+      <span class="pj-tg">${p.target_date?esc(fmtDate(p.target_date)):'—'}</span>
+      <span class="pj-bar"><b style="width:${projProgress(p)}%"></b></span>
+      <span class="pj-ra" onclick="event.stopPropagation()">
+        <button class="tool" title="${p.pin_rank?'Unpin':'Pin to the top bar'}" onclick="projPin(${p.id},${!p.pin_rank})">${p.pin_rank?'📌':'☆'}</button>
+        <button class="tool" title="More" onclick="projMore(event,${p.id})">${ic('more')}</button></span></div>`; };
+  $('#list').innerHTML=`<div class="ib-wrap">
+    <div class="pj-top"><span class="t">📁 Projects</span><span class="sp"></span><button class="btn" onclick="projEditDlg()">＋ New project</button></div>
+    <div class="pj-filters">${[['open','Open'],['done','Done'],['pinned','Pinned']].map(([k,l])=>`<button class="sm-a ${f===k?'on':''}" onclick="PROJ.filter='${k}';renderList()">${l} <span class="n">${cnt(k)}</span></button>`).join('')}</div>
+    ${rows.length?`<div class="ib-card pj-table">${rows.map(row).join('')}</div>`
+      :`<div class="ib-empty">${f==='open'?'No open projects yet. A project gathers emails, todos, notes and meetings from any account — start one with ＋ New project, or 📁 on any email.':'Nothing here.'}</div>`}</div>`;
+}
+
+// ---- the project page
+function renderProjectPage(){
+  VISIBLE=[];
+  const id=PROJ.id, hit=PROJ_PAGE[id];
+  if(!hit||(!hit.data&&!hit.error)){ $('#list').innerHTML='<div class="empty">Loading the project…</div>'; return; }
+  if(hit.error){ $('#list').innerHTML=`<div class="empty">Could not load the project — ${esc(hit.error)}</div>`; return; }
+  const p=hit.data, today=dOff(0), items=p.items||[];
+  const todos=items.filter(i=>i.kind==='todo'&&i.todo), threads=items.filter(i=>i.kind==='thread'&&!i.in_todo);
+  const events=items.filter(i=>i.kind==='event'), people=items.filter(i=>i.kind==='contact');
+  const openT=todos.filter(t=>t.todo.state==='open'), doneT=todos.filter(t=>t.todo.state!=='open');
+  const dueNow=t=>t.todo.due&&t.todo.due<=today;
+  const waiting=t=>t.mail&&t.mail.in_inbox&&t.mail.last_direction!=='outbound';
+  const needs=[...openT.filter(dueNow), ...threads.filter(waiting)];
+  const rest=openT.filter(t=>!dueNow(t)), otherMail=threads.filter(t=>!waiting(t));
+  const x=it=>`<button class="tool pj-x" title="Remove from this project (the item itself stays)" onclick="event.stopPropagation();projRemove(${id},${it.id})">${ic('x')}</button>`;
+  const mailRow=it=>{ const m=it.mail||{}, who=String(m.last_from||'').split('<')[0].trim().replace(/"/g,'')||m.last_from_email||'—';
+    return `<div class="row ${m.unread?'':'read'} pj-item" onclick="projOpenMail('${esc(it.account)}','${esc(it.ref)}')">
+      <span class="lead" style="background:${avColor(who)}">${initials(who)}${avImg(m.last_from_email)}</span>
+      <div class="body"><div class="l1"><span class="who">${esc(who)}</span><span class="meta"><span class="when">${fmtDate(m.last_date||it.added_at)}</span></span></div>
+        <div class="l2"><span class="subj">${esc(m.subject||it.title||'(no subject)')}</span></div>
+        <div class="l3"><span class="prev">${esc((m.snippet||(m.subject?'':'Not in the synced mail — open it to load')).slice(0,180))}</span>${acctChip(it.account)}${x(it)}</div></div></div>`; };
+  const todoRow=it=>{ const t=it.todo, done=t.state!=='open', over=!done&&t.due&&t.due<today;
+    const mails=it.threads||[];   // every email in the todo, shown once, here
+    return `<div class="row pj-item ${done?'read pj-done':''}" onclick="projOpenTodo('${esc(it.account)}',${t.id})">
+      <span class="pj-ck ${done?'on':''}" title="${done?'Done':'Mark done'}" onclick="event.stopPropagation();${done?'':`projTodoDone(${id},${t.id})`}"></span>
+      <div class="body"><div class="l1"><span class="who">${esc(t.text)}</span><span class="meta"><span class="when ${over?'due':''}">${done?'done '+esc(fmtDate(t.done_at||'')):t.due?(over?'overdue ':'due ')+esc(fmtDate(t.due)):''}</span></span></div>
+        <div class="l3"><span class="prev">${(it.threads||[]).length?`${it.threads.length} email${it.threads.length>1?'s':''}`:'no emails yet'}</span>${acctChip(it.account)}${x(it)}</div>
+        ${mails.length?`<div class="pj-fold">${mails.slice(0,6).map(mt=>`<div onclick="event.stopPropagation();projOpenMail('${esc(mt.account)}','${esc(mt.thread_id)}')">✉ ${esc(mt.subject||'(archived — open to load)')}<span> · ${esc(String(mt.last_from||'').split('<')[0].trim().replace(/"/g,''))}${mt.last_date?' · '+esc(fmtDate(mt.last_date)):''}</span></div>`).join('')}${mails.length>6?`<div>+${mails.length-6} more — open the todo</div>`:''}</div>`:''}</div></div>`; };
+  const sec=(name,rows,body)=>rows?`<div class="ib-head" data-sec="${esc(name)}"><span class="t">${esc(name)}</span><span class="ib-count">${rows}</span><span class="sp"></span></div><div class="ib-card">${body}</div>`:'';
+  const notes=p.notes||[];
+  const anchors=[['Needs you',needs.length],['Todos',rest.length+doneT.length],['Emails',otherMail.length],['Notes',notes.length],['Meetings',events.length],['People',people.length]];
+  const c=p.counts||{}, pct=projProgress(p);
+  $('#list').innerHTML=`<div class="pj-page">
+    <div class="pj-head">
+      <div class="pj-h1">${projDot(p.color,13)}<span class="pj-name" onclick="projEditDlg(${id})" title="Rename, colour, target date">${esc(p.name)}</span>
+        <span class="chip">${p.status==='done'?'✓ Done':'In progress'}</span><span class="sp"></span>
+        <button class="qbtn" onclick="projPin(${id},${!p.pin_rank})">${p.pin_rank?'📌 Pinned':'☆ Pin'}</button>
+        ${p.status==='done'?`<button class="qbtn" onclick="projReopen(${id})">↺ Reopen</button>`:`<button class="qbtn" onclick="projComplete(${id})">✓ Complete</button>`}
+        <button class="qbtn" onclick="projAddMenu(event,${id})">＋ Add</button>
+        <button class="tool" title="More" onclick="projMore(event,${id})">${ic('more')}</button></div>
+      <div class="pj-meta"><span class="chip">🎯 ${p.target_date?'Target '+esc(fmtDate(p.target_date)):'No target date'}</span>
+        ${p.status==='done'&&p.completed_at?`<span class="chip">✓ Completed ${esc(fmtDate(p.completed_at))}</span>`:''}
+        <span class="chip">${items.length+notes.length} item${items.length+notes.length===1?'':'s'}${c.todos_total?` · ${c.todos_done}/${c.todos_total} todos done`:''}</span>
+        ${(p.accounts||[]).map(acctChip).join('')}</div>
+      ${p.description?`<div class="pj-desc">${esc(p.description)}</div>`:''}
+      ${c.todos_total?`<span class="pj-bar big"><b style="width:${pct}%"></b></span>`:''}
+    </div>
+    <div class="sm-anchors">${anchors.map(([n,k])=>`<button class="sm-a" ${k?'':'disabled'} onclick="smartJump(${esc(JSON.stringify(n))})">${n} <span class="n">${k}</span></button>`).join('')}</div>
+    ${sec('Needs you',needs.length,needs.map(it=>it.kind==='todo'?todoRow(it):mailRow(it)).join(''))}
+    ${sec('Todos',rest.length+doneT.length,[...rest,...doneT].map(todoRow).join(''))}
+    ${sec('Emails',otherMail.length,otherMail.map(mailRow).join(''))}
+    <div class="ib-head" data-sec="Notes"><span class="t">Notes</span><span class="ib-count">${notes.length}</span><span class="sp"></span><button class="qbtn" onclick="projNoteDlg(${id})">＋ Note</button></div>
+    ${notes.length?`<div class="pj-notes">${notes.map(n=>`<div class="pj-note" onclick="projNoteDlg(${id},${n.id})"><b>${esc(n.title||'Untitled')}</b><div>${esc(n.body.slice(0,220))}</div><span class="status" style="text-transform:none;letter-spacing:0">${esc(fmtDate(n.updated_at))}</span></div>`).join('')}</div>`
+      :`<div class="ib-empty" style="padding:10px 14px">No notes yet.</div>`}
+    ${sec('Meetings',events.length,events.map(it=>`<div class="row read pj-item"><span class="lead" style="background:#6a9bcc">📅</span><div class="body"><div class="l2"><span class="subj">${esc(it.title||'')}</span></div><div class="l3">${acctChip(it.account)}${x(it)}</div></div></div>`).join(''))}
+    ${sec('People',people.length,people.map(it=>`<div class="row read pj-item"><span class="lead" style="background:${avColor(it.ref)}">${initials((it.contact&&it.contact.name)||it.ref)}</span><div class="body"><div class="l1"><span class="who">${esc((it.contact&&it.contact.name)||it.ref)}</span></div><div class="l3"><span class="prev">${esc(it.ref)}</span>${x(it)}</div></div></div>`).join(''))}
+    ${items.length||notes.length?'':`<div class="ib-empty">Nothing in this project yet. Use ＋ Add for a todo or note, or 📁 on any email to bring it here.</div>`}
+  </div>`;
+  hydrateAvatars($('#list'));
+}
+function homeFetch(key){
+  const hit=HOME_DATA[key];
+  if(hit && (hit.busy || Date.now()-hit.at<60000)) return hit.data||null;
+  HOME_DATA[key]={at:Date.now(), data:hit&&hit.data, busy:true};
+  fetch('/home'+(key?'?account='+encodeURIComponent(key):'')).then(r=>r.json()).then(out=>{
+    HOME_DATA[key]={at:Date.now(), data:out.ok?out:(hit&&hit.data)||{error:out.error}};
+    if(homeShowing(key)) renderList();
+  }).catch(e=>{ HOME_DATA[key]={at:Date.now(), data:(hit&&hit.data)||{error:e.message}}; if(homeShowing(key)) renderList(); });
+  return hit&&hit.data||null;
+}
+function homeNote(key, refresh){
+  const hit=HOME_NOTE[key];
+  if(!refresh && hit && (hit.busy || Date.now()-hit.at<(hit.pending?8000:300000))) return hit;
+  HOME_NOTE[key]={...(hit||{}), at:Date.now(), busy:true};
+  fetch('/home/note'+(key?'?account='+encodeURIComponent(key):'')+(refresh?(key?'&':'?')+'refresh=1':''))
+    .then(r=>r.json()).then(out=>{
+      HOME_NOTE[key]={at:Date.now(), note:out.note||null, pending:!!out.pending};
+      if(homeShowing(key)) renderList();
+      // the note is being written: look again shortly
+      if(out.pending) setTimeout(()=>{ if(homeShowing(key)) renderList(); }, 9000);
+    }).catch(()=>{ HOME_NOTE[key]={at:Date.now(), note:null, pending:false}; });
+  return hit||{};
+}
+const homeShowing = key => key ? (!HOME_ALL && SCOPE.kind==='home' && HOME_VIEW==='day' && ACCT===key) : HOME_ALL;
+const hdayMin = t => { const m=/^(\d{1,2}):(\d{2})$/.exec(t||''); return m?(+m[1])*60+(+m[2]):null; };
+const hdayClock = m => { const h=Math.floor(m/60), mm=String(m%60).padStart(2,'0'); return ((h%12)||12)+':'+mm; };
+const hdayAgo = iso => { const t=Date.parse(iso||''); if(!isFinite(t)) return '';
+  const d=new Date(t); return d.toDateString()===new Date().toDateString()
+    ? d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : fmtDate(iso); };
+const hdayInit = n => String(n||'?').replace(/[<"].*$/,'').trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase()||'?';
+const HDAY_AV=['#3d6fd0','#2f8a60','#a8672a','#b04a64','#6b54c6','#2b7f8f','#8a5a3f'];
+const hdayAvBg = n => HDAY_AV[[...String(n||'')].reduce((a,c)=>a+c.charCodeAt(0),0)%HDAY_AV.length];
+const hdayVal = v => v==null?'':`<span class="hday-v ${v>=70?'hi':v>=40?'mid':'lo'}" title="Value score">${v}</span>`;
+function hdayOpenMail(a, tid){
+  const go=()=>openItem('m:'+a+':'+tid);
+  if(HOME_ALL){ setAcct(a).then(go); return; }   // opening happens inside its own account
+  go();
+}
+function hdayGo(a, where){
+  const go=()=>{ if(where==='inbox') setScope('inbox',null);
+    else if(where==='todos') goTodos();
+    else if(where==='cal') openCalPage(); };
+  if(HOME_ALL){ setAcct(a).then(go); return; }
+  go();
+}
+function hdayOpenTodo(a, id){
+  if(HOME_ALL){ setAcct(a).then(()=>openItem('t:'+id)); return; }
+  openItem('t:'+id);
+}
+function hdayMailRow(r){
+  const owe = r.respond==='yes' ? `<span class="hday-owe">↩ reply</span>` : '';
+  return `<div class="hday-m" onclick="hdayOpenMail('${esc(r.account)}','${esc(r.thread_id)}')">
+    <span class="hday-av" style="background:${hdayAvBg(r.from)}">${esc(hdayInit(r.from))}</span>
+    <span class="b"><span class="l1"><span>${esc(String(r.from).split('<')[0].trim().slice(0,40))}</span><span class="t">${esc(hdayAgo(r.last_date))}</span></span>
+      <span class="l2">${esc(r.subject)}</span>
+      <span class="l3"><span class="p">${esc(r.snippet||'')}</span>${owe}${hdayVal(r.value)}</span></span></div>`;
+}
+function hdayFollowRow(r){
+  return `<div class="hday-f" onclick="hdayOpenMail('${esc(r.account)}','${esc(r.thread_id)}')">
+    <span class="hday-av" style="background:${hdayAvBg(r.from)}">${esc(hdayInit(r.from))}</span>
+    <span class="who">${esc(String(r.from).split('<')[0].trim().slice(0,28))}</span>
+    <span class="s">${esc(r.subject)}</span>
+    <span class="st ${r.kind==='owed'?'owed':'chase'}">${esc(r.state)}</span>${hdayVal(r.value)}</div>`;
+}
+function hdayMailBlock(s){
+  return `<div class="hday-sub"><span>Top emails</span><a onclick="hdayGo('${esc(s.account)}','inbox')">Inbox</a></div>
+    ${s.top.length?s.top.map(hdayMailRow).join(''):'<div class="hday-none">Nothing high-scoring waiting.</div>'}
+    <div class="hday-sub"><span>Reply or follow up</span></div>
+    ${s.follows.length?s.follows.map(hdayFollowRow).join(''):'<div class="hday-none">Nothing waiting on you here.</div>'}`;
+}
+// Today's events, each with the account its calendar belongs to
+function hdayEvents(calAcct){
+  const evs=((BOARD.calendar||[]).find(d=>d.date===dOff(0))||{}).events||[];
+  return evs.map(e=>({...e, account:(calAcct||{})[e.cal]||null}));
+}
+function hdayClashes(evs){
+  const t=evs.map(e=>{ const s=hdayMin(e.time); if(s==null) return null;
+    const en=hdayMin(e.end); return {s, e:en&&en>s?en:s+30, ev:e}; }).filter(Boolean).sort((a,b)=>a.s-b.s);
+  const out=[];
+  t.forEach((a,i)=>{ for(const b of t.slice(i+1)){ if(b.s>=a.e) break; out.push([a.ev,b.ev]); } });
+  return out;
+}
+// The day as blocks. mine: null = every account (colour each), else only
+// that account's events carry titles; the rest are grey "busy" blocks.
+function hdayTimeline(evs, mine){
+  const PX=52;
+  const timed=evs.map(e=>{ const s=hdayMin(e.time); if(s==null) return null;
+    const en=hdayMin(e.end); return {s, e:en&&en>s?en:s+30, ev:e}; }).filter(Boolean).sort((a,b)=>a.s-b.s||b.e-a.e);
+  const nowM=new Date().getHours()*60+new Date().getMinutes();
+  const h0=Math.min(8, ...timed.map(x=>Math.floor(x.s/60)));
+  const h1=Math.max(19, ...timed.map(x=>Math.ceil(x.e/60)));
+  // side-by-side lanes inside each run of overlapping events
+  let run=[], runEnd=-1; const runs=[];
+  timed.forEach(x=>{ if(x.s>=runEnd && run.length){ runs.push(run); run=[]; } run.push(x); runEnd=Math.max(runEnd,x.e); });
+  if(run.length) runs.push(run);
+  runs.forEach(r=>{ const lanes=[]; r.forEach(x=>{ let l=lanes.findIndex(end=>end<=x.s); if(l<0){ l=lanes.length; lanes.push(0); } lanes[l]=x.e; x.lane=l; }); r.forEach(x=>{ x.lanes=lanes.length; }); });
+  const top=m=>(m-h0*60)/60*PX;
+  let html='';
+  for(let h=h0; h<=h1; h++) html+=`<div class="hday-hr" style="top:${top(h*60)}px"><span>${((h%12)||12)}${h<12?' AM':' PM'}</span><i></i></div>`;
+  timed.forEach(x=>{
+    const e=x.ev, own=!mine||e.account===mine, col=own?(e.account?acctColor(e.account):'var(--muted)'):'var(--line)';
+    const w=100/x.lanes, left=`calc(${x.lane*w}% + ${x.lane?3:0}px)`, width=`calc(${w}% - ${x.lanes>1?3:0}px)`;
+    const tint=own?`color-mix(in srgb, ${col} 15%, transparent)`:'color-mix(in srgb, var(--line) 45%, transparent)';
+    html+= own
+      ? `<div class="hday-ev" style="top:${top(x.s)+1}px;height:${Math.max(18,top(x.e)-top(x.s)-2)}px;left:${left};width:${width};border-color:${col};background:${tint}" title="${esc(e.title)}${e.location?' · '+esc(e.location):''}" onclick="openCalPage()">
+          <b>${esc(e.title)}</b><span>${esc(hdayClock(x.s))}${e.end?' – '+esc(hdayClock(x.e)):''}</span></div>`
+      : `<div class="hday-ev other" style="top:${top(x.s)+1}px;height:${Math.max(14,top(x.e)-top(x.s)-2)}px;left:${left};width:${width};border-color:${col};background:${tint}" title="Busy in another account" aria-label="Busy in another account"></div>`;
+  });
+  if(nowM>=h0*60 && nowM<=h1*60) html+=`<div class="hday-now" style="top:${top(nowM)-4}px"><i></i><i></i></div>`;
+  return `<div class="hday-tl" style="height:${top(h1*60)}px">${html}</div>`;
+}
+function hdayRight(sections, evs, mine){
+  const due=[].concat(...sections.map(s=>s.due));
+  const overdue=sections.reduce((n,s)=>n+s.counts.overdue,0);
+  const byAcct=sections.filter(s=>s.counts.overdue).map(s=>`${acctLabel(s.account)} ${s.counts.overdue}`).join(', ');
+  const oldest=sections.map(s=>s.overdue_oldest).filter(Boolean).sort()[0];
+  const allDay=evs.filter(e=>hdayMin(e.time)==null && (!mine||e.account===mine));
+  const todoRow=t=> HOME_ALL
+    ? `<div class="hday-todo" onclick="hdayOpenTodo('${esc(t.account)}',${+t.id})"><span class="hday-dot" style="background:${acctColor(t.account)}"></span>
+        <span class="x">${esc(t.text)}</span><span class="a">${esc(acctLabel(t.account))}</span></div>`
+    : `<label class="hday-todo"><input type="checkbox" onclick="event.stopPropagation();doneItem('t:${+t.id}')" aria-label="Mark done: ${esc(t.text)}">
+        <span class="x" onclick="event.preventDefault();openItem('t:${+t.id}')">${esc(t.text)}</span></label>`;
+  const clash=hdayClashes(evs).filter(([a,b])=>!mine||a.account===mine||b.account===mine);
+  const clashLine=clash.slice(0,2).map(([a,b])=>{
+    const nm=e=>(!mine||e.account===mine)?`${esc(hdayClock(hdayMin(e.time)))} ${esc(e.title)}${!mine&&e.account?` (${esc(acctLabel(e.account))})`:''}`:'a meeting in another account';
+    return `${nm(a)} overlaps ${nm(b)}.`; }).join(' ');
+  const legend=mine
+    ? `<span><span class="hday-dot" style="background:${acctColor(mine)}"></span>${esc(acctLabel(mine))}</span><span><span class="hday-dot" style="background:var(--line)"></span>Busy in another account</span>`
+    : [...new Set(evs.map(e=>e.account).filter(Boolean))].map(a=>`<span><span class="hday-dot" style="background:${acctColor(a)}"></span>${esc(acctLabel(a))}</span>`).join('');
+  const meetings=evs.filter(e=>!mine||e.account===mine).length;
+  return `<div class="hday-right">
+    <div class="rtop"><b>Today${meetings?` · ${meetings} ${meetings===1?'meeting':'meetings'}`:''}</b><a onclick="openCalPage()">Open calendar</a></div>
+    ${legend?`<div class="hday-legend">${legend}</div>`:''}
+    <div class="hday-cal">
+      <div class="hday-sub" style="padding:0 2px 4px"><span>Todos due today · ${due.length}</span>${HOME_ALL?'':`<a onclick="goTodos()">All todos</a>`}</div>
+      ${due.length?due.map(todoRow).join(''):'<div class="hday-none" style="padding:4px 2px">Nothing due today.</div>'}
+      ${overdue?`<div class="hday-over" onclick="${HOME_ALL?`hdayGo('${esc(sections.find(s=>s.counts.overdue).account)}','todos')`:'goTodos()'}">
+        <span><b>${overdue} overdue ${overdue===1?'todo':'todos'}</b><span class="m"> · ${HOME_ALL?esc(byAcct):oldest?'oldest from '+esc(fmtDate(oldest)):''}</span></span><span>›</span></div>`:'<div style="height:12px"></div>'}
+      ${allDay.length?`<div class="hday-allday">${allDay.map(e=>`<span style="border-left-color:${e.account?acctColor(e.account):'var(--line)'}">${esc(e.title)}</span>`).join('')}</div>`:''}
+      ${hdayTimeline(evs, mine)}
+      ${clashLine?`<div class="hday-clash">${clashLine}</div>`:''}
+    </div></div>`;
+}
+function hdayHead(evs, mine, toggle){
+  const h=new Date().getHours(), greet=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  const nowM=h*60+new Date().getMinutes();
+  const timed=evs.map(e=>({e, s:hdayMin(e.time), en:hdayMin(e.end)})).filter(x=>x.s!=null);
+  const own=x=>!mine||x.e.account===mine;
+  const next=timed.find(x=>own(x)&&x.s>=nowM);
+  const cur=timed.find(x=>x.s<=nowM&&nowM<(x.en&&x.en>x.s?x.en:x.s+30));
+  const curLine=cur?(own(cur)?`Now: ${esc(cur.e.title)}${cur.e.location?' · '+esc(cur.e.location.slice(0,40)):''}`
+    :`Now: busy in another account${cur.en?' until '+esc(hdayClock(cur.en)):''}`):'';
+  const [wq,wa]=witPick();
+  const wit=`<div class="hwit side" onclick="event.stopPropagation();witPick(true);renderList()" title="Another one">🎭
+    <span class="hw-q"><i>“${esc(wq)}”</i><span class="hw-by">${esc(witBy(wa))}</span></span>
+    <button class="hw-copy" title="Copy the quote" onclick="event.stopPropagation();witCopy()">📋</button></div>`;
+  return `<div class="hgreet"><span class="htrain">🚂</span><div>
+      <b>${greet}, Bart</b>
+      <span class="hg-sub">${mine?esc(acctLabel(mine))+' · ':''}${new Date().toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'})}${next?` · next: ${esc(next.e.time)} ${esc(next.e.title.slice(0,40))}`:' · a clear track'}</span>
+      ${curLine?`<span class="hg-sub">${curLine}</span>`:''}
+    </div><span class="sp" style="flex:1"></span>${toggle||''}${wit}</div>`;
+}
+function hdayNote(key, label){
+  const n=HOME_NOTE[key]||{};
+  const text=n.note&&n.note.text;
+  return `<div class="hday-note"><div class="k">${esc(label)}
+      <button title="Write it again from what's on the board now" onclick="homeNote('${esc(key)}',true);renderList()">↻</button></div>
+    ${text?`<p>${esc(text)}</p>`:`<p class="wait">${n.pending||n.busy?'Writing today’s note…':'No note yet today.'}</p>`}</div>`;
+}
+const hdayAsk = () => `<div class="hask"><span>🔮</span><input id="hask-in" placeholder="Ask Grand Central anything — mail, todos, calendar…"
+    onkeydown="if(event.key==='Enter')homeAsk(this.value)" aria-label="Ask Grand Central"></div>`;
+// ⌂ Home: every account, each in its own section
+function renderHomeAll(){
+  VISIBLE=[];
+  const data=homeFetch(''); homeNote('');
+  if(!data){ $('#list').innerHTML='<div class="empty">Loading your day…</div>'; return; }
+  if(data.error){ $('#list').innerHTML=`<div class="empty">Home could not load — ${esc(data.error)}</div>`; return; }
+  const order=acctIds();
+  const secs=(data.sections||[]).slice().sort((a,b)=>order.indexOf(a.account)-order.indexOf(b.account));
+  const evs=hdayEvents(data.cal_account);
+  const open=homeOpenMap();
+  const card=s=>{ const a=s.account, isOpen=a in open?open[a]:order.indexOf(a)<3;
+    const mtg=evs.filter(e=>e.account===a).length;
+    return `<section class="hday-acct">
+      <div class="hday-acct-top">
+        <button class="tg" onclick="homeToggleAcct('${esc(a)}')" aria-expanded="${isOpen}">
+          <span class="hday-dot" style="background:${acctColor(a)}"></span><b>${esc(acctLabel(a))}</b><span class="chev">${isOpen?'▾':'▸'}</span></button>
+        <div class="hday-counts">
+          <a onclick="hdayGo('${esc(a)}','inbox')"><b>${s.counts.emails}</b> emails</a>
+          <a onclick="hdayGo('${esc(a)}','cal')"><b>${mtg}</b> ${mtg===1?'meeting':'meetings'}</a>
+          <a onclick="hdayGo('${esc(a)}','todos')"><b>${s.counts.todos_due}</b> todos due</a></div></div>
+      ${isOpen?`<div class="hday-body">${hdayMailBlock(s)}</div>`:''}</section>`; };
+  $('#list').innerHTML=`<div class="hday">${hdayHead(evs, null, '')}
+    <div class="hday-grid"><div class="hday-left">
+      ${hdayNote('', 'The day')}${hdayAsk()}
+      <div class="hday-h">Your accounts</div>
+      ${secs.map(card).join('')||'<div class="empty">No accounts yet.</div>'}
+    </div>${hdayRight(secs, evs, null)}</div></div>`;
+}
+// ◫ Day: one account's own Home
+function renderHomeDay(){
+  VISIBLE=[];
+  const a=ACCT, data=homeFetch(a); homeNote(a);
+  const toggle=homeViewToggle();
+  if(!data){ $('#list').innerHTML=`<div class="hday">${hdayHead(hdayEvents({}), a, toggle)}<div class="empty">Loading ${esc(acctLabel(a))}…</div></div>`; return; }
+  if(data.error){ $('#list').innerHTML=`<div class="empty">Home could not load — ${esc(data.error)}</div>`; return; }
+  const s=(data.sections||[])[0]; if(!s){ $('#list').innerHTML='<div class="empty">Nothing here yet.</div>'; return; }
+  const evs=hdayEvents(data.cal_account);
+  const mtg=evs.filter(e=>e.account===a).length;
+  $('#list').innerHTML=`<div class="hday">${hdayHead(evs, a, toggle)}
+    <div class="hday-grid"><div class="hday-left">
+      ${hdayNote(a, 'The day in '+acctLabel(a))}${hdayAsk()}
+      <div class="hday-tiles">
+        <a onclick="hdayGo('${esc(a)}','inbox')"><b>${s.counts.emails}</b><span>emails in the inbox</span></a>
+        <a onclick="openCalPage()"><b>${mtg}</b><span>${mtg===1?'meeting':'meetings'} today</span></a>
+        <a onclick="goTodos()"><b>${s.counts.todos_due}</b><span>todos due today</span></a></div>
+      <section class="hday-acct"><div class="hday-body" style="border-top:none">${hdayMailBlock(s)}</div></section>
+    </div>${hdayRight([s], evs, a)}</div></div>`;
+}
+
 /* ================= E204: freshness, the steward badge, grouping =================
    Bart: "I want to make sure that when I am using it, I'm always able to see
    the latest emails. Having an easy way to refresh the emails and make sure I
@@ -3530,7 +4526,7 @@ function renderListHead(){
 function groupMenu(ev){
   ev.stopPropagation();
   const r=ev.currentTarget.getBoundingClientRect();
-  const opts=[['smart','Smart — todos, starred, then by date'],['value','Value — highest first'],['account','Account'],['label','Label'],['date','Date'],...(TAB==='todos'?[['urgency','Urgency — overdue, today, later']]:[])];
+  const opts=[['smart',smartOn()?'Smart (Jev) — needs you, team, prospects, then bundles':'Smart — todos, starred, then by date'],['value','Value — highest first'],['account','Account'],['label','Label'],['date','Date'],...(TAB==='todos'?[['urgency','Urgency — overdue, today, later']]:[])];
   ctxOpen(r.right-250,r.bottom+4,'<div style="padding:4px 10px;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--faint)">Group by</div>'
     +opts.map(([v,l])=>`<button onclick="ctxClose();GROUP='${v}';const s=$('#group');if(s)s.value='${v}';renderList()">${GROUP===v?'✓ ':'　'}${esc(l)}</button>`).join(''));
 }
@@ -4195,6 +5191,7 @@ function renderDev(){
           <div class="td-quick"><button class="qbtn" onclick="devAnswer(${r.id})">↩ Send answer</button></div>`
           :'<div class="status">Pair this device (below) to answer.</div>'}</div>`
         :r.note?`<div class="meta" style="color:var(--ink)">💬 ${esc(r.note)}</div>`:''}
+      ${openReq?devTriageHtml(r):''}
       <div class="meta"><span class="chip">${ic} ${esc(label)}</span>
         <span class="chip">${esc(String(r.created_at).slice(0,10))}</span></div>
       <div class="acts">${openReq?`<button class="qbtn" onclick="devArchive(${r.id})" title="Withdraw the request">✕ Withdraw</button>`
@@ -4209,7 +5206,8 @@ function renderDev(){
         <b>Next background run: ${(()=>{ const now=new Date(); const mk=(h,m)=>{const d=new Date(now);d.setHours(h,m,0,0);return d;};
           let n=[mk(7,23),mk(15,23)].find(d=>d>now); if(!n){ n=mk(7,23); n.setDate(n.getDate()+1); }
           return esc(n.toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'})); })()}</b>
-        — interactive sessions pick requests up sooner.</div>
+        — it triages first, then builds only small, clear requests, highest priority first.
+        Interactive sessions pick requests up sooner.</div>
       ${devCode()?`<div class="td-quick" style="margin-bottom:6px">
         <button class="qbtn" onclick="devNewCode()" title="Mint a code to pair another Mac, iPhone or browser">🔑 Pair another device…</button></div>
       <textarea id="dev-in" class="tp-notes" placeholder="Describe the change… what you want, where, why. (⌘⏎ to file it)"
@@ -4225,6 +5223,29 @@ function renderDev(){
       :'<div class="empty">Queue is clear — file one above.</div>'}
     ${done.length?`<div class="sec" style="cursor:default">Answered <span class="n">${done.length}</span></div>
       <div class="goals-grid bd-grid">${done.map(card).join('')}</div>`:''}`;
+}
+/* Triage (2026-09-28): what the triage pass decided about an open card, and
+   Bart's two levers — the priority, and "build it" for a card held back. */
+const DEV_VERDICT={build:['🟢','Cleared to build'],ask:['❓','Asking you'],session:['🧑‍💻','Needs a session with you'],
+  duplicate:['🔁','Looks like a duplicate'],done:['✅','Looks already done']};
+const DEV_SIZE={s:'small',m:'medium',l:'large'};
+function devTriageHtml(r){
+  if(!r.verdict) return `<div class="dev-tri muted">⏳ Not triaged yet — the next run labels it first.</div>`;
+  const [vi,vl]=DEV_VERDICT[r.verdict]||['•',r.verdict];
+  const held=r.verdict==='build'&&r.size==='l';
+  const pri=devCode()?`<select class="dev-pri" onchange="devTriage(${r.id},{priority:this.value})" title="Priority">
+      ${['p1','p2','p3'].map(p=>`<option value="${p}" ${r.priority===p?'selected':''}>${p}</option>`).join('')}</select>`
+    :`<span class="chip">${esc(r.priority||'')}</span>`;
+  return `<div class="dev-tri">${pri}<span class="chip">${esc(DEV_SIZE[r.size]||r.size||'')}</span>
+      <span class="chip">${vi} ${esc(held?'Large — waits for a session':vl)}${r.dup_of?` of #${r.dup_of}`:''}</span>
+      ${r.triage_by==='bart'?'<span class="chip">set by you</span>':''}
+      ${devCode()&&(r.verdict!=='build'||held)&&r.verdict!=='ask'?`<button class="qbtn" onclick="devTriage(${r.id},{verdict:'build'})" title="Let the background worker build it anyway">▶ Build it</button>`:''}
+    ${r.triage_note&&r.triage_by!=='bart'?`<div class="status">${esc(r.triage_note)}</div>`:''}</div>`;
+}
+async function devTriage(id,fields){
+  try { await post('/dev',{action:'triage',id,account:ACCT,...fields},devHdr());
+    toast(fields.verdict==='build'?'Cleared — the next run builds it':'Priority set'); await loadDev(); renderList();
+  } catch(e){ if(!devUnpaired(e)) toast('Not saved — '+e.message); }
 }
 async function devAdd(){
   const inp=$('#dev-in'); const text=(inp?.value||'').trim(); if(!text) return;
@@ -4499,8 +5520,7 @@ async function doBundleBulk(name, mode){
     toast(`${mode==='archive'?'Archived':'Dismissed'} ${ok} thread(s) from ${name}`);
   } catch(e){ toast(`Group ${mode} stopped after ${ok} — ${e.message}`); rebuild(); }
 }
-const BUNDLE_NAME = i => ({newsletter:'📰 Newsletters',notification:'🔔 Updates & notifications',
-  receipt:'🧾 Receipts',calendar:'📅 Calendar mail',promo:'🛍 Promos'})[i.raw.category];
+const BUNDLE_NAME = i => GRP_BULK[grpKey(i)];
 // E197 (#11): Sent, Drafts, Scheduled and the tool screens do not read the
 // Everything/Today/Mail/Todos lens at all, so the strip stopped pretending.
 const TAB_SCOPES=new Set(['inbox','project','goal','label','allmail','account','snoozed']);
@@ -4581,6 +5601,8 @@ function lblStyle(l){
    Shortwave's actions are thin line glyphs that sit quietly until you reach
    for them; emoji buttons shouted. One stroke set, currentColor, 24-grid. */
 const ICONS={
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  move:'<path d="M7 7h12M15 3l4 4-4 4M17 17H5M9 13l-4 4 4 4"/>',
   label:'<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h11l4.5 6-4.5 6h-11A1.5 1.5 0 0 1 3 16.5z"/>',
   tag:'<path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
   star:'<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.3l-5.6 2.9 1.1-6.3L2.9 9.5l6.3-.9z"/>',
@@ -4660,20 +5682,53 @@ function rowChips(i){
     + (i.due?`<span class="chip ${String(i.due)<dOff(0)?'due':''}" title="Due">${String(i.due)<dOff(0)?'overdue':'due'} ${esc(String(i.due).slice(5,10))}</span>`:'');
 }
 const actBtn=(icon,title,js)=>`<button title="${esc(title)}" onclick="event.stopPropagation();${js}">${ic(icon)}</button>`;
+/* Dev #37 (Bart: "The From address is showing me, but the email thread is
+   with someone else"): when Bart wrote last, the row names who it's WITH,
+   Gmail-style — "Sam, me". Bart is his account addresses plus anyone
+   carrying his own display name (old addresses from past jobs). */
+function mailWho(x){
+  const who=x.who||x.last_from||'';
+  const lastEm=(x.last_from_email||emOf(x.last_from)||'').toLowerCase();
+  if(!(x.last_direction==='outbound'||OWN.has(lastEm))) return {who};
+  const me=nmOf(x.last_from||'').toLowerCase();
+  const seen=new Set(), others=[];
+  (x.participants||[]).forEach(p=>{
+    const em=emOf(p), nm=nmOf(p);
+    if(!em||OWN.has(em)||(me&&nm.toLowerCase()===me)) return;
+    const k=(nm&&!nm.includes('@')?nm:em).toLowerCase(); if(seen.has(k)) return;
+    seen.add(k); others.push({em, nm:nm&&!nm.includes('@')?nm:em.split('@')[0]});
+  });
+  if(!others.length) return {who:'me'};
+  const first=n=>others.length>1?n.split(/\s+/)[0]:n;
+  return {who:others.slice(0,2).map(o=>first(o.nm)).join(', ')+(others.length>2?' +'+(others.length-2):'')+', me',
+          whoEm:others[0].em, whoNm:others[0].nm};
+}
 function rowHtml(i, idx){
   const open=OPEN===i.key?'open':'', sel=SEL.has(i.key)?'sel':'', kb=VISIBLE[KB]===i?'kb':'';
   const k=esc(i.key);
   if(i.type==='todo') return todoRowHtml(i,open,sel,kb);
-  const lead=`<span class="lead" style="background:${avColor(i.who)}">${initials(i.who)}${avImg(i.raw.last_from_email)}</span>`;
+  const lead=i.whoEm
+    ? `<span class="lead" style="background:${avColor(i.whoNm)}">${initials(i.whoNm)}${avImg(i.whoEm)}</span>`
+    : `<span class="lead" style="background:${avColor(i.who)}">${initials(i.who)}${avImg(i.raw.last_from_email)}</span>`;
   // Bounded account triage: six fast verbs, then (Bart, dev #27) trash and a
   // "…" that opens the full row menu — star, label, open and the rest —
   // without hunting for right-click. Trash is still Gmail Trash with Undo.
-  const acts=actBtn('reply','Reply / draft',`replyOptions('${k}')`)
+  // Dev #54 (Bart: moving a todo's emails was hidden under ⋯): inside a
+  // todo, each of its emails leads with ⇄ move to another todo and ↩ back to
+  // the inbox, the E222 verbs, now one click away.
+  const own=SCOPE.kind==='todo'&&tpItem();
+  const inTodo=own&&(own.threads||[]).some(t=>t.account===i.account&&t.thread_id===i.raw.thread_id);
+  const todoActs=inTodo
+    ? actBtn('move','Move to another todo',`moveTodoDlg('${esc(own.key)}','${esc(i.account)}','${esc(i.raw.thread_id)}')`)
+      + actBtn('into','Back to the inbox — take it out of this todo',`returnThread('${esc(own.key)}','${esc(i.account)}','${esc(i.raw.thread_id)}')`)
+    : '';
+  const acts=todoActs+actBtn('reply','Reply / draft',`replyOptions('${k}')`)
     + actBtn('archive','Archive',`archiveItem('${k}')`)
     + actBtn('clock','Snooze',`snoozeDlg('${k}')`)
     + actBtn(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)
     + actBtn('check','Handled',`handledItem('${k}')`)
     + actBtn('todo','Create or add to an account todo',`todoPick(['${k}'])`)
+    + actBtn('folder','Add to project',`projPickKey(event,'${k}')`)
     + actBtn('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`).replace('<button ','<button class="warn" ')
     + actBtn('more','More actions',`rowMore(event,'${k}')`);
   const when = i.snoozed&&i.wake ? `<span class="when" title="Snoozed until">${ic('clock','sm')} ${fmtDate(i.wake)}</span>`
@@ -4684,7 +5739,8 @@ function rowHtml(i, idx){
     <span class="selbox" title="Select — act on several at once" onclick="event.stopPropagation();toggleSel('${k}')">${ic('check','sm')}</span>
     ${lead}
     <div class="body">
-      <div class="l1"><span class="who ${i.raw.last_from_email?'person':''}" ${i.raw.last_from_email?`data-em="${esc(i.raw.last_from_email.toLowerCase())}" data-nm="${esc(i.who)}"`:''}>${esc(String(i.who).split('<')[0].trim()||i.who)}</span>${n}
+      <div class="l1">${(()=>{ const em=i.whoEm||i.raw.last_from_email, nm=i.whoNm||i.who;
+        return `<span class="who ${em?'person':''}" ${em?`data-em="${esc(em.toLowerCase())}" data-nm="${esc(nm)}"`:''}>${esc(String(i.who).split('<')[0].trim()||i.who)}</span>`; })()}${n}
         <span class="meta">${when}</span><span class="acts">${acts}</span></div>
       <div class="l2"><span class="subj">${esc(i.title)}</span></div>
       <div class="l3"><span class="prev">${esc((i.snip||'').slice(0,200))}</span>${rowTail(i)}</div>
@@ -4746,6 +5802,14 @@ function mailCtxHtml(i){
     _mi('🏷 Label…',`labelDlg('${k}')`),
     _mi('✓ Handled',`handledItem('${k}')`),
     _mi('◯ Create or add to todo…',`todoPick(['${k}'])`),
+    _mi('📁 Add to project…',`projPickKey(null,'${k}')`),
+    // E221 (Dev #20): inside a todo, its emails can leave again. moveTodoDlg
+    // and returnThread outlived the E204 todo page that used to call them.
+    ...(()=>{ const o=SCOPE.kind==='todo'&&tpItem();
+      if(!o||!(o.threads||[]).some(t=>t.account===i.account&&t.thread_id===i.raw.thread_id)) return [];
+      const a=esc(i.account), th=esc(i.raw.thread_id), ok=esc(o.key);
+      return [_mi('⇄ Move to another todo…',`moveTodoDlg('${ok}','${a}','${th}')`),
+              _mi('↩ Take out of this todo, back to the inbox',`returnThread('${ok}','${a}','${th}')`)]; })(),
     // E207 (Bart: "I seem to have lost the ability to delete emails"): the
     // bounded-triage pass took trash off every row surface at once. Keeping it
     // off the six-button hover strip is right — that strip is for the verbs you
@@ -4764,6 +5828,7 @@ function todoCtxHtml(i){
     _mi(i.starred?'★ Unstar':'☆ Star',`starItem('${k}')`),
     _mi('⏰ Snooze…',`snoozeDlg('${k}')`),
     _mi('✓ Handled',`handledItem('${k}')`),
+    _mi('📁 Add to project…',`projPickKey(null,'${k}')`),
   ].join('');
 }
 $('#list').addEventListener('contextmenu',e=>{
@@ -4853,7 +5918,13 @@ $('#dock').addEventListener('contextmenu',e=>{
   const i=findItem(row.dataset.key); if(!i) return;
   e.preventDefault(); ctxOpen(e.clientX,e.clientY,todoCtxHtml(i));
 });
-document.addEventListener('click',ctxClose);
+// A click INTO a field or a .keep control inside a pop-over (the snippet and
+// project pickers' search boxes) must not close it; menu items close it
+// themselves (_mi).
+document.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('#ctx input, #ctx textarea, #ctx .keep')) return; ctxClose(); });
+let LASTXY=[innerWidth/2, innerHeight/3];
+document.addEventListener('mousedown',e=>{ LASTXY=[e.clientX,e.clientY]; },true);
+document.addEventListener('contextmenu',e=>{ LASTXY=[e.clientX,e.clientY]; },true);
 document.addEventListener('contextmenu',e=>{ if(!e.target.closest('#ctx')) ctxClose(); },true);
 addEventListener('scroll',ctxClose,true);
 addEventListener('keydown',e=>{ if(e.key==='Escape') ctxClose(); });
@@ -4876,12 +5947,13 @@ function fmtDate(d){
 function renderDrafts(){
   VISIBLE=[];
   const drafts=(DRAFTS||[]).filter(d=>mailAcctInAcct(d.account));
-  const rows=drafts.map(d=>`<div class="row read" onclick="window.open('${esc(d.link||'#')}','_blank')">
+  // E224 (Dev #19): a draft opens in GC's own composer, not Gmail.
+  const rows=drafts.map(d=>`<div class="row read" onclick='openDraft(${JSON.stringify({account:d.account,uid:d.draft_uid,mid:d.gm_msgid||""}).replace(/'/g,"&#39;")})'>
       <span class="lead" style="background:#8a95a5">✍</span>
       <div class="body">
         <div class="l1"><span class="who">${esc(d.to?('to '+d.to.split(',')[0].split('<')[0].trim()):d.account)}</span>
           <span class="hl"><span class="chip">${esc(d.account)}</span></span>
-          <span class="meta"><span class="when">open ↗</span></span></div>
+          <span class="meta"><span class="when">${fmtDate(d.date)}</span></span></div>
         <div class="l2"><span class="subj">${esc(d.subject||'(no subject)')}</span>
           <span class="prev">${esc((d.snippet||'').slice(0,160))}</span></div>
       </div></div>`).join('');
@@ -4890,27 +5962,51 @@ function renderDrafts(){
       <span class="sp"></span><span class="fold" onclick="DRAFTS=null;setScope('drafts')" title="Refresh from Gmail">↻</span></div>
     ${rows?`<div class="ib-card">${rows}</div>`:'<div class="ib-empty">No drafts waiting in Gmail.</div>'}</div>`;
 }
+/* Dev #41 (Bart: "The Sent Mail view is missing some recent email; it's also
+   not showing the date or time … or everyone who was sent to. We should use
+   the same design as the inbox"): the inbox's three-line row — the first
+   recipient's face, everyone it went to, the subject, a line of what Bart
+   wrote, and when — newest first, 50 at a time with Load more. */
+let SENT_NEXT=null;
+function sentWho(m){
+  const ppl=splitRcpts((m.to||'')+(m.cc?', '+m.cc:'')).map(p=>({em:emOf(p), nm:nmOf(p)}))
+    .filter(p=>p.em&&!OWN.has(p.em));
+  const name=p=>{ const n=p.nm&&!p.nm.includes('@')?p.nm:p.em.split('@')[0]; return ppl.length>1?n.split(/\s+/)[0]:n; };
+  return {ppl, label:ppl.length?ppl.slice(0,3).map(name).join(', ')+(ppl.length>3?' +'+(ppl.length-3):''):'(no recipients)'};
+}
 function renderSent(){
   VISIBLE=[];
-  // E180: same card, same two-line row, same chip-on-the-right as every list.
-  const all=(SENT||[]), shown=all.filter(sentInAcct), hidden=all.length-shown.length;
+  const shown=(SENT||[]).filter(sentInAcct);
   const rows=shown.map(m=>{
-    const to=(m.to||'').split(',')[0].split('<')[0].trim()||'?';
+    const w=sentWho(m), p0=w.ppl[0]||{em:'',nm:'?'}, nm=p0.nm||p0.em;
+    const all=[m.to,m.cc].filter(Boolean).join(', ');
     return `<div class="row read" onclick="openItem('m:${esc(m.account)}:${esc(m.thread_id)}')">
-      <span class="lead" style="background:${avColor(to)}">→</span>
+      <span class="selbox" style="visibility:hidden"></span>
+      <span class="lead" style="background:${avColor(nm)}">${initials(nm)}${avImg(p0.em)}</span>
       <div class="body">
-        <div class="l1"><span class="who">to ${esc(to)}</span>
-          <span class="hl"><span class="chip">${esc(m.account)}</span></span>
-          <span class="meta"><span class="when">${fmtDate(m.date)}</span></span></div>
-        <div class="l2"><span class="subj">${esc(m.subject||'(no subject)')}</span>
-          <span class="prev">${esc((m.snippet||'').slice(0,160))}</span></div>
+        <div class="l1"><span class="who ${p0.em?'person':''}" ${p0.em?`data-em="${esc(p0.em)}" data-nm="${esc(nm)}"`:''} title="${esc(all)}">To: ${esc(w.label)}</span>
+          <span class="meta"><span class="when" title="${esc(m.date?new Date(m.date).toLocaleString():'')}">${fmtDate(m.date)}</span></span></div>
+        <div class="l2"><span class="subj">${esc(m.subject||'(no subject)')}</span></div>
+        <div class="l3"><span class="prev">${esc((m.snippet||'').slice(0,200))}</span></div>
       </div></div>`;}).join('');
   $('#list').innerHTML = `<div class="ib-wrap">
-    <div class="ib-head"><span class="t">Sent — recent</span><span class="ib-count">${shown.length}</span>
-      <span class="sp"></span><span class="fold" onclick="SENT=null;setScope('sent')" title="Refresh from Gmail">↻</span></div>
-    ${rows?`<div class="ib-card">${rows}</div>`
+    <div class="ib-head"><span class="t">Sent</span><span class="ib-count">${shown.length}</span>
+      <span class="sp"></span><span class="fold" onclick="SENT=null;SENT_NEXT=null;setScope('sent')" title="Refresh from Gmail">↻</span></div>
+    ${rows?`<div class="ib-card">${rows}</div>
+      ${SENT_NEXT?`<div class="go-all" id="sent-more" onclick="loadMoreSent()">Load older sent mail ${ic('down','sm')}</div>`:''}`
       :`<div class="ib-empty">No sent mail from ${esc(acctName(ACCT))}.</div>`}</div>`;
   hydrateAvatars($('#list'));
+}
+async function loadMoreSent(){
+  if(!SENT_NEXT) return;
+  const b=$('#sent-more'); if(b){ b.textContent='Loading…'; b.onclick=null; }
+  try {
+    const d=await fetch('/sent?account='+encodeURIComponent(ACCT)+'&before='+SENT_NEXT).then(r=>r.json());
+    const have=new Set((SENT||[]).map(x=>x.account+':'+x.thread_id+':'+x.date));
+    SENT=(SENT||[]).concat((d.sent||[]).filter(x=>x.account===ACCT&&!have.has(x.account+':'+x.thread_id+':'+x.date)));
+    SENT_NEXT=d.next_before||null;
+  } catch(e){ toast('Could not load more — '+e.message); }
+  if(SCOPE.kind==='sent') renderSent();
 }
 function renderOutbox(){
   VISIBLE=[];
@@ -5059,13 +6155,13 @@ const findItem = key => ITEMS.find(i=>i.key===key) || (SEARCH_ROWS||[]).find(i=>
    done with no inverse endpoints. A newer action commits the older one;
    leaving the page commits whatever is pending (keepalive fetches). */
 let PENDING=null;
-function queueUndo(label, exec, restore){
+function queueUndo(label, exec, restore, ms=6000){
   flushPending();                       // one held action at a time
   $('#undo-label').textContent=label;
   const bar=$('#undobar'); bar.hidden=false;
   const tick=$('#undo-tick'); tick.style.animation='none'; void tick.offsetWidth;
-  tick.style.animation='';
-  PENDING={exec,restore,timer:setTimeout(commitPending,6000)};
+  tick.style.animation=''; tick.style.animationDuration=(ms/1000)+'s';
+  PENDING={exec,restore,timer:setTimeout(commitPending,ms)};
 }
 async function commitPending(){
   if(!PENDING) return;
@@ -5093,14 +6189,23 @@ function restoreItem(i){
 // E62: acting on the open item advances to the NEXT one instead of dumping
 // you back to the list — triage keeps moving (done/snooze/dismiss/trash all
 // funnel through here).
+// Dev #47 (Bart: "After I delete an email with the preview pane open, open
+// the next email, don't close that window"): an open email advances to the
+// next EMAIL, the way j/k do — the neighbour row could be a todo, and opening
+// a todo navigates into its page, which took the reading pane away. An email
+// that wasn't in the flat list (a stub, a folded section) opens the list's
+// first email instead of closing the pane.
 function dropLocal(i){
   DROPPED.set(i.key, Date.now());
   const wasOpen = OPEN===i.key;
-  const idx = VISIBLE.findIndex(x=>x.key===i.key);
+  const pool = VISIBLE.filter(x=>i.type!=='mail'||x.type==='mail');
+  const idx = pool.findIndex(x=>x.key===i.key);
+  const near = idx>=0 ? [...pool.slice(idx+1), ...pool.slice(0,idx).reverse()] : [];
   if(i.type==='mail') MAIL=MAIL.filter(t=>t!==i.raw); else TODOS=TODOS.filter(t=>t!==i.raw);
   rebuild();   // refreshes VISIBLE
   if(wasOpen){
-    const next = (idx>=0 && (VISIBLE[idx]||VISIBLE[idx-1])) || null;
+    let next = near.map(x=>VISIBLE.find(v=>v.key===x.key)).find(Boolean) || null;
+    if(!next && idx<0 && i.type==='mail') next = VISIBLE.find(x=>x.type==='mail') || null;
     if(next){ KB=VISIBLE.indexOf(next); openItem(next.key); }
     else closePane();
   }
@@ -5930,7 +7035,9 @@ async function openItem(key, keepScroll){
   // them"): Home hides the reading pane (body.home-on .pane{display:none}),
   // so a click here has to step out of Home first. The feed used to do this
   // itself; E180 swapped in the shared row and lost it.
-  if(SCOPE.kind==='home'){ const it=findItem(key);
+  // Projects: a project page keeps the reading pane beside it (the email
+  // opens with its own account), so there is no Home to step out of.
+  if(SCOPE.kind==='home' && !PROJ){ const it=findItem(key);
     return homeOpen(it&&it.project?it.project:'__none', key); }
   sfx('open');
   OPEN=key; document.body.classList.add('pane-open'); renderList();
@@ -6141,6 +7248,7 @@ function paneShell(i, inner){
     ${tb(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)}
     ${tb('check','Handled',`handledItem('${k}')`)}
     ${i.type==='mail'?tb('todo','Create or add to account todo',`todoPick(['${k}'])`):''}
+    ${tb('folder','Add to project',`projPickKey(event,'${k}')`)}
     ${i.type==='mail'?tb('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`,'warn'):''}
     ${i.type==='mail'?`<button class="tool" onclick="paneMore('${k}',event)" title="More — star, label, note, contacts, Gmail…">${ic('more')}</button>`:''}
   </div>
@@ -6389,6 +7497,7 @@ function renderThreadPane(i){
   });
   $('#pane').innerHTML = paneShell(i, `
     <div class="msgs" id="msgs">
+      <div id="rsvp-bar"></div>
       ${older.length?`<div class="fold-msgs" id="fold-older">··· ${older.length} earlier message${older.length>1?'s':''}</div>`:''}
       ${rows.join('')}
     </div>
@@ -6424,6 +7533,38 @@ function renderThreadPane(i){
   });
   hydrateAvatars($('#pane'));
   if(box) box.scrollTop=box.scrollHeight;
+  if(i.type==='mail'&&(i.raw.category==='calendar'||/^(updated )?invitation\b/i.test(i.title||''))) loadRsvp(i);
+}
+/* Dev #16 (§6 Calendar RSVP, Bart 2026-09-27): an invitation answers from its
+   email — Yes / Maybe / No, i.e. Google's accepted / tentative / declined.
+   The server finds the event by the invite's iCalUID; one click, audited. */
+const RSVP={};   // key -> {at, r}
+async function loadRsvp(i, force){
+  const k=i.key, c=RSVP[k];
+  if(!force&&c&&Date.now()-c.at<120e3) return paintRsvp(i,c.r);
+  try {
+    const r=await fetch('/calendar/invite?'+new URLSearchParams({account:i.account,thread_id:i.raw.thread_id}),{cache:'no-store'}).then(r=>r.json());
+    RSVP[k]={at:Date.now(),r}; paintRsvp(i,r);
+  } catch(e){}
+}
+function paintRsvp(i,r){
+  const bar=$('#rsvp-bar'); if(!bar||MSG_CTX?.key!==i.key||!r||!r.invite) return;
+  const cur={accepted:'yes',tentative:'maybe',declined:'no'}[r.my_status]||'';
+  const b=(v,label)=>`<button class="qbtn ${cur===v?'on':''}" ${r.can_rsvp?'':'disabled'} onclick="doRsvp('${esc(i.key)}','${v}',this)">${label}</button>`;
+  bar.className='rsvp-bar';
+  bar.innerHTML=`<span class="rsvp-q">📅 <b>${esc(r.summary||'Invitation')}</b>${r.start?' · '+esc(fmtDate(r.start)):''} — going?</span>
+    <span class="rsvp-b">${b('yes','✓ Yes')}${b('maybe','? Maybe')}${b('no','✕ No')}
+    ${r.link?`<a class="qbtn" href="${esc(r.link)}" target="_blank" rel="noopener">Calendar ↗</a>`:''}</span>
+    ${r.can_rsvp?'':`<div class="status">${esc(r.reason||'')}</div>`}`;
+}
+async function doRsvp(key,v,btn){
+  const i=findItem(key); if(!i) return;
+  btn.closest('.rsvp-b').querySelectorAll('button').forEach(x=>x.disabled=true);
+  try {
+    await post('/calendar/rsvp',{account:i.account,thread_id:i.raw.thread_id,response:v});
+    toast({yes:'Going ✓',maybe:'Maybe',no:'Declined'}[v]+' — Google has let the organizer know');
+    loadRsvp(i,true);
+  } catch(e){ toast('RSVP failed — '+e.message); loadRsvp(i,true); }
 }
 // E62: two pane modes, Bart's choice. Preview ON = the right pane stays
 // open and in place (a placeholder when nothing's selected; j/k drive it).
@@ -6435,7 +7576,7 @@ let PREVIEW = localStorage.getItem('gc2_preview')!==null
   ? localStorage.getItem('gc2_preview')==='1'
   : innerWidth>=1500;
 /* E204: fold the docked reply back to one line; E155's backup keeps the text. */
-function closeComposer(key){ $('#pane').classList.remove('composing'); const i=findItem(key); if(i) renderThreadPane(i); }
+function closeComposer(key){ draftSnapClear('sd'); $('#pane').classList.remove('composing'); const i=findItem(key); if(i) renderThreadPane(i); }
 function closePane(){
   OPEN=null; $('#pane').classList.remove('composing');
   // full-page scopes (Home hides the pane in CSS; the Wizard needs its
@@ -6515,9 +7656,10 @@ function renderTodoPlace(){
     <div class="tp-bar">
       <button class="ib" onclick="todoBack()" title="Back (Esc)">${ic('back')}</button>
       <span class="sp"></span>
-      <button class="ib" onclick="todoMoreMenu(event)" title="More — due, priority, project, goal, repeat, drop">${ic('more')}</button>
+      <button class="ib" onclick="todoMoreMenu(event)" title="More — due, priority, repeat, account, delete">${ic('more')}</button>
       <button class="ib" onclick="snoozeDlg('${k}')" title="Snooze the todo">${ic('clock')}</button>
       <button class="ib" onclick="starItem('${k}')" title="${i.starred?'Unstar':'Star'}">${ic(i.starred?'starfill':'star')}</button>
+      <button class="ib" onclick="projPickKey(event,'${k}')" title="Add to project">${ic('folder')}</button>
       <button class="all-done" onclick="${inInbox?`doneTodoGroup('${k}',true)`:`doneItem('${k}')`}"
         title="${inInbox?`Complete the todo and archive its ${inInbox} inbox email(s)`:'Complete this todo'}">${ic('check','sm')} Mark all done</button>
     </div>
@@ -6543,7 +7685,9 @@ function todoMoreMenu(ev){
     _mi(i.my_day?'☀ Remove from My Day':'🌤 Add to My Day',`myDayItem('${esc(i.key)}');renderList()`),
     _mi('✓ Done — leave the emails where they are',`doneItem('${esc(i.key)}')`),
     '<hr>',
-    _mi('Drop — abandon without completing',`dropTodo('${esc(i.key)}')`,'warn'),
+    // E221 (Dev #21, "we need the ability to delete a todo"): it was here all
+    // along as "Drop", which nobody would look for. Same verb, same Undo.
+    _mi('🗑 Delete todo — drop it without completing',`dropTodo('${esc(i.key)}')`,'warn'),
   ].join(''));
 }
 /* the fields that used to crowd the todo page, one click away */
@@ -6740,17 +7884,106 @@ function contactsDlg(key){
    Bold/italic/underline/bullets/links via contenteditable. The PLAIN text
    is always what the send audits; HTML rides as the alternative part only
    when real formatting was used. */
+/* Dev #50: the formatting moved to the Shortwave-style toolbar under the
+   message (composerBar); the editor remembers where the caret was so emoji
+   and snippets land there, and ⌘; opens snippets. */
 function richBody(id){
-  return `<div class="rb-bar">
-      <button type="button" onclick="rbCmd('${id}','bold')" title="Bold (⌘B)"><b>B</b></button>
-      <button type="button" onclick="rbCmd('${id}','italic')" title="Italic (⌘I)"><i>I</i></button>
-      <button type="button" onclick="rbCmd('${id}','underline')" title="Underline"><u>U</u></button>
-      <button type="button" onclick="rbCmd('${id}','insertUnorderedList')" title="Bulleted list">•</button>
-      <button type="button" onclick="rbLink('${id}')" title="Insert link">🔗</button>
-      <button type="button" onclick="rbImg('${id}')" title="Insert image or GIF — sends inline">🖼</button>
-    </div>
-    <div class="rb-body" id="${id}" contenteditable="true"></div>`;
+  return `<div class="rb-body rb-solo" id="${id}" contenteditable="true"
+    onkeyup="rbSave('${id}')" onmouseup="rbSave('${id}')" onblur="rbSave('${id}')"
+    onkeydown="if((event.metaKey||event.ctrlKey)&&event.key===';'){event.preventDefault();snipPick(null,'${id}')}"></div>`;
 }
+const RB_SEL={};
+function rbSave(id){ const sel=getSelection(), el=$('#'+id);
+  if(el&&sel.rangeCount&&el.contains(sel.anchorNode)) RB_SEL[id]=sel.getRangeAt(0).cloneRange(); }
+function rbRestore(id){ const el=$('#'+id); if(!el) return; el.focus();
+  const r=RB_SEL[id]; if(r&&el.contains(r.startContainer)){ const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); } }
+function rbInsertText(id,text){ rbRestore(id); document.execCommand('insertText',false,text); rbSave(id); }
+function rbCmdAt(id,cmd,val){ rbRestore(id); document.execCommand(cmd,false,val); rbSave(id); }
+function rbCode(id){ rbRestore(id); const t=String(getSelection()); 
+  document.execCommand('insertHTML',false,`<code>${esc(t||'code')}</code>&nbsp;`); rbSave(id); }
+function rbQuote(id){ rbCmdAt(id,'formatBlock','blockquote'); }
+function rbFmtMenu(ev,id){ const r=ev.currentTarget.getBoundingClientRect();
+  ctxOpen(r.left,r.top-170,[
+    _mi('<b>B</b>&nbsp; Bold',`rbCmdAt('${id}','bold')`), _mi('<i>I</i>&nbsp; Italic',`rbCmdAt('${id}','italic')`),
+    _mi('<u>U</u>&nbsp; Underline',`rbCmdAt('${id}','underline')`), _mi('<s>S</s>&nbsp; Strikethrough',`rbCmdAt('${id}','strikeThrough')`),
+    _mi('✕&nbsp; Clear formatting',`rbCmdAt('${id}','removeFormat')`)].join('')); }
+const EMOJI='😀 😂 😊 😍 🤔 😅 😎 🙏 👍 👎 👏 🙌 💪 👀 🎉 🔥 ✅ ❌ ⚠️ ❤️ 💙 🤝 📈 📉 💡 📌 📎 📅 ⏰ ☕ 🚀 🎯 🗳️ 📣 ✍️ 🤞 😬 🙃 😢 🥳 💯 ⭐ 🌊 🇺🇸 👋 🍕 ✈️ 🏛️'.split(' ');
+function emojiPick(ev,id){ const r=ev.currentTarget.getBoundingClientRect();
+  ctxOpen(r.left,r.top-190,`<div class="emo-grid">${EMOJI.map(e=>`<button onclick="ctxClose();rbInsertText('${id}','${e}')">${e}</button>`).join('')}</div>`); }
+/* Snippets: saved blocks of text, shared across devices — kept in the same
+   context corpus as signatures ([snippet:Name], inactive so Ask never reads
+   them). ⌘; in the message, or { } on the toolbar. */
+let SNIPS=[];
+function snipPick(ev,id,q=''){
+  const r=ev?ev.currentTarget.getBoundingClientRect():($('#'+id)?.getBoundingClientRect()||{left:200,top:400});
+  const hits=SNIPS.filter(x=>!q||(x.name+' '+x.text).toLowerCase().includes(q.toLowerCase()));
+  ctxOpen(Math.max(8,r.left),Math.max(8,r.top-280),`<div class="snip-box">
+    <input id="snip-q" placeholder="Find a snippet…" value="${esc(q)}" oninput="snipPick(null,'${id}',this.value)"
+      onkeydown="if(event.key==='Enter'){const b=document.querySelector('.snip-box .snip-use');if(b)b.click()}">
+    ${hits.map(x=>`<div class="snip-row"><button class="snip-use" onclick="ctxClose();rbInsertText('${id}',SNIPS.find(s=>s.id===${x.id}).text)">
+        <b>${esc(x.name)}</b><span>${esc(x.text.slice(0,70))}</span></button>
+        <button class="snip-x" title="Delete" onclick="snipDel(${x.id},'${id}')">✕</button></div>`).join('')
+      ||`<div class="status" style="padding:6px 8px">${SNIPS.length?'No match':'No snippets yet'}</div>`}
+    <button class="snip-new" onclick="ctxClose();snipNew('${id}')">＋ New snippet${String(RB_SEL[id]||'')?' from the selected text':''}</button></div>`);
+  setTimeout(()=>{ const i=$('#snip-q'); if(i){ i.focus(); i.setSelectionRange(i.value.length,i.value.length); } },20);
+}
+function snipNew(id){
+  const sel=String(RB_SEL[id]||'');
+  dlg(`<h3>New snippet</h3><label>Name</label><input type="text" id="snip-n" placeholder="e.g. Intro call">
+    <label>Text</label><textarea id="snip-t" rows="6">${esc(sel)}</textarea>
+    <div class="foot"><button class="btn" onclick="snipSave('${id}')">Save</button><button class="btn sec2" onclick="closeDlg()">Cancel</button>
+      <span class="status" id="snip-st"></span></div>`);
+  setTimeout(()=>$('#snip-n')?.focus(),30);
+}
+async function snipSave(id){
+  const name=($('#snip-n').value||'').trim().replace(/[\]\[]/g,'').slice(0,60), text=($('#snip-t').value||'').trim();
+  if(!name||!text){ $('#snip-st').textContent='Name and text, please'; return; }
+  try { const out=await post('/context',{action:'add',scope:'global',kind:'voice',text:`[snippet:${name}] ${text.replace(/\n/g,'⏎')}`});
+    try { await post('/context',{action:'update',id:out.id,fields:{active:0}}); } catch(e){}
+    SNIPS.push({id:out.id,name,text}); closeDlg(); toast('Snippet saved — ⌘; to use it');
+  } catch(e){ $('#snip-st').textContent=e.message; }
+}
+async function snipDel(sid,id){
+  try { await post('/context',{action:'delete',id:sid}); SNIPS=SNIPS.filter(x=>x.id!==sid); snipPick(null,id,$('#snip-q')?.value||''); }
+  catch(e){ toast('Could not delete — '+e.message); }
+}
+/* The toolbar under the message — Shortwave's layout: formatting and
+   inserts on the left; send later and Send ▾ on the right. */
+function composerBar(id,o){
+  const b=(t,fn,label)=>`<button type="button" class="cb" title="${esc(t)}" onmousedown="event.preventDefault()" onclick="${fn}">${label}</button>`;
+  return `<div class="cbar">
+    ${b('Text style','rbFmtMenu(event,\''+id+'\')','<span style="font-weight:700">A</span><span style="font-size:10px">▾</span>')}
+    ${b('Bulleted list',`rbCmdAt('${id}','insertUnorderedList')`,'•≡')}
+    ${b('Numbered list',`rbCmdAt('${id}','insertOrderedList')`,'1.≡')}
+    ${b('Link',`rbRestore('${id}');rbLink('${id}')`,'🔗')}
+    ${b('Code',`rbCode('${id}')`,'<span style="font-family:ui-monospace,monospace;font-size:12px">&lt;/&gt;</span>')}
+    ${b('Quote',`rbQuote('${id}')`,'❝')}
+    <span class="cb-sep"></span>
+    ${b('Emoji','emojiPick(event,\''+id+'\')','🙂')}
+    ${b('Attach files (up to 5 MB)',"this.nextElementSibling.click()",'📎')}<input type="file" id="sd-files" multiple hidden onchange="sdFiles(this)">
+    ${b('Insert image or GIF — sends inline',`rbImg('${id}')`,'🖼')}
+    ${b('Signatures',`sigDlg(${o.key?`'${esc(o.key)}'`:''})`,'✍')}
+    ${b('Snippets (⌘;)','snipPick(event,\''+id+'\')','<span style="font-family:ui-monospace,monospace;font-size:12px">{ }</span>')}
+    <span class="sp"></span>
+    ${o.when?`<span class="cb-when" id="sd-when-l"></span>${b('Send later',`whenMenu(event,'${esc(o.key)}')`,'⏰')}`:''}
+    <span class="cb-send"><button type="button" class="btn" id="${o.sendId}" onclick="${o.send}">${o.sendLabel}</button><button type="button" class="btn cb-more" title="More" onclick="sendMenu(event,'${o.kind}','${esc(o.key||'')}')">▾</button></span>
+  </div>`;
+}
+function whenMenu(ev,key){ const r=ev.currentTarget.getBoundingClientRect();
+  const set=(v,l)=>`sdWhen('${v}','${l}')`;
+  ctxOpen(r.left-150,r.top-190,[_mi('Send now',set('','')),_mi('In 4 hours',set('4h','in 4 hours')),
+    _mi('Tomorrow 8am',set('tomorrow','tomorrow 8am')),_mi('Pick a time…',set('custom','custom'))].join('')); }
+function sdWhen(v,label){
+  const sel=$('#sd-when'); if(sel) sel.value=v;
+  const c=$('#sd-custom'); if(c){ c.style.display=v==='custom'?'inline-block':'none'; if(v==='custom') c.focus(); }
+  const l=$('#sd-when-l'); if(l) l.textContent=v&&v!=='custom'?'⏰ '+label:'';
+  const s=$('#sd-send'); if(s) s.textContent=v?'Schedule':(SD_MODE==='fwd'?'Forward':'Send');
+}
+function sendMenu(ev,kind,key){ const r=ev.currentTarget.getBoundingClientRect(), dummy="document.createElement('button')";
+  const items=kind==='cp'
+    ? [_mi('💾 Save to Drafts',`doCompose(${dummy})`), ...(window.CP_DRAFT?[]:[_mi('📎 Big files: save and attach in Gmail ↗','attachViaGmail()')]), '<hr>', _mi('🗑 Discard','closeCompose()','warn')]
+    : [_mi('💾 Save to Drafts',`saveDraftBody('${key}',${dummy})`), ...(SD_MODE==='fwd'?[]:[_mi('📎 Big files: save and attach in Gmail ↗',`attachViaGmail('${key}')`)]), '<hr>', _mi('🗑 Discard',`closeComposer('${key}')`,'warn')];
+  ctxOpen(r.right-230,r.top-(kind==='cp'?140:140),items.join('')); }
 function rbImg(id){
   const inp=document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -6796,7 +8029,44 @@ function rbLink(id){
   const url=prompt('Link URL:','https://'); if(!url) return;
   $('#'+id).focus(); document.execCommand('createLink',false,url);
 }
-const rbText = id => $('#'+id)?.innerText||'';
+/* Dev #43 (Bart: "My sent emails seem to have extra line breaks"): the
+   plain-text body used to be the editor's innerText, and Chrome turns the
+   <div><br></div> an empty paragraph is stored as into TWO newlines on top
+   of the paragraph break — every blank line went out doubled. Walk the
+   editor ourselves: a block starts a new line, a <br> is a line break, and
+   an empty paragraph is exactly one blank line. */
+const RB_BLOCK=new Set(['DIV','P','LI','UL','OL','BLOCKQUOTE','H1','H2','H3','H4','H5','H6','PRE']);
+function rbPlain(el){
+  let out='';
+  const nl=()=>{ if(out&&!out.endsWith('\n')) out+='\n'; };
+  const walk=node=>{
+    for(const ch of node.childNodes){
+      if(ch.nodeType===3){ out+=ch.nodeValue.replace(/\u00a0/g,' '); continue; }
+      if(ch.nodeType!==1) continue;
+      const tag=ch.tagName;
+      if(tag==='BR'){
+        // a closing <br> inside a block that already has text is the
+        // editor's placeholder, not a line of its own
+        const p=ch.parentNode;
+        if(RB_BLOCK.has(p.tagName)&&p!==el&&ch===p.lastChild&&(p.textContent||'').length) continue;
+        out+='\n'; continue;
+      }
+      if(RB_BLOCK.has(tag)){
+        nl();
+        if(tag==='LI') out+=ch.parentNode&&ch.parentNode.tagName==='OL'?([...ch.parentNode.children].indexOf(ch)+1)+'. ':'• ';
+        const from=out.length;
+        walk(ch);
+        if(tag==='BLOCKQUOTE') out=out.slice(0,from)+out.slice(from).split('\n').map(l=>l?'> '+l:l).join('\n');
+        nl();
+        continue;
+      }
+      walk(ch);
+    }
+  };
+  walk(el);
+  return out.replace(/\n+$/,'');
+}
+const rbText = id => { const el=$('#'+id); return el?rbPlain(el):''; };
 /* E155: composer bodies snapshot to localStorage on every pause in typing,
    so a dropped tunnel (or a closed tab) can't eat a half-written reply.
    Cleared on a successful send / draft save; offered back on reopen. */
@@ -6811,7 +8081,73 @@ function armBak(bodyId,k){
     },400);
   });
 }
-function clearBak(k){ clearTimeout(armBak._t); localStorage.removeItem(bakKey(k)); }
+function clearBak(k){ clearTimeout(armBak._t); localStorage.removeItem(bakKey(k)); draftSnapClear(k.startsWith('r:')?'sd':'cp'); }
+/* Dev #53: a browser or phone that reloads the page on its own (Chrome
+   discarding a background tab, iOS reviving the home-screen app) used to
+   take the email with it — E155 kept only the text, and only offered it
+   back if you reopened that same reply. Now the whole email is kept in this
+   browser as you write — account, recipients, subject, formatted text, the
+   thread it answers — and after a reload a bar offers to reopen it. */
+const SNAP_KEY=kind=>'gc_draftsnap_'+kind;
+function draftSnap(kind){
+  try {
+    const body=$(kind==='cp'?'#cp-body':'#sd-body'); if(!body) return;
+    const text=rbText(kind==='cp'?'cp-body':'sd-body').trim();
+    const snap={kind, ts:Date.now(), to:chipVal(kind+'-to'), cc:chipVal(kind+'-cc'), bcc:chipVal(kind+'-bcc'),
+      subject:$('#'+kind+'-subject')?.value||'', html:body.innerHTML, text};
+    if(kind==='cp'){ snap.acct=$('#cp-acct')?.value; snap.draft=window.CP_DRAFT||null; }
+    else { const i=findItem(MSG_CTX?.key); if(!i) return; snap.key=i.key; snap.account=i.account; snap.mode=SD_MODE; snap.msg=SD_MSG; snap.title=i.title; }
+    const sig=(SIGS[snap.acct||snap.account]||'').trim();
+    if(!text||text===sig) return localStorage.removeItem(SNAP_KEY(kind));   // nothing written yet
+    localStorage.setItem(SNAP_KEY(kind), JSON.stringify(snap));
+  } catch(e){}
+}
+function draftSnapClear(kind){ try { localStorage.removeItem(SNAP_KEY(kind)); } catch(e){} }
+function draftSnapArm(kind){
+  const box=kind==='cp'?$('#cw-body'):$('#composer'); if(!box||box._snapArmed) return;
+  box._snapArmed=true;
+  const go=()=>{ clearTimeout(box._snapT); box._snapT=setTimeout(()=>draftSnap(kind),500); };
+  box.addEventListener('input',go); box.addEventListener('focusout',go);
+}
+function draftRecoverOffer(){
+  for(const kind of ['cp','sd']){
+    let snap=null; try { snap=JSON.parse(localStorage.getItem(SNAP_KEY(kind))||'null'); } catch(e){}
+    if(!snap) continue;
+    if(Date.now()-snap.ts>48*3600e3){ draftSnapClear(kind); continue; }
+    if(kind==='cp'&&$('#cw')&&!$('#cw').hidden) continue;           // it's open already
+    if(kind==='sd'&&$('#pane').classList.contains('composing')) continue;
+    const who=(snap.to||'').split(',')[0].split('<')[0].trim()||'no one yet';
+    const what=snap.subject||snap.title||snap.text.slice(0,40);
+    const bar=document.createElement('div'); bar.className='snap-bar';
+    bar.innerHTML=`📝 You were writing ${kind==='sd'?'a reply':'an email'} to <b>${esc(who)}</b> — “${esc(what.slice(0,50))}”
+      <button class="qbtn">Reopen</button><button class="qbtn">Discard</button>`;
+    const [op,ds]=bar.querySelectorAll('button');
+    op.onclick=()=>{ bar.remove(); draftReopen(snap); };
+    ds.onclick=()=>{ bar.remove(); draftSnapClear(kind); };
+    document.body.appendChild(bar);
+  }
+}
+async function draftReopen(snap){
+  if(snap.kind==='cp'){
+    composeDlg(snap.draft);
+    if(!snap.draft&&snap.acct&&$('#cp-acct')) $('#cp-acct').value=snap.acct;
+    setChips('cp-to',snap.to); setChips('cp-cc',snap.cc); setChips('cp-bcc',snap.bcc);
+    $('#cp-subject').value=snap.subject; $('#cp-body').innerHTML=snap.html;
+  } else {
+    if(snap.account&&snap.account!==ACCT) await setAcct(snap.account);
+    if(!findItem(snap.key)){ toast('That thread isn’t in this inbox any more — here’s your text as a new email');
+      return draftReopen({...snap, kind:'cp', acct:snap.account, subject:snap.subject||('Re: '+(snap.title||''))}); }
+    // from Home, openItem steps out of Home first — wait for the reading pane
+    await openItem(snap.key);
+    for(let t=0; t<40 && !(OPEN===snap.key && $('#composer')); t++) await new Promise(r=>setTimeout(r,125));
+    if(!$('#composer')){ toast('Could not reopen that thread — here’s your text as a new email');
+      return draftReopen({...snap, kind:'cp', acct:snap.account, subject:snap.subject||('Re: '+(snap.title||''))}); }
+    await openComposer(snap.key, snap.mode, snap.msg);
+    setChips('sd-to',snap.to); setChips('sd-cc',snap.cc); setChips('sd-bcc',snap.bcc);
+    const sj=$('#sd-subject'); if(sj&&snap.subject) sj.value=snap.subject;
+    $('#sd-body').innerHTML=snap.html;
+  }
+}
 function offerBak(bodyId,k){
   try {
     const raw=localStorage.getItem(bakKey(k)); if(!raw) return;
@@ -6830,7 +8166,7 @@ function offerBak(bodyId,k){
 function rbHtml(id){
   const el=$('#'+id); if(!el) return null;
   // Only ship HTML when actual formatting exists — plain typing stays plain.
-  return /<(b|i|u|ul|ol|li|a|strong|em)\b/i.test(el.innerHTML) ? el.innerHTML : null;
+  return /<(b|i|u|s|ul|ol|li|a|strong|em|strike|code|blockquote|pre)\b/i.test(el.innerHTML) ? el.innerHTML : null;
 }
 function acctEmail(a){ return (CONN?.accounts||[]).find(x=>x.slug===a||x.user===a)?.user||''; }
 // Attachments stay outside the GC send path (§6: plain confirmed sends) —
@@ -6849,7 +8185,7 @@ async function attachViaGmail(key){
         cc:chipVal('cp-cc')||null,bcc:chipVal('cp-bcc')||null,
         subject:$('#cp-subject').value.trim(),body:rbText('cp-body')});
       window.open('https://mail.google.com/mail/?authuser='+encodeURIComponent(acctEmail(acct))+'#drafts','_blank');
-      closeDlg();
+      closeCompose();
     }
     toast('Draft saved — attach the file in Gmail and send from there');
   } catch(e){ toast('Could not save the draft — '+e.message); }
@@ -6893,7 +8229,10 @@ function ensureContactsDl(acct){
   if(!CONTACTS[acct]) loadContacts(acct).then(fill);
 }
 // A typed name with no address becomes the matching contact: exact name, else
-// one contact whose name or address starts with it. Otherwise it stays as typed.
+// the contact whose name or address starts with it — the most-emailed one when
+// several do (the list is ranked by threads). Dev #40: a name should always
+// land with an address; the chip now shows which one, so a wrong pick is
+// visible. Only a name that matches nobody stays as typed (a red chip).
 function resolveContact(raw){
   if(emOf(raw)) return raw;
   const q=raw.trim().toLowerCase(); if(!q) return raw;
@@ -6901,7 +8240,9 @@ function resolveContact(raw){
   const exact=list.filter(c=>(c.name||'').toLowerCase()===q);
   if(exact.length) return contactStr(exact[0]);
   const pre=list.filter(c=>(c.name||'').toLowerCase().startsWith(q)||c.email.startsWith(q));
-  return pre.length===1?contactStr(pre[0]):raw;
+  const word=list.filter(c=>(c.name||'').toLowerCase().split(/\s+/).some(w=>w.startsWith(q)));
+  const hit=pre[0]||word[0];
+  return hit?contactStr(hit):raw;
 }
 /* E104: compact recipient block — To on one line, Cc/Bcc folded behind
    toggles unless already populated (Gmail grammar). */
@@ -6915,8 +8256,10 @@ function rcptShow(pre,kind){
   $('#row-'+pre+'-'+kind).hidden=false; $('#tog-'+pre+'-'+kind).hidden=true;
   $('#'+pre+'-'+kind).querySelector('input').focus();
 }
+// Split a recipient list on commas outside quotes and <> — "Smith, John" <j@x> is one person.
+const splitRcpts=v=>(String(v||'').match(/(?:"[^"]*"|<[^>]*>|[^,;])+/g)||[]).map(s=>s.trim()).filter(Boolean);
 function chipField(id, csv){
-  const parts=String(csv||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const parts=splitRcpts(csv);
   return `<div class="chipfield" id="${id}" onclick="this.querySelector('input').focus()">
     ${parts.map(chipHtml).join('')}
     <input class="chip-in" list="dl-contacts" placeholder="add…"
@@ -6926,8 +8269,11 @@ function chipField(id, csv){
 function chipHtml(raw){
   const em=emOf(raw), nm=nmOf(raw)||em;
   const bad=!em;
+  // Dev #40: the address is always on the chip, not just in a tooltip, so a
+  // picked name visibly carries the email it will go to.
+  const addr=em&&nm.toLowerCase()!==em?`<span class="rc-em">${esc(em)}</span>`:'';
   return `<span class="rchip ${bad?'bad':''} person" data-em="${esc(em)}" data-nm="${esc(nm)}" data-raw="${esc(raw)}"
-    title="${esc(raw)}">${esc(nm)}<b onclick="event.stopPropagation();this.parentNode.remove()">×</b></span>`;
+    title="${esc(raw)}">${esc(nm)}${addr}<b onclick="event.stopPropagation();this.parentNode.remove()">×</b></span>`;
 }
 function chipKey(e,id){
   const inp=e.target;
@@ -6942,7 +8288,7 @@ function chipCommit(id,inp){
   if(!v) return;
   // Dev #34: split on commas outside quotes and <>, so "Smith, John" <j@x>
   // stays one contact; a bare typed name resolves to its contact's address.
-  const parts=(v.match(/(?:"[^"]*"|<[^>]*>|[^,;])+/g)||[]).map(s=>s.trim()).filter(Boolean).map(resolveContact);
+  const parts=splitRcpts(v).map(resolveContact);
   inp.insertAdjacentHTML('beforebegin', parts.map(chipHtml).join(''));
   inp.value='';
 }
@@ -6952,7 +8298,8 @@ function chipInput(id,inp){
   const dl=$('#dl-contacts'); if(dl&&[...dl.options].some(o=>o.value===v)) chipCommit(id,inp);
 }
 function chipVal(id){
-  return [...$('#'+id).querySelectorAll('.rchip')].map(c=>c.dataset.raw).join(', ');
+  const f=$('#'+id); if(!f) return '';
+  return [...f.querySelectorAll('.rchip')].map(c=>c.dataset.raw).join(', ');
 }
 function chipAdd(id,raw){ const inp=$('#'+id)?.querySelector('input'); if(inp){ inp.value=raw; chipCommit(id,inp); } }
 
@@ -6967,6 +8314,8 @@ async function loadSigs(){
     (out.context||[]).forEach(n=>{
       const m=String(n.text||'').match(/^\[signature:([a-z0-9_-]+)\]\s?([\s\S]*)$/);
       if(m){ SIGS[m[1]]=m[2].replace(/⏎/g,'\n').trim(); SIG_IDS[m[1]]=n.id; }
+      const sn=String(n.text||'').match(/^\[snippet:([^\]]{1,60})\]\s?([\s\S]*)$/);
+      if(sn&&!SNIPS.some(x=>x.id===n.id)) SNIPS.push({id:n.id,name:sn[1],text:sn[2].replace(/⏎/g,'\n').trim()});
     });
   } catch(e){}
 }
@@ -7068,7 +8417,7 @@ let SD_MODE='all';   // 'reply' | 'all' | 'fwd' — set per composer open
 let SD_MSG=null;     // Dev #26: index of the one message being answered; null = the thread
 const sdMsg=i=>SD_MSG!=null?(i._msgs||[])[SD_MSG]||null:null;
 async function openComposer(key,mode,mi){
-  SD_MODE=mode||'all'; SD_ATTS=[]; SD_MSG=Number.isInteger(mi)?mi:null;
+  SD_MODE=mode||'all'; ATTS.sd=[]; SD_MSG=Number.isInteger(mi)?mi:null;
   const i=findItem(key); if(!i||i.type!=='mail') return;
   const box=$('#composer'); if(!box) return;
   // E204: the reply takes most of the pane (Shortwave) — the thread shrinks
@@ -7094,9 +8443,6 @@ async function openComposer(key,mode,mi){
   box.innerHTML=`
     <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0 4px">
       ${rcptRows('sd', r.to, r.cc, '')}
-      <div class="td-quick" style="margin-top:4px">
-        <span style="flex:1"></span>
-        <button class="qbtn" onclick="sigDlg('${esc(key)}')" title="Edit signatures">✍ Signature</button></div>
       ${fwd?`<label>Subject</label><input type="text" id="sd-subject" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--input-bg)"
              value="${esc(/^fwd:/i.test(i.title)?i.title:'Fwd: '+i.title.replace(/^(re:\s*)+/i,''))}">`
            :`<input type="hidden" id="sd-subject" value="${esc(i.title.startsWith('Re:')?i.title:'Re: '+i.title)}">`}
@@ -7108,21 +8454,15 @@ async function openComposer(key,mode,mi){
           `<label style="display:flex;align-items:center;gap:5px;margin:0;text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted)">
             <input type="checkbox" class="sd-fwdatt" data-uid="${esc(String(a.uid))}" data-idx="${a.idx}" checked>
             📎 ${esc(a.name)} <span style="color:var(--faint)">${fmtSize(a.size)}</span></label>`).join(''):''}
-        ${fwd?'':`<select id="sd-when" class="qbtn"><option value="">Send now</option><option value="4h">In 4 hours</option>
-          <option value="tomorrow">Tomorrow 8am</option><option value="custom">Custom…</option></select>
+        ${fwd?'':`<select id="sd-when" hidden><option value=""></option><option value="4h"></option>
+          <option value="tomorrow"></option><option value="custom"></option></select>
         <input type="datetime-local" id="sd-custom" style="display:none">`}
         <select id="sd-then" class="qbtn"><option value="">then: leave in inbox</option><option value="archive">then: archive</option>
           <option value="dismiss">then: dismiss</option><option value="snooze-tomorrow">then: snooze to tomorrow</option></select></div>
-      <div class="foot" style="margin-top:10px">
-        <button class="btn" id="sd-send" onclick="doSend('${esc(key)}',this)">${fwd?'Forward':'Send'}</button>
-        <button class="btn sec2" onclick="saveDraftBody('${esc(key)}',this)">Save to Drafts</button>
-        ${attachControls()}
-        ${fwd?'':`<button class="btn sec2" onclick="attachViaGmail('${esc(key)}')" title="For files over 5 MB — saves your draft and opens it in Gmail">📎 via Gmail ↗</button>`}
-        <button class="btn sec2" onclick="closeComposer('${esc(key)}')">Cancel</button>
-        <span class="status" id="sd-status">as ${esc(i.account)}</span></div>
+      ${composerBar('sd-body',{kind:'sd',key,when:!fwd,sendId:'sd-send',send:`doSend('${esc(key)}',this)`,sendLabel:fwd?'Forward':'Send'})}
+      <div class="status" id="sd-status" style="margin-top:4px">as ${esc(i.account)}</div>
       <div id="sd-attlist" class="matts"></div>
     </div>`;
-  const sw=$('#sd-when'); if(sw) sw.onchange=e=>{ $('#sd-custom').style.display=e.target.value==='custom'?'inline-block':'none'; };
   rbInit('sd-body', sig);
   // E157: a chosen reply option lands in the composer, above the signature
   if(window.SD_PREFILL){
@@ -7131,6 +8471,7 @@ async function openComposer(key,mode,mi){
     window.SD_PREFILL=null;
   }
   armBak('sd-body','r:'+i.raw.thread_id); offerBak('sd-body','r:'+i.raw.thread_id);   // E155
+  $('#composer')._snapArmed=false; draftSnapArm('sd');                                   // Dev #53
   setTimeout(()=>{ const m=$('#msgs'); if(m) m.scrollTop=m.scrollHeight; document.getElementById('sd-body')?.focus(); },30);
 }
 function composedBody(i){
@@ -7148,6 +8489,20 @@ function composedHtml(i){
   }
   return out;
 }
+/* §6 amendment (Bart, 2026-09-29, Dev #50: "I also like that I don't have
+   to click confirm on send"): one click on Send is the human's decision; the
+   email is held for SEND_UNDO_MS behind an Undo bar and only then goes to
+   POST /send with confirm:true and the recipients shown as chips. Same caps
+   (≤10 recipients, one thread) and the same mail_sends log. Undo — or a
+   failed send — puts the composer back exactly as it was. */
+const SEND_UNDO_MS=10000;
+function setChips(id,csv){
+  const f=$('#'+id); if(!f) return;
+  f.querySelectorAll('.rchip').forEach(c=>c.remove());
+  splitRcpts(csv).forEach(r=>chipAdd(id,r));
+  if(csv&&id.match(/-(cc|bcc)$/)){ const pre=id.split('-')[0], k=id.split('-')[1];
+    const row=$('#row-'+pre+'-'+k), tog=$('#tog-'+pre+'-'+k); if(row) row.hidden=false; if(tog) tog.hidden=true; }
+}
 async function doSend(key,btn){
   const i=findItem(key);
   const to=chipVal('sd-to');
@@ -7155,61 +8510,79 @@ async function doSend(key,btn){
   if(!rbText('sd-body').trim()){ sdErr('Write a message first'); return; }
   const cc=chipVal('sd-cc'), bcc=chipVal('sd-bcc');
   const nRec=(to+','+cc+','+bcc).split(',').filter(s=>s.trim()).length;
-  // E94.2: native confirm() is silently suppressed by Chrome in some
-  // contexts (same class as E93.6's prompt) — "clicked send, nothing
-  // happened". Two-step armed button instead; §6's human confirmation
-  // is the second click, with the recipient count in view.
-  if(btn.dataset.armed!=='1'){
-    btn.dataset.armed='1'; const t=btn.textContent;
-    btn.textContent=`Send to ${nRec} — sure?`;
-    setTimeout(()=>{ btn.dataset.armed=''; btn.textContent=t; },6000);
-    return;
-  }
-  btn.dataset.armed='';
   let send_at=null; const w=$('#sd-when')?.value||'';
   if(w==='4h') send_at=new Date(Date.now()+4*3600e3).toISOString();
   else if(w==='tomorrow') send_at=snoozeWhen('tomorrow');
   else if(w==='custom'){ if(!$('#sd-custom').value){ sdErr('Pick the custom time'); return; } send_at=new Date($('#sd-custom').value).toISOString(); }
-  if(SD_ATTS.length&&send_at){ sdErr('Attachments send now only — remove them or send unscheduled'); return; }
-  btn.disabled=true; $('#sd-status').textContent=send_at?'Scheduling…':'Sending…';
-  try {
-    const payload={confirm:true,account:i.account,to,cc,bcc,
-      subject:$('#sd-subject').value.trim(),body:composedBody(i)};
-    const ext=extractInlineImages(composedHtml(i));
-    if(send_at&&ext.atts.length){ btn.disabled=false; sdErr('Inline images send now only — remove them or send unscheduled'); return; }
-    const allAtts=[...SD_ATTS.map(a=>({name:a.name,mime:a.mime,data:a.data})),...ext.atts];
-    if(allAtts.length) payload.attachments=allAtts;
-    if(SD_MODE==='fwd'){
-      payload.new=true; payload.body_html=ext.html;
-      const fa=[...document.querySelectorAll('.sd-fwdatt:checked')].map(c=>({uid:c.dataset.uid,idx:+c.dataset.idx}));
-      if(fa.length){ payload.forward_of=i.raw.thread_id; payload.forward_atts=fa; }
-    }
-    else { payload.thread_id=i.raw.thread_id; payload.body_html=send_at?null:ext.html; payload.send_at=send_at; }
-    const out=await post('/send',payload);
+  if(ATTS.sd.length&&send_at){ sdErr('Attachments send now only — remove them or send unscheduled'); return; }
+  const payload={confirm:true,account:i.account,to,cc,bcc,
+    subject:$('#sd-subject').value.trim(),body:composedBody(i)};
+  const ext=extractInlineImages(composedHtml(i));
+  if(send_at&&ext.atts.length){ sdErr('Inline images send now only — remove them or send unscheduled'); return; }
+  const allAtts=[...ATTS.sd.map(a=>({name:a.name,mime:a.mime,data:a.data})),...ext.atts];
+  if(allAtts.length) payload.attachments=allAtts;
+  if(SD_MODE==='fwd'){
+    payload.new=true; payload.body_html=ext.html;
+    const fa=[...document.querySelectorAll('.sd-fwdatt:checked')].map(c=>({uid:c.dataset.uid,idx:+c.dataset.idx}));
+    if(fa.length){ payload.forward_of=i.raw.thread_id; payload.forward_atts=fa; }
+  }
+  else { payload.thread_id=i.raw.thread_id; payload.body_html=send_at?null:ext.html; payload.send_at=send_at; }
+  const then=$('#sd-then').value;
+  const finish=async out=>{
     clearBak('r:'+i.raw.thread_id);   // E155: it landed — drop the snapshot
-    const then=$('#sd-then').value;
     toast(send_at?('Scheduled for '+new Date(out.scheduled).toLocaleString()):'Sent ✓');
     if(then==='archive') await doneItem(key);
     else if(then==='dismiss') await dismissItem(key);
     else if(then==='snooze-tomorrow'){ await post('/mail/triage',{action:'snooze',thread_id:i.raw.thread_id,account:i.account,until:snoozeWhen('tomorrow')}); dropLocal(i); }
-    else { renderThreadPane(i); if(!send_at) postSendDlg(key); }
+    else if(OPEN===key&&!$('#pane').classList.contains('composing')){ renderThreadPane(i); if(!send_at) postSendDlg(key); }
     loadMailTodos();
-  } catch(e){ btn.disabled=false; sdErr(e.message); }
+  };
+  if(send_at){                        // scheduled: cancellable in Scheduled, no hold
+    btn.disabled=true; $('#sd-status').textContent='Scheduling…';
+    try { await finish(await post('/send',payload)); } catch(e){ btn.disabled=false; sdErr(e.message); }
+    return;
+  }
+  // hold, then send; Undo or failure restores the composer
+  const snap={mode:SD_MODE, msg:SD_MSG, to, cc, bcc, subject:payload.subject, html:$('#sd-body').innerHTML,
+    atts:ATTS.sd.slice(), quote:$('#sd-quote')?.checked, then};
+  const restore=async err=>{
+    if(OPEN!==key) await openItem(key);
+    await openComposer(key,snap.mode,snap.msg);
+    setChips('sd-to',snap.to); setChips('sd-cc',snap.cc); setChips('sd-bcc',snap.bcc);
+    const sj=$('#sd-subject'); if(sj) sj.value=snap.subject;
+    $('#sd-body').innerHTML=snap.html; ATTS.sd=snap.atts; sdAttRender('sd');
+    if($('#sd-quote')) $('#sd-quote').checked=snap.quote; if($('#sd-then')) $('#sd-then').value=snap.then;
+    if(err) sdErr(err);
+  };
+  closeComposer(key);
+  queueUndo(`Sending to ${nRec} ${nRec===1?'person':'people'} — “${(payload.subject||'').slice(0,40)}”`,
+    async()=>{ try { await finish(await post('/send',payload,null,{keepalive:true})); }
+      catch(e){ await restore('Not sent — '+e.message); } },   // restored here, not again by commitPending
+    ()=>restore(), SEND_UNDO_MS);
 }
 function sdErr(m){ const s=$('#sd-status'); if(s){ s.textContent=m; s.className='status err'; } else toast(m); }
+/* Dev #36: the after-send question gets an ✕, closes on an outside click
+   (every dialog does), and goes away by itself after 5s — unless the pointer
+   is on it, so it never vanishes under a click. Leaving it = leave in inbox. */
 function postSendDlg(key){
-  dlg(`<h3>Sent ✓ — and the thread?</h3>
-    <div class="snz-grid">
+  dlg(`<h3 style="display:flex;align-items:center">Sent ✓ — and the thread?<span class="sp" style="flex:1"></span>
+      <button class="tool" onclick="closeDlg()" title="Close — leave it in the inbox" aria-label="Close">${ic('x')}</button></h3>
+    <div class="snz-grid" id="post-send">
       <button class="qbtn" onclick="closeDlg();doneItem('${esc(key)}')">Archive</button>
       <button class="qbtn" onclick="closeDlg();dismissItem('${esc(key)}')">Dismiss</button>
       <button class="qbtn" onclick="closeDlg();snoozeDlg('${esc(key)}')">Snooze…</button>
       <button class="qbtn" onclick="closeDlg()">Leave in inbox</button>
     </div>`);
+  const box=$('#dlg'), tok=postSendDlg._tok=(postSendDlg._tok||0)+1;
+  let t=setTimeout(done,5000);
+  function done(){ if(postSendDlg._tok===tok&&$('#post-send')&&$('#dlg-back').classList.contains('open')) closeDlg(); }
+  box.onmouseenter=()=>clearTimeout(t);
+  box.onmouseleave=()=>{ clearTimeout(t); t=setTimeout(done,2500); };
 }
 async function saveDraftBody(key,btn){
   const i=findItem(key);
   if(!rbText('sd-body').trim()){ sdErr('Write the draft first'); return; }
-  if(SD_ATTS.length) toast('Heads up: attachments aren\'t saved with drafts — re-attach in Gmail or send from here');
+  if(ATTS.sd.length) toast('Heads up: attachments aren\'t saved with drafts — re-attach in Gmail or send from here');
   btn.disabled=true;
   try {
     const out=SD_MODE==='fwd'
@@ -7227,28 +8600,81 @@ async function saveDraftBody(key,btn){
 
 /* ------- compose new email (E53: full send from within GC — Bart's
    explicit §6 widening 2026-07-29; same confirmed path + caps + audit) ------- */
-function composeDlg(){
-  SD_ATTS=[];
+/* E224 (Dev #19): open a Gmail draft in the composer. Saving replaces it
+   (new copy first, then the old one to Trash); sending removes it. */
+async function openDraft(ref){
+  try {
+    const r=await fetch('/draft?'+new URLSearchParams({account:ref.account,uid:ref.uid,gm_msgid:ref.mid}),{cache:'no-store'}).then(r=>r.json());
+    if(!r.ok) throw new Error(r.error||'could not open the draft');
+    composeDlg(r.draft);
+  } catch(e){ toast('Could not open the draft — '+e.message); }
+}
+/* Dev #50 (Bart: "expand the compose window to be bigger or a full screen
+   modal and then also minimize-able"): Compose lives in its own window, not
+   the shared dialog — docked bottom-right so the mail stays readable, ⤢ for
+   full screen, — to fold it to a bar and come back to it. One at a time: a
+   minimised email with words in it comes back instead of being replaced. */
+function cwEl(){
+  let w=$('#cw');
+  if(!w){ w=document.createElement('div'); w.id='cw'; w.className='cw'; w.hidden=true;
+    w.innerHTML=`<div class="cw-bar" onclick="if(CW_MODE==='min')cwMode('normal')">
+        <span class="cw-t" id="cw-t">New email</span><span class="sp"></span>
+        <button class="tool" title="Minimise" onclick="event.stopPropagation();cwMode(CW_MODE==='min'?'normal':'min')">—</button>
+        <button class="tool" title="Full screen" onclick="event.stopPropagation();cwMode(CW_MODE==='full'?'normal':'full')">⤢</button>
+        <button class="tool" title="Close" onclick="event.stopPropagation();closeCompose()">${ic('x')}</button></div>
+      <div class="cw-body dlg" id="cw-body"></div>`;
+    document.body.appendChild(w); }
+  return w;
+}
+let CW_MODE='normal';
+function cwMode(m){
+  CW_MODE=m; const w=cwEl();
+  w.classList.toggle('min',m==='min'); w.classList.toggle('full',m==='full');
+  document.body.classList.toggle('cw-full',m==='full');
+  if(m==='min'){ const sj=($('#cp-subject')?.value||'').trim(); $('#cw-t').textContent=sj||$('#cw-t').dataset.title||'New email'; }
+  else $('#cw-t').textContent=$('#cw-t').dataset.title||'New email';
+}
+// Returns false when an unfinished email is already in the window: it is
+// brought back rather than thrown away.
+function cwOpen(d){
+  const w=cwEl();
+  if(!w.hidden && CW_MODE==='min' && (rbText('cp-body').trim().length>((SIGS[$('#cp-acct')?.value]||'').length+2) || chipVal('cp-to'))){
+    cwMode('normal'); toast('You have an email in progress — here it is'); return false;
+  }
+  return true;
+}
+function cwFill(title,html){
+  const w=cwEl(); $('#cw-body').innerHTML=html; $('#cw-t').dataset.title=title;
+  w.hidden=false; cwMode('normal');
+}
+function closeCompose(){ draftSnapClear('cp'); const w=$('#cw'); if(w){ w.hidden=true; $('#cw-body').innerHTML=''; } document.body.classList.remove('cw-full'); CW_MODE='normal'; }
+function composeDlg(draft){
+  // composeDlg is also an onclick handler; only a real draft object counts.
+  const d=(draft&&draft.draft_uid)?draft:null;
+  window.CP_DRAFT=d;
   // E208: MAIL only holds the selected account now, so it can no longer list
   // the others. Offer every account, starting from the one you're looking at.
-  const accts=acctIds();
+  // A draft stays in the account whose Drafts it lives in.
+  const accts=d?[d.account]:acctIds();
+  const from=d?d.account:ACCT;
   ensureContactsDl();
-  dlg(`<h3>New email</h3>
-    <label>From</label><select id="cp-acct">${accts.map(a=>`<option value="${esc(a)}" ${a===ACCT?'selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>
-    ${rcptRows('cp','','','')}
-    <label>Subject</label><input type="text" id="cp-subject">
+  if(!cwOpen(d)) return;
+  ATTS.cp=[];
+  cwFill(d?'Edit draft':'New email', `
+    <label>From</label><select id="cp-acct" ${d?'disabled':''}>${accts.map(a=>`<option value="${esc(a)}" ${a===from?'selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>
+    ${rcptRows('cp',d?d.to:'',d?d.cc:'',d?d.bcc:'')}
+    <label>Subject</label><input type="text" id="cp-subject" value="${d?esc(d.subject||''):''}">
     <label>Message</label>${richBody('cp-body')}
-    <div class="td-quick"><button class="qbtn" onclick="sigDlg()">✍ Signature</button></div>
-    <div class="foot"><button class="btn" onclick="doComposeSend(this)">Send</button>${attachControls()}
-      <button class="btn sec2" onclick="doCompose(this)">Save to Drafts</button>
-      <button class="btn sec2" onclick="attachViaGmail()" title="For files over 5 MB — saves this as a draft and opens it in Gmail">📎 via Gmail ↗</button>
-      <button class="btn sec2" onclick="closeDlg()">Cancel</button>
-      <span class="status" id="cp-status"></span></div><div id="sd-attlist" class="matts"></div>`);
+    ${composerBar('cp-body',{kind:'cp',sendId:'cp-send',send:'doComposeSend(this)',sendLabel:'Send'})}
+    <div class="status" id="cp-status" style="margin-top:4px"></div><div id="sd-attlist" class="matts"></div>`);
   ensureContactsDl($('#cp-acct').value);
   const seed=()=>{ const a=$('#cp-acct').value; ensureContactsDl(a);
-    if(!rbText('cp-body').trim()) rbInit('cp-body', SIGS[a]?'\n\n'+SIGS[a]:''); };
+    if(d) rbInit('cp-body', d.body||'');
+    else if(!rbText('cp-body').trim()) rbInit('cp-body', SIGS[a]?'\n\n'+SIGS[a]:''); };
   $('#cp-acct').onchange=seed; seed();
-  armBak('cp-body','new'); offerBak('cp-body','new');   // E155
+  const bk=d?'d:'+d.account+':'+d.draft_uid:'new';
+  armBak('cp-body',bk); offerBak('cp-body',bk);   // E155
+  draftSnapArm('cp');                              // Dev #53
   setTimeout(()=>{ const t=$('#cp-to'); if(t) t.focus(); },50);
 }
 async function doComposeSend(btn){
@@ -7257,36 +8683,55 @@ async function doComposeSend(btn){
   const st=$('#cp-status');
   const err=m=>{ st.textContent=m; st.className='status err'; };
   if(!to) return err('To is required');
-  if(!subject) return err('Subject is required for a new email');
+  const d=window.CP_DRAFT, reply=!!(d&&d.in_reply_to&&d.thread_id);
+  if(!subject&&!reply) return err('Subject is required for a new email');
   if(!body) return err('Write a message first');
-  const nRec=(to+','+chipVal('cp-cc')+','+chipVal('cp-bcc')).split(',').filter(s=>s.trim()).length;
-  if(btn.dataset.armed!=='1'){
-    btn.dataset.armed='1'; const t=btn.textContent;
-    btn.textContent=`Send to ${nRec} — sure?`;
-    st.textContent=`To: ${to}`;
-    setTimeout(()=>{ btn.dataset.armed=''; btn.textContent=t; },6000);
-    return;
-  }
-  btn.dataset.armed='';
-  btn.disabled=true; st.textContent='Sending…'; st.className='status';
-  try {
-    const ext=extractInlineImages(rbHtml('cp-body'));
-    await post('/send',{confirm:true,new:true,account:acct,to,
-      cc:chipVal('cp-cc'),bcc:chipVal('cp-bcc'),subject,body,body_html:ext.html,
-      attachments:[...SD_ATTS.map(a=>({name:a.name,mime:a.mime,data:a.data})),...ext.atts]});
-    clearBak('new');   // E155
-    closeDlg(); toast('Sent ✓ — it will appear on the board after the next mail sync');
-  } catch(e){ btn.disabled=false; err(e.message); }
+  const cc=chipVal('cp-cc'), bcc=chipVal('cp-bcc');
+  const nRec=(to+','+cc+','+bcc).split(',').filter(s=>s.trim()).length;
+  const ext=extractInlineImages(rbHtml('cp-body'));
+  const payload={confirm:true,account:acct,to,cc,bcc,subject,body,body_html:ext.html,
+    attachments:[...ATTS.cp.map(a=>({name:a.name,mime:a.mime,data:a.data})),...ext.atts]};
+  // E224: a reply draft goes out on its own thread; anything else is new mail.
+  if(reply) payload.thread_id=d.thread_id; else payload.new=true;
+  // §6 amendment (2026-09-29): held SEND_UNDO_MS behind Undo, then sent.
+  const snap={acct, to, cc, bcc, subject, html:$('#cp-body').innerHTML, atts:ATTS.cp.slice(), draft:d};
+  const restore=m=>{
+    composeDlg(snap.draft);
+    if(!snap.draft&&$('#cp-acct')) $('#cp-acct').value=snap.acct;
+    setChips('cp-to',snap.to); setChips('cp-cc',snap.cc); setChips('cp-bcc',snap.bcc);
+    $('#cp-subject').value=snap.subject; $('#cp-body').innerHTML=snap.html;
+    ATTS.cp=snap.atts; sdAttRender('cp');
+    if(m){ const s2=$('#cp-status'); if(s2){ s2.textContent=m; s2.className='status err'; } }
+  };
+  closeCompose();
+  queueUndo(`Sending to ${nRec} ${nRec===1?'person':'people'} — “${subject.slice(0,40)}”`, async()=>{
+    try { await post('/send',payload,null,{keepalive:true}); }
+    catch(e){ restore('Not sent — '+e.message); return; }   // restored here, not again by commitPending
+    clearBak(d?'d:'+d.account+':'+d.draft_uid:'new');   // E155
+    if(d){
+      DRAFTS=null;
+      try { await post('/draft/discard',{account:d.account,draft_uid:d.draft_uid,gm_msgid:d.gm_msgid});
+        toast('Sent ✓ — and removed from Drafts'); }
+      catch(e){ toast('Sent ✓ — but the draft copy is still in Gmail Drafts ('+e.message+')'); }
+      if(SCOPE.kind==='drafts') setScope('drafts');
+    } else toast('Sent ✓ — it will appear on the board after the next mail sync');
+  }, ()=>restore(), SEND_UNDO_MS);
 }
 async function doCompose(btn){
-  if(SD_ATTS.length) toast("Heads up: attachments aren't saved with drafts");
+  if(ATTS.cp.length) toast("Heads up: attachments aren't saved with drafts");
   btn.disabled=true;
+  const d=window.CP_DRAFT;
   try {
-    const out=await post('/draft/compose',{account:$('#cp-acct').value,to:chipVal('cp-to'),
+    const f={account:$('#cp-acct').value,to:chipVal('cp-to'),
       cc:chipVal('cp-cc')||null,bcc:chipVal('cp-bcc')||null,
-      subject:$('#cp-subject').value.trim(),body:rbText('cp-body')});
-    clearBak('new');   // E155
-    closeDlg(); toast('Draft saved to Gmail Drafts'); DRAFTS=null;
+      subject:$('#cp-subject').value.trim(),body:rbText('cp-body')};
+    // E224: an opened draft is replaced — new copy saved, then the old one to Trash.
+    const out=d?await post('/draft/replace',{...f,draft_uid:d.draft_uid,gm_msgid:d.gm_msgid,
+        in_reply_to:d.in_reply_to||'',references:d.references||''})
+      :await post('/draft/compose',f);
+    clearBak(d?'d:'+d.account+':'+d.draft_uid:'new');   // E155
+    closeCompose(); toast(out.warning?('Draft saved — '+out.warning):'Draft saved to Gmail Drafts'); DRAFTS=null;
+    if(d&&SCOPE.kind==='drafts') setScope('drafts');
   } catch(e){ btn.disabled=false; const s=$('#cp-status'); s.textContent=e.message; s.className='status err'; }
 }
 
@@ -7394,8 +8839,16 @@ function renderDock(){
   // A poll re-render while typing in a journal box (or the E124 quick-add)
   // would eat the caret and the keystrokes since the last autosave — skip
   // until blur.
-  if(d.contains(document.activeElement)&&(document.activeElement.classList?.contains('dn-edit')
-    ||document.activeElement.id==='dk-todo-in')) return;
+  // Dev #53 (Bart: "still sometimes refreshes and I lose what I'm writing"):
+  // the guard named two boxes, so the Ask box and every other field in the
+  // dock lost its text to the 60s poll. Any focused field now holds the
+  // redraw, and unsent text in named fields rides across it — the list's rule.
+  const dae=document.activeElement;
+  if(d.contains(dae)&&(dae.matches?.('input,textarea,select,[contenteditable]')||dae.classList?.contains('dn-edit'))) return;
+  const keep={};
+  d.querySelectorAll('input[id],textarea[id]').forEach(el=>{ if(el.type!=='checkbox'&&el.value) keep[el.id]=el.value; });
+  requestAnimationFrame(()=>{ for(const [id,v] of Object.entries(keep)){ const el=document.getElementById(id);
+    if(el&&!el.value&&d.contains(el)) el.value=v; } });
   if(DOCK==='cal'){
     // E70/E76: any day by REAL date — ‹ › steps days, the dropdown jumps
     // months, ⤢ opens the full month page; the day's journal rides on top
@@ -7484,6 +8937,23 @@ function renderDock(){
       +(rows.length>40?`<div class="empty">+${rows.length-40} more — ⤢ opens the full tab</div>`:'')
       +(rows.length?'':'<div class="empty">Nothing open — add one above.</div>')+'</div>';
   } else if(DOCK==='ask'){ renderAsk(); }
+  else if(DOCK==='proj'){
+    // Bart: "a projects section in the right expand menu" — find, open, start one
+    if(PROJECTS===null) loadProjects();
+    const q=(d.querySelector('#dk-pj-q')?.value||'').toLowerCase();
+    const open=(PROJECTS||[]).filter(p=>p.status==='open'&&(!q||p.name.toLowerCase().includes(q)));
+    const done=(PROJECTS||[]).filter(p=>p.status==='done').slice(0,4);
+    d.innerHTML=`<h3>${dockX}📁 Projects <span style="font-weight:400;color:var(--faint)">${open.length}</span><span class="sp"></span>
+        <button class="qbtn" onclick="projEditDlg()">＋ New</button></h3>
+      <div class="dbody">
+        <input id="dk-pj-q" class="pj-find" placeholder="Find a project…" value="${esc(q)}" oninput="renderDock();const i=$('#dk-pj-q');i.focus();i.setSelectionRange(i.value.length,i.value.length)">
+        ${open.map(p=>`<div class="pj-dk ${PROJ&&PROJ.view==='page'&&PROJ.id===p.id?'on':''}" onclick="openProject(${p.id})">
+          <div class="pj-dk1">${projDot(p.color,9)}<b>${esc(p.name)}</b><span class="sp"></span><span class="status" style="text-transform:none;letter-spacing:0">${p.target_date?esc(fmtDate(p.target_date)):''}</span></div>
+          ${p.counts&&p.counts.todos_total?`<span class="pj-bar"><b style="width:${projProgress(p)}%"></b></span>`:''}</div>`).join('')
+          ||`<div class="empty">${q?'No match':'No open projects yet'}</div>`}
+        ${done.length?`<h4 class="pj-dk-h">Done</h4>${done.map(p=>`<div class="pj-dk" style="opacity:.6" onclick="openProject(${p.id})"><div class="pj-dk1">✓ <span>${esc(p.name)}</span><span class="sp"></span><span class="status" style="text-transform:none;letter-spacing:0">${esc(fmtDate(p.completed_at||''))}</span></div></div>`).join('')}`:''}
+        <div class="go-all" onclick="showProjects()">All projects ›</div></div>`;
+  }
 }
 /* E124: dock quick-add — resolves the current scope to ONE operation the
    way newTodoDlg does (exact op, else the theater's catch-all/General). */
@@ -7703,12 +9173,14 @@ function renderAsk(){
     <div class="ask-log" id="ask-log">${ASK_LOG.map(t=>`<div class="ask-turn ${t.role==='user'?'you':''}"><span class="bub">${esc(t.text)}</span></div>`).join('')||'<div class="empty" style="padding:20px 0">Ask about your mail, todos, deals, calendar…</div>'}</div>
     <div class="ask-opts">
       <select id="ask-model"><option value="claude-sonnet-5">Sonnet 5</option>
-        <option value="claude-opus-4-8">Opus 4.8</option><option value="claude-fable-5">Fable 5</option></select>
+        <option value="claude-opus-5-5">Opus 5.5</option><option value="claude-fable-5-1">Fable 5.1</option></select>
       <select id="ask-effort"><option value="">effort: default</option><option>low</option><option>medium</option><option>high</option></select>
       <span id="ask-busy"></span></div>
     <div class="ask-form"><textarea id="ask-in" placeholder="Ask… (Enter to send)"></textarea>
       <button class="btn" onclick="askSend()">→</button></div>`;
   $('#ask-model').value=localStorage.getItem('gc2_ask_model')||'claude-sonnet-5';
+  // Dev #35: a remembered model that left the picker (Opus 4.8, Fable 5) → the default
+  if(!$('#ask-model').value) $('#ask-model').value='claude-sonnet-5';
   $('#ask-effort').value=localStorage.getItem('gc2_ask_effort')||'';
   $('#ask-in').onkeydown=e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); askSend(); } };
   const log=$('#ask-log'); log.scrollTop=log.scrollHeight;
@@ -7859,7 +9331,8 @@ async function ovlNote(kind,id){
 $('#ovl').addEventListener('click', e=>{ if(e.target.closest('.row')) closeOvl(); });
 function closeOvl(){ $('#ovl-back').classList.remove('open'); $('#ovl').classList.remove('cal-wide'); CV_MON=null; }
 $('#ovl-back').onclick=e=>{ if(e.target.id==='ovl-back') closeOvl(); };
-function dlg(html,cls){ $('#dlg').className='dlg '+(cls||''); $('#dlg').innerHTML=html; $('#dlg-back').classList.add('open'); }
+function dlg(html,cls){ const d=$('#dlg'); d.onmouseenter=d.onmouseleave=null;   // Dev #36: no timer carries over
+  d.className='dlg '+(cls||''); d.innerHTML=html; $('#dlg-back').classList.add('open'); }
 
 /* E78: mobile drawer nav — the rail slides in under the ☰; any tap on a
    rail item both acts and closes the drawer. */
@@ -7872,29 +9345,30 @@ document.getElementById('rail').addEventListener('click', ()=>{
 /* ------- E82: attachments — shared picker state for the inline composer
    and the Compose dialog. ≤3 files, ≤5MB total (server re-enforces);
    bigger files keep the 📎-via-Gmail hatch. ------- */
-let SD_ATTS=[];
+/* Dev #50: the compose window no longer blocks the page, so it and a reply
+   in the pane can be open together — each keeps its own attachments, shown
+   in its own list ('cp' = compose window, 'sd' = reply). */
+const ATTS={cp:[],sd:[]};
+const attCtx=el=>el&&el.closest&&el.closest('#cw')?'cp':'sd';
+const attList=ctx=>(ctx==='cp'?$('#cw'):$('#composer'))?.querySelector('#sd-attlist');
 const fmtSize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':n>1024?Math.round(n/1024)+' KB':n+' B';
 async function sdFiles(inp){
+  const ctx=attCtx(inp), A=ATTS[ctx];
   for(const f of inp.files){
-    if(SD_ATTS.length>=3){ toast('Up to 3 attachments per send'); break; }
-    if(SD_ATTS.reduce((s,a)=>s+a.size,0)+f.size>5*1024*1024){
+    if(A.length>=3){ toast('Up to 3 attachments per send'); break; }
+    if(A.reduce((s,a)=>s+a.size,0)+f.size>5*1024*1024){
       toast(f.name+' would push past the 5 MB total — use 📎 via Gmail for big files'); continue; }
     const data=await new Promise((res,rej)=>{ const r=new FileReader();
       r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(f); });
-    SD_ATTS.push({name:f.name,mime:f.type||'application/octet-stream',size:f.size,data});
+    A.push({name:f.name,mime:f.type||'application/octet-stream',size:f.size,data});
   }
-  inp.value=''; sdAttRender();
+  inp.value=''; sdAttRender(ctx);
 }
-function sdAttRender(){
-  const d=sdEl('sd-attlist'); if(!d) return;
-  d.innerHTML=SD_ATTS.map((a,k)=>`<span class="att">📎 ${esc(a.name)} <span>${fmtSize(a.size)}</span>
-    <b style="cursor:pointer;margin-left:4px" onclick="SD_ATTS.splice(${k},1);sdAttRender()">✕</b></span>`).join('');
+function sdAttRender(ctx){
+  const d=attList(ctx); if(!d) return;
+  d.innerHTML=ATTS[ctx].map((a,k)=>`<span class="att">📎 ${esc(a.name)} <span>${fmtSize(a.size)}</span>
+    <b style="cursor:pointer;margin-left:4px" onclick="ATTS['${ctx}'].splice(${k},1);sdAttRender('${ctx}')">✕</b></span>`).join('');
 }
-// A dialog can overlay an open pane composer — both carry these ids, so
-// always address the LAST instance (dialogs append later in the DOM).
-const sdEl=id=>[...document.querySelectorAll('#'+id)].pop();
-const attachControls=()=>`<button class="btn sec2" onclick="sdEl('sd-files').click()">📎 Attach</button>
-  <input type="file" id="sd-files" multiple hidden onchange="sdFiles(this)">`;
 
 /* E77: skins — cycle and persist; CSS does the rest via html[data-skin]. */
 const SKINS={'2049':'2049 (Blade Runner)', lcars:'LCARS (Star Trek)', matrix:'Matrix', starwars:'Star Wars (holonet)', tron:'MCP (TRON)', wargames:'WOPR (WarGames)', mission:'Mission Control (Houston)', daylight:'Daylight (macOS)', inbox:'Inbox (Google, 2014)', classic:'Classic (Macintosh, 1991)', shortwave:'Shortwave'};
@@ -8452,7 +9926,10 @@ $('#q').onkeydown=e=>{
 async function runGmailSearch(){
   $('#list').innerHTML='<div class="empty">Searching Gmail…</div>';
   try {
-    const out=await fetch('/mail/search?q='+encodeURIComponent(Q)+'&account='+encodeURIComponent(ACCT)).then(r=>r.json());
+    // type:/priority:/needs: are GC's own (Jev) filters — Gmail doesn't know them
+    const gq=Q.replace(/(^|\s)-?(type|priority|needs):("[^"]*"|\S+)/gi,' ').trim();
+    if(!gq){ SEARCH_ROWS=null; renderList(); return; }
+    const out=await fetch('/mail/search?q='+encodeURIComponent(gq)+'&account='+encodeURIComponent(ACCT)).then(r=>r.json());
     SEARCH_ROWS=(out.results||out.threads||[]).filter(x=>x.account===ACCT).map(x=>({
       type:'mail', key:'m:'+x.account+':'+x.thread_id, raw:x,
       who:x.who||x.last_from||'', title:x.subject||'(no subject)', snip:x.snippet||'',
@@ -8470,11 +9947,31 @@ document.addEventListener('keydown', e=>{
   if((e.metaKey||e.ctrlKey)&&e.shiftKey&&(e.key==='F'||e.key==='f')){ e.preventDefault(); fbDlg(); return; }
   if(e.target.matches('input,textarea,select,[contenteditable]')){ if(e.key==='Escape') e.target.blur(); return; }
   if(e.key==='/' ){ e.preventDefault(); $('#q').focus(); return; }
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  // Dev #40 (Bart: "Let's copy the Shortwave/Gmail shortcuts"): Gmail's
+  // layout, plus Shortwave's h for snooze. Two-key "go to" (g i …) and
+  // "select" (* a …) sequences as in Gmail. ? lists them all.
+  if(KSEQ.k&&Date.now()-KSEQ.t<1200){
+    const p=KSEQ.k; KSEQ.k=null; e.preventDefault();
+    if(p==='g'){
+      const go={i:()=>goInbox(), s:()=>{ goInbox(); TAB='star'; syncTabs(); renderList(); renderCrumbs(); },
+        t:()=>setScope('sent',null), d:()=>setScope('drafts',null), a:()=>setScope('allmail',null),
+        k:()=>goTodos(), h:()=>setScope('home',null)}[e.key];
+      if(go) go();
+    } else if(p==='*'){
+      if(e.key==='a'){ VISIBLE.forEach(i=>SEL.add(i.key)); renderList(); }
+      if(e.key==='n'){ SEL.clear(); renderList(); }
+    }
+    return;
+  }
+  if(e.key==='g'||e.key==='*'){ KSEQ.k=e.key; KSEQ.t=Date.now(); e.preventDefault(); return; }
   if(e.key==='Escape'){
     // E204: Esc steps back one level — a dialog, then the pane, then an open group
     const busy=document.querySelector('#dlg-back.open,.ovl.open');
     if(SPLIT&&!OPEN&&!busy){ closeSplit(); return; }
     closeDlg(); closeOvl(); closePane(); return; }
+  // With a dialog open, the list's one-key actions stay asleep.
+  if(document.querySelector('#dlg-back.open')) return;
   // E204: t = add to todo (the selection, else the row under the cursor or
   // the open email) — Shortwave's one-key "Add to todo".
   if(e.key==='t'&&!e.metaKey&&!e.ctrlKey){
@@ -8493,18 +9990,52 @@ document.addEventListener('keydown', e=>{
       window._pvT=setTimeout(()=>{ const c=VISIBLE[KB]; if(c) openItem(c.key,false); },260);
     }
   }
-  // E208: c = compose, as in Gmail and Shortwave.
-  if(e.key==='c'&&!e.metaKey&&!e.ctrlKey){ e.preventDefault(); composeDlg(); return; }
-  const cur=VISIBLE[KB];
+  if(e.key==='?'){ e.preventDefault(); keysDlg(); return; }
+  if(e.key==='c'){ e.preventDefault(); composeDlg(); return; }
+  if(e.key==='z'){ e.preventDefault(); undoPending(); return; }
+  if(e.key==='u'){ if(SPLIT&&!OPEN) closeSplit(); else closePane(); return; }
+  // The row under the cursor, else the email open in the pane.
+  const cur=VISIBLE[KB]||(OPEN&&findItem(OPEN));
   if(!cur) return;
-  if(e.key==='Enter'||e.key==='o') openItem(cur.key);
-  if(e.key==='e'&&cur.type==='mail') archiveItem(cur.key);
-  if(e.key==='h') handledItem(cur.key);
-  if(e.key==='f') starItem(cur.key);
-  if(e.key==='r'&&cur.type==='mail') replyOptions(cur.key);
-  if(e.key==='s') snoozeDlg(cur.key);
-  if(e.key==='x') toggleSel(cur.key);
+  const mail=cur.type==='mail';
+  const k=cur.key;
+  if(e.key==='Enter'||e.key==='o') openItem(k);
+  else if(e.key==='e'||e.key==='y'){ if(mail) archiveItem(k); }
+  else if(e.key==='#'){ if(mail) trashItem(k); }
+  else if(e.key==='s') starItem(k);
+  else if(e.key==='b'||e.key==='h') snoozeDlg(k);
+  else if(e.key==='H') handledItem(k);
+  else if(e.key==='l'){ if(mail){ e.preventDefault(); labelDlg(k); } }
+  else if(e.key==='x') toggleSel(k);
+  else if(mail&&(e.key==='r'||e.key==='a'||e.key==='f')){
+    e.preventDefault();
+    replyKey(k, {r:'reply',a:'all',f:'fwd'}[e.key]);
+  }
+  else if(mail&&e.key==='R'){ e.preventDefault(); replyOptions(k); }   // ✨ Claude's reply options
 });
+const KSEQ={k:null,t:0};
+/* r / a / f open the reply in the reading pane, opening the email first. */
+async function replyKey(key,mode){
+  if(OPEN!==key||!$('#composer')) await openItem(key);
+  setTimeout(()=>openComposer(key,mode),60);
+}
+const KEYS=[
+  ['Compose & find',[['c','New email'],['/','Search'],['?','This list']]],
+  ['Move around',[['j / k','Next / previous'],['o or Enter','Open'],['u','Back to the list'],['Esc','Close / step back'],
+    ['g i','Inbox'],['g s','Starred'],['g t','Sent'],['g d','Drafts'],['g a','All mail'],['g k','Todos'],['g h','Home']]],
+  ['Act on an email',[['e','Archive (done)'],['#','Delete — Gmail Trash, with Undo'],['s','Star / unstar'],['b or h','Snooze'],
+    ['r','Reply'],['a','Reply all'],['f','Forward'],['R','Claude\'s reply options'],['l','Label'],['t','Add to todo'],
+    ['H','Handled'],['z','Undo']]],
+  ['Select',[['x','Select this one'],['* a','Select all'],['* n','Select none']]],
+  ['Anywhere',[['⌘⇧F','Flag something on screen']]],
+];
+function keysDlg(){
+  dlg(`<h3 style="display:flex;align-items:center">Keyboard shortcuts<span class="sp" style="flex:1"></span>
+      <button class="tool" onclick="closeDlg()" aria-label="Close">${ic('x')}</button></h3>
+    <div class="keys-grid">${KEYS.map(([h,rows])=>`<div><div class="keys-h">${esc(h)}</div>
+      ${rows.map(([k,d])=>`<div class="keys-row"><span>${k.split(' ').map((x,_,a)=>a.length>1&&(x==='or'||x==='/')?`<i>${esc(x)}</i>`:`<kbd>${esc(x)}</kbd>`).join(' ')}</span><span>${esc(d)}</span></div>`).join('')}</div>`).join('')}</div>
+    <div class="status" style="margin-top:10px;text-transform:none;letter-spacing:0">Gmail's layout, plus Shortwave's h for snooze. Mark read/unread, spam and mute aren't in Grand Central yet.</div>`);
+}
 
 /* ------- pane resize (E68): drag the left edge; width persists ------- */
 (function(){
@@ -8535,6 +10066,22 @@ document.addEventListener('keydown', e=>{
 /* ================= chrome: tabs, buttons, version, offline, SW ================= */
 document.querySelectorAll('.ltab').forEach(b=>b.onclick=()=>{ TAB=b.dataset.tab; syncTabs(); renderList(); renderRail(); });
 function goToday(){ if(SCOPE.kind!=='inbox') setScope('inbox',null); TAB='today'; syncTabs(); renderList(); renderRail(); renderCrumbs(); }
+/* Dev #38 (Bart: "If I click on Inbox it should always go back to the Inbox
+   view"): from anywhere — an open bundle, a search, a lens, a todo — the
+   plain inbox, scrolled to the top. The grouping choice is kept. */
+function goSmart(){ goInbox(true); }
+function smartJump(name){
+  if(FOLDS.has(name)){ FOLDS.delete(name); renderList(); }
+  const h=[...document.querySelectorAll('#list .ib-head')].find(x=>x.dataset.sec===name);
+  if(h) h.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function goInbox(smart){
+  SMART=smart===true;
+  SPLIT=null; SEARCH_ROWS=null;
+  if(Q){ Q=''; $('#q').value=''; syncQClr(); }
+  setScope('inbox',null); TAB='all'; syncTabs(); renderList(); renderRail(); renderCrumbs();
+  const l=$('#list'); if(l) l.scrollTop=0;
+}
 function goTodos(){ if(SCOPE.kind!=='inbox') setScope('inbox',null); TAB='todos'; syncTabs(); renderList(); renderRail(); renderCrumbs(); }
 /* E163: back to the whole scope from the lens crumb. */
 function clearLens(){ TAB='all'; syncTabs(); renderList(); renderCrumbs(); renderRail(); }
@@ -8717,13 +10264,14 @@ $('#nf-btn').onclick=e=>{ e.stopPropagation(); meClose(); const m=$('#nf-menu');
 document.addEventListener('click', e=>{ if(!e.target.closest('#nf-menu')) nfClose(); });
 nfBadge();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+setTimeout(draftRecoverOffer, 3500);   // Dev #53: an email that a reload interrupted
 
 /* ================= boot ================= */
 (async function boot(){
   $('#list').innerHTML='<div class="empty">Loading…</div>';
   try {
     await loadAccounts();
-    await Promise.all([loadMailTodos(), loadBoard(), loadConn(), loadSigs(), loadSteward(), loadWizard(), loadBraindump()]);
+    await Promise.all([loadMailTodos(), loadBoard(), loadConn(), loadSigs(), loadSteward(), loadWizard(), loadBraindump(), loadProjects()]);
   }
   catch(e){ $('#list').innerHTML=`<div class="empty">Could not load — ${esc(e.message)}</div>`; }
   const b=$('#pv-state'); if(b) b.textContent=PREVIEW?'on':'off';

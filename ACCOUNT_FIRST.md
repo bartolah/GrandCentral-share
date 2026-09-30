@@ -6,6 +6,12 @@ belong to exactly one account and show in that account's view. Projects, goals,
 automatic classification, Attio, and the old dashboard go. Cross-account global
 todos are deferred (not built).
 
+Amended 2026-09-29 (BUILD_SPEC §6): ownership stays exactly as above, but a
+read-only Home tab may show every account at once, each in its own section,
+and the day note and conflict spotting may read across accounts. Nothing is
+re-owned or acted on outside its account. The account-boundary code and tests
+stay; the new Home needs its own tests that prove it only reads.
+
 Nothing here deletes historical data or makes an irreversible schema change.
 Retired behaviour is *stopped*, not erased: tables and rows stay for rollback.
 
@@ -261,3 +267,56 @@ Blocker
   execution policy rejects every Python/Node interpreter invocation. Static
   diff validation passed, but the focused Node/temp-DB suite must still be run
   in an execution lane that permits the repository's existing interpreters.
+
+## Jev-led Smart grouping (E226, 2026-09-28)
+
+Bart: "switch our sorting logic to use the Jev context. Jev should help us with filtering, grouping, etc." Start with ConnectBlue, add the others once he likes it.
+
+- Per account, following the existing Jev switch (`class_accounts.jev`); `/mail` returns `jev` so the page knows. Accounts without it keep E204's date-banded Smart grouping exactly.
+- A thread's type is the classifier's effective answer (Bart's correction > Jev when confident > rules). Only a type decided by Jev or Bart moves a thread; rule-only types keep today's placement.
+- Bulk mail never reaches Jev (§6 2026-09-26), so newsletter/promo/receipt/calendar/update bundles still come from `categorize()`. Jev adds two bundles for person-looking mail: Cold pitches and Spam (and can send misfiled machine mail to Updates/Newsletters). Those two offer Archive all, not Delete all.
+- Sections: Needs you (respond = yes, or priority 3) → Team → Prospects → Correspondence, each by priority, then value, then newest; then one "Bundled" section.
+- Filters `type:` `priority:` `needs:` are GC-only and stripped before a Gmail search.
+- Nothing here writes to Gmail; classification stays advisory.
+
+## Projects — spec (interview with Bart, 2026-09-29)
+
+Mockups: Grand Central Design canvas, artboards "Project page" and "Projects page + Add to project" (`design/Project.dc.html`, `design/Projects.dc.html`). Not built yet.
+
+**What a project is.** A standalone page, a hybrid of a todo page and Smart Inbox. It points at things; it never moves them. Anything can be added from anywhere with one verb, 📁 Add to project: emails (threads), todos, notes, calendar events (past or upcoming, with their Granola notes) and contacts. A project can hold many of each.
+
+**Ownership (BUILD_SPEC §6, 2026-09-29).** Emails, todos and events stay in their own accounts, and acting on them happens there. A project, and a note written inside it, belong to no account. Each item on the page shows its account chip.
+
+| Question | Bart's answer |
+|---|---|
+| An email added to a project | Stays in its inbox; the project is a second view onto it |
+| A todo's emails on the project page | Folded inside the todo row, shown once |
+| Dates | Optional target date, plus completed-on recorded when marked complete |
+| Completing with open todos | Ask: "3 todos are still open — complete them too?" |
+| Contacts | A People list; a new email from one of them prompts "add to <project>?" and Bart decides (no auto-filing) |
+| Ask Grand Central on a project page | Reads everything filed in that project, across its accounts, and nothing outside it |
+| Gmail labels for projects | Not now (would be a live write in every account involved) |
+| Pinned projects | Up to 3, as tabs after the account tabs behind a divider (phone: in the ☰ drawer, assumed) |
+| Deleting a project | Keeps all content; notes written inside it move to Notes, marked with the project's name |
+| A new todo created inside a project | Account picker, defaulting to the last account used in that project |
+| Calendar events | Any event, past or upcoming |
+
+**Also from Bart's brief:** projects can be completed and reopened; created from a Projects page, the sidebar or a Projects section in the right-hand panel; administered (rename, colour, target, pin, complete, delete) on the Projects page.
+
+**Build order (proposed):** (1) tables + API: projects, project_items (kind, account, ref), project notes; (2) Projects page, project page and pins; (3) 📁 Add to project on emails and todos; (4) notes, events and contacts; (5) project-scoped Ask; (6) the People suggestion on new mail. Each item is keyed by (account, id), never by id alone.
+
+## E249: the ◫ Day Home and the ⌂ Home tab (2026-09-30)
+
+Built under the 2026-09-29 §6 exception. What keeps it a view, not an owner:
+* `home_view.section(conn, account)` reads one account (mail_view, todo_view,
+  class_for_threads, all `account=`-scoped); `/home` is a list of those. No
+  write path was added; `tests/test_home.py` asserts `total_changes` is
+  unchanged after building Home and the note's signals.
+* The client never loads another account's items into `ITEMS`. `HOME_ALL`
+  only swaps what `#list` draws; `ACCT` stays the last real account, and
+  opening a row on ⌂ Home calls `setAcct(its account)` first. Todos there have
+  no checkbox: done happens inside the account.
+* The cross-account note is one Haiku call per day (`day_note`, scope '')
+  with titles, times, todo text and the assessor's one-line summaries,
+  never snippets or bodies. Per-account notes see that account only.
+* `/home` and `/home/note` are in `gc_client.DENIED`; Ask is unchanged.

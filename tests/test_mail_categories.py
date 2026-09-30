@@ -27,9 +27,11 @@ sys.path.insert(0, os.path.join(ROOT, "sweeper"))
 from mail_sync import categorize  # noqa: E402
 
 
-def meta(frm, subject="", *, list_unsub=False, bulk=False, content_type=""):
+def meta(frm, subject="", *, list_unsub=False, bulk=False, content_type="",
+         feedback_id="", list_unsub_url=""):
     return {"from": frm, "subject": subject, "list_unsub": list_unsub,
-            "bulk": bulk, "content_type": content_type}
+            "bulk": bulk, "content_type": content_type,
+            "feedback_id": feedback_id, "list_unsub_url": list_unsub_url}
 
 
 class ListUnsubscribeIsTheWeakestSignal(unittest.TestCase):
@@ -50,12 +52,13 @@ class ListUnsubscribeIsTheWeakestSignal(unittest.TestCase):
             "promo")
 
     def test_bulk_with_nothing_specific_is_still_a_newsletter(self):
-        # The header still does its job last: a fundraising blast from a sender
-        # whose address gives nothing away has no better home than 'newsletter'
-        # until the steward curates it.
+        # The header still does its job last: bulk mail from a sender whose
+        # address gives nothing away has no better home than 'newsletter'
+        # until the steward curates it. (Until E223 this example was a PAC
+        # blast; those are promos now — see FundraisingBlastsArePromos.)
         self.assertEqual(
-            categorize(meta("info@e.example-cause.org",
-                            "We need $5 before midnight", list_unsub=True)),
+            categorize(meta("info@e.somemagazine.com",
+                            "This week in review", list_unsub=True)),
             "newsletter")
 
 
@@ -125,6 +128,72 @@ class StrongerRulesStillWinFirst(unittest.TestCase):
             categorize(meta("orders@shop.com", "Your order has shipped — 20% off next time",
                             list_unsub=True)),
             "receipt")
+
+
+class FundraisingBlastsArePromos(unittest.TestCase):
+    """E223 (Dev #22): campaign and PAC asks go to Promos, told by the sending
+    platform or the sender's name, never by their clickbait subjects."""
+
+    def test_actionkit_feedback_id_is_a_promo(self):
+        m = meta("Roy Cooper <info@e.roycooper.com>", "Bad news, team", list_unsub=True,
+                 feedback_id="7781113a:b:3875.mailingid:actionkit")
+        self.assertEqual(categorize(m), "promo")
+
+    def test_ngpvan_unsubscribe_is_a_promo(self):
+        m = meta("info@timkaine.com", "Three great candidates", list_unsub=True,
+                 list_unsub_url="<https://secure.ngpvan.com/Unsubscribe?x=1>")
+        self.assertEqual(categorize(m), "promo")
+
+    def test_pac_and_party_committee_senders_are_promos(self):
+        for frm in ("info@progressiveresistancepac.com", "turnoutpac@substack.com",
+                    "dccc@ak.dccc.org"):
+            self.assertEqual(categorize(meta(frm, "Hi", list_unsub=True)), "promo", frm)
+
+    def test_editorial_newsletters_stay_newsletters(self):
+        for frm in ("mike@axios.com", "info@news.dailykos.com",
+                    "roycoopernc@substack.com"):
+            m = meta(frm, "Today", list_unsub=True, list_unsub_url="<https://link.axios.com/u>")
+            self.assertEqual(categorize(m), "newsletter", frm)
+
+    def test_a_person_at_a_campaign_is_still_a_person(self):
+        # Not bulk: a staffer writing to Bart is never a fundraising blast.
+        m = meta("Jane <jane@victorypac.org>", "Coffee Tuesday?")
+        self.assertEqual(categorize(m), "people")
+
+
+class OwnDomainsAreNeverPromos(unittest.TestCase):
+    """Dev #55: "Any email from my official domain shouldn't be a promotion."
+    ConnectBlue's sales@ is a Google Group, so its RFPs arrive bulk-flagged."""
+    OWN = {"connectblue.org", "crowdblue.com"}
+
+    def test_a_google_group_post_on_the_own_domain_is_people(self):
+        m = meta("'Dev Banerjee' via Sales <sales@crowdblue.com>", "New RFP: Kimmies",
+                 list_unsub=True, bulk=True,
+                 list_unsub_url="<mailto:googlegroups-manage+1+unsubscribe@googlegroups.com>")
+        self.assertEqual(categorize(m, own=self.OWN), "people")
+        self.assertEqual(categorize(m), "promo")      # without the rule, what Bart saw
+
+    def test_a_no_reply_on_the_own_domain_is_an_update(self):
+        m = meta("no-reply@crowdblue.com", "Your weekly stats", list_unsub=True, bulk=True)
+        self.assertEqual(categorize(m, own=self.OWN), "notification")
+
+    def test_a_subdomain_is_an_update_at_most(self):
+        m = meta("offers@news.connectblue.org", "50% off sale", list_unsub=True, bulk=True)
+        self.assertEqual(categorize(m, own=self.OWN), "notification")
+
+    def test_bart_s_own_override_still_wins(self):
+        m = meta("contact@connectblue.org", "Form", list_unsub=True)
+        self.assertEqual(categorize(m, {"contact@connectblue.org": "newsletter"}, own=self.OWN), "newsletter")
+
+    def test_a_lookalike_domain_is_not_own(self):
+        m = meta("sales@notconnectblue.org", "Sale on now", list_unsub=True)
+        self.assertEqual(categorize(m, own=self.OWN), "promo")
+
+    def test_public_mailboxes_are_never_own(self):
+        import mail_sync
+        env = {"GMAIL_PERSONAL_USER": "bart@gmail.com", "GMAIL_CB_USER": "bart@ConnectBlue.org",
+               "GMAIL_CB_APP_PASSWORD": "x"}
+        self.assertEqual(mail_sync.own_domains(env), {"connectblue.org"})
 
 
 class PlainMailIsUntouched(unittest.TestCase):

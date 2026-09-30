@@ -347,6 +347,46 @@ def _todo_label_async(eng_id: int, account: str, thread_id: str, add: bool) -> N
     threading.Thread(target=run, daemon=True).start()
 
 
+def _home_accounts(conn) -> list:
+    """The accounts the tabs show, in Bart's saved order (same source as
+    GET /accounts): accounts with synced mail or todos."""
+    rows = conn.execute(
+        "SELECT account FROM mail_threads WHERE account IS NOT NULL "
+        "UNION SELECT account FROM engagements WHERE account IS NOT NULL").fetchall()
+    have = sorted({r[0] for r in rows if r[0]})
+    import db
+    order = [a for a in db.acct_order(conn) if a in have]
+    return order + [a for a in have if a not in order]
+
+
+_HOME_NOTE_BUSY: set = set()
+
+
+def _home_note_async(scope: str) -> bool:
+    """E249: write today's Home note in the background (one small model
+    call). False when one for this scope is already being written."""
+    if scope in _HOME_NOTE_BUSY:
+        return False
+    _HOME_NOTE_BUSY.add(scope)
+
+    def run():
+        try:
+            import db
+            import day_note
+            c = db.connect()
+            try:
+                day_note.generate(c, scope, _home_accounts(c),
+                                  log=lambda m: print(m, flush=True))
+            finally:
+                c.close()
+        except Exception as e:
+            print(f"home note failed: {e!r}", flush=True)
+        finally:
+            _HOME_NOTE_BUSY.discard(scope)
+    threading.Thread(target=run, daemon=True).start()
+    return True
+
+
 def _todo_rename_async(eng_id: int) -> None:
     """E204: a todo's title changed — move its Gmail label with it."""
     def run():
@@ -459,12 +499,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         cls = db.class_for_threads(conn, acct)
                         for t in threads:
                             t["cls"] = cls.get(t.get("thread_id"))
+                        jev_on = db.class_account_jev(conn, acct)
+                    else:
+                        jev_on = False
                     outbox = db.open_outbox(conn)
                     row = conn.execute("SELECT MAX(synced_at) AS s FROM mail_threads").fetchone()
                     synced_at = row["s"] if row else None
                 finally:
                     conn.close()
                 self._json(200, {"ok": True, "synced_at": synced_at,
+                                 "jev": bool(jev_on),     # Jev-led Smart grouping
                                  "sync": _mail_sync_status(),
                                  "threads": threads, "outbox": outbox})
             except Exception as e:
@@ -482,13 +526,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 if account not in _A:
                     raise ValueError("known account required")
                 env = _le()
-                rows, errors = [], []
+                rows, errors, nxt = [], [], None
+                before = _clean((qs.get("before") or [""])[0], 12)
                 try:
-                    rows.extend(mail_actions.list_sent(account, env))
+                    page = mail_actions.list_sent(account, env,
+                                                  before_uid=int(before) if before.isdigit() else None)
+                    rows, nxt = page["rows"], page["next_before"]
                 except Exception as e:
                     errors.append(f"{account}: {e}")
-                rows.sort(key=lambda r: r.get("date") or "", reverse=True)
-                self._json(200, {"ok": True, "sent": rows, "errors": errors})
+                self._json(200, {"ok": True, "sent": rows, "next_before": nxt, "errors": errors})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
@@ -635,9 +681,60 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         "UNION SELECT account FROM engagements WHERE account IS NOT NULL"
                     ).fetchall()
                     accounts = sorted({r[0] for r in rows if r[0]})
+                    order = db.acct_order(conn)
                 finally:
                     conn.close()
-                self._json(200, {"ok": True, "accounts": accounts})
+                self._json(200, {"ok": True, "accounts": accounts, "order": order})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/home":
+            # E249: Home's sections. BUILD_SPEC §6 (2026-09-29): a read-only
+            # view — each account is built on its own (home_view.section) and
+            # every row names its account; nothing here writes. ?account=
+            # narrows to that account's own Home.
+            try:
+                import db
+                import home_view
+                qs = urllib.parse.parse_qs(parsed.query)
+                acct = _clean((qs.get("account") or [""])[0], 40)
+                conn = db.connect()
+                try:
+                    known = _home_accounts(conn)
+                    if acct and acct not in known:
+                        raise ValueError("unknown account")
+                    self._json(200, {"ok": True, **home_view.home(
+                        conn, [acct] if acct else known)})
+                finally:
+                    conn.close()
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/home/note":
+            # E249: today's few-sentence note. Stored once per day per scope
+            # ('' = every account, else one account); the first read of the
+            # day, or ?refresh=1, starts writing it in the background.
+            try:
+                import db
+                import day_note
+                qs = urllib.parse.parse_qs(parsed.query)
+                scope = _clean((qs.get("account") or [""])[0], 40)
+                conn = db.connect()
+                try:
+                    if scope and scope not in _home_accounts(conn):
+                        raise ValueError("unknown account")
+                    note = day_note.get(conn, scope)
+                finally:
+                    conn.close()
+                pending = False
+                if note is None or (qs.get("refresh") or ["0"])[0] == "1":
+                    pending = _home_note_async(scope) or scope in _HOME_NOTE_BUSY
+                self._json(200, {"ok": True, "scope": scope, "note": note,
+                                 "pending": pending})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
@@ -916,6 +1013,69 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {"ok": True, "drafts": rows, "errors": errors})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path in ("/projects", "/project"):
+            # Projects (BUILD_SPEC §6, 2026-09-29): account-less containers
+            # that point at items in their own accounts. Reads only.
+            try:
+                import db, projects
+                qs = urllib.parse.parse_qs(parsed.query)
+                conn = db.connect()
+                try:
+                    if parsed.path == "/projects":
+                        out = {"ok": True, "projects": projects.list_projects(conn),
+                               "max_pins": projects.MAX_PINS}
+                        kind = _clean((qs.get("kind") or [""])[0], 10)
+                        if kind:
+                            # the 📁 picker: which projects already hold this item
+                            # ({project_id: item_id}, so a second click removes it)
+                            acct = _clean((qs.get("account") or [""])[0], 40) or None
+                            ref = _clean((qs.get("ref") or [""])[0], 300)
+                            if kind == "contact":
+                                acct, ref = None, ref.lower()
+                            out["in"] = {r[0]: r[1] for r in conn.execute(
+                                "SELECT project_id, id FROM project_items WHERE kind = ? AND account IS ? AND ref = ?",
+                                (kind, acct, ref))}
+                    else:
+                        pid = int(_clean((qs.get("id") or ["0"])[0], 12) or 0)
+                        out = {"ok": True, "project": projects.project_view(conn, pid)}
+                finally:
+                    conn.close()
+                self._json(200, out)
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
+            return
+        if parsed.path == "/calendar/invite":
+            # Dev #16: is this thread an invitation Bart can answer, and what
+            # did he already say? Read-only (IMAP + a calendar list).
+            try:
+                import calendar_rsvp
+                qs = urllib.parse.parse_qs(parsed.query)
+                out = calendar_rsvp.status(
+                    _clean((qs.get("account") or [""])[0], 40),
+                    _clean((qs.get("thread_id") or [""])[0], 25))
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
+            return
+        if parsed.path == "/draft":
+            # E224 (Dev #19): one draft, whole, for GC's composer. Read-only.
+            try:
+                import mail_actions
+                qs = urllib.parse.parse_qs(parsed.query)
+                out = mail_actions.get_draft(
+                    _clean((qs.get("account") or [""])[0], 40),
+                    _clean((qs.get("uid") or [""])[0], 12),
+                    _clean((qs.get("gm_msgid") or [""])[0], 25))
+                self._json(200, {"ok": True, "draft": out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
             return
         if parsed.path == "/context":
             # E19: Bart's context corpus — rules/notes that future
@@ -1252,6 +1412,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
 
+        elif route == "/accounts/order":
+            # Dev #42: the dragged account-tab order, saved server-side so it
+            # follows Bart across browsers and sessions.
+            try:
+                import db
+                conn = db.connect()
+                try:
+                    order = db.acct_order_set(conn, payload.get("order"))
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "order": order})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
         elif route == "/dismiss":
             try:
                 import feedback
@@ -1323,6 +1499,35 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
 
+        elif route in ("/draft/replace", "/draft/discard"):
+            # E224 (Dev #19, Bart 2026-09-27: "it's ok to delete and resave"):
+            # an edited draft is saved as a new one and the old copy goes to
+            # Gmail Trash; after a draft is sent from GC, its copy goes too.
+            # Drafts folder only, checked by Gmail message id, recoverable. Human click
+            # only — not an Ask tool and not in gc_client.ALLOWED.
+            try:
+                account = _clean(payload.get("account"), 40)
+                uid = _clean(payload.get("draft_uid"), 12)
+                mid = _clean(payload.get("gm_msgid"), 25)
+                if route == "/draft/discard":
+                    import mail_actions
+                    out = mail_actions.trash_draft(account, uid, mid)
+                else:
+                    import draft_reply
+                    out = draft_reply.replace_draft(
+                        account, uid, mid, str(payload.get("body") or "")[:20000],
+                        to=_clean(payload.get("to"), 500),
+                        subject=_clean(payload.get("subject"), 300),
+                        cc=_clean(payload.get("cc"), 500) or None,
+                        bcc=_clean(payload.get("bcc"), 500) or None,
+                        in_reply_to=_clean(payload.get("in_reply_to"), 300),
+                        references=_clean(payload.get("references"), 2000))
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
+
         elif route == "/draft/compose":
             try:
                 import draft_reply
@@ -1340,6 +1545,73 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/projects":
+            # Projects: every write is a click on the board — not an Ask tool,
+            # and in gc_client.DENIED (agents creating or filing into projects
+            # needs its own decision, §6 2026-09-29). Nothing here touches Gmail.
+            try:
+                import db, projects
+                a = _clean(payload.get("action"), 20)
+                pid = int(payload.get("id", 0) or 0)
+                conn = db.connect()
+                try:
+                    if a == "create":
+                        out = {"id": projects.create(conn, payload.get("name"), payload.get("color") or None,
+                                                     payload.get("description"), payload.get("target_date") or None)}
+                    elif a == "update":
+                        f = payload.get("fields") or {}
+                        out = {"project": projects.update(conn, pid, f.get("name"), f.get("color"),
+                                                          f.get("description"), f.get("target_date"))}
+                    elif a == "pin":
+                        out = {"project": projects.pin(conn, pid, payload.get("on") is True)}
+                    elif a == "complete":
+                        out = {"project": projects.complete(conn, pid)}
+                    elif a == "reopen":
+                        out = {"project": projects.reopen(conn, pid)}
+                    elif a == "delete":
+                        out = projects.delete(conn, pid)
+                    elif a == "add":
+                        out = {"item": projects.add_item(conn, pid, _clean(payload.get("kind"), 10),
+                                                         _clean(payload.get("account"), 40) or None,
+                                                         _clean(payload.get("ref"), 300),
+                                                         _clean(payload.get("title"), 300) or None)}
+                    elif a == "remove":
+                        out = {"removed": projects.remove_item(conn, pid, int(payload.get("item_id", 0) or 0))}
+                    elif a == "note-add":
+                        out = {"id": projects.note_add(conn, pid or None, payload.get("title"),
+                                                       str(payload.get("body") or ""))}
+                    elif a == "note-update":
+                        out = {"note": projects.note_update(conn, int(payload.get("note_id", 0) or 0),
+                                                            payload.get("title"), payload.get("body"))}
+                    elif a == "note-delete":
+                        out = {"deleted": projects.note_delete(conn, int(payload.get("note_id", 0) or 0))}
+                    else:
+                        raise ValueError(f"unknown action {a!r}")
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
+
+        elif route == "/calendar/rsvp":
+            # §6 Calendar RSVP (Bart 2026-09-27, Dev #16): Yes / Maybe / No on
+            # an invitation in one thread — Bart's own response only, nothing
+            # else about the event, audited. Human click only: in
+            # gc_client.DENIED and not an Ask tool.
+            try:
+                import calendar_rsvp
+                out = calendar_rsvp.rsvp(
+                    _clean(payload.get("account"), 40),
+                    _clean(payload.get("thread_id"), 25),
+                    _clean(payload.get("response"), 10))
+                self._json(200, {"ok": True, **out})
+            except (ValueError, PermissionError) as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
 
         elif route == "/calendar":
             try:
@@ -1462,7 +1734,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 action = _clean(payload.get("action"), 10)
                 status = _clean(payload.get("status"), 10) or None
                 account = _clean(payload.get("account"), 40)
-                gated = (action in ("add", "check", "newcode", "answer")
+                gated = (action in ("add", "check", "newcode", "answer", "triage")
                          or (action == "update" and (payload.get("text") is not None
                                                      or status == "open")))
                 if gated and action == "update" and payload.get("text") is None:
@@ -1515,9 +1787,36 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         rid = db.dev_add(conn, text, account)
                         self._json(200, {"ok": True, "id": rid,
                                          "account": account})
+                    elif action == "triage":
+                        # Bart relabels a card (paired only): its priority, or
+                        # "build" to clear a card triage held back. Text and
+                        # status are untouched; his label sticks until the text
+                        # changes. The worker's own rules still apply to it.
+                        if not account or not _account_known(conn, account):
+                            raise ValueError("known account required")
+                        rid = int(payload.get("id", 0) or 0)
+                        row = conn.execute("SELECT text FROM dev_requests WHERE id = ? AND account = ?",
+                                           (rid, account)).fetchone()
+                        if row is None:
+                            raise ValueError("no such request")
+                        verdict = _clean(payload.get("verdict"), 10) or None
+                        if verdict not in (None, "build", "session"):
+                            raise ValueError("verdict can only be set to build or session")
+                        size = _clean(payload.get("size"), 2) or None
+                        if verdict == "build" and size is None:
+                            cur = conn.execute("SELECT size FROM dev_requests WHERE id = ?", (rid,)).fetchone()
+                            if cur and cur[0] == "l":
+                                size = "m"      # "build it" means build it, even if it looked large
+                        db.dev_set_triage(conn, rid, priority=_clean(payload.get("priority"), 3) or None,
+                                          size=size, verdict=verdict,
+                                          note=("Set by you" if verdict or payload.get("priority") else None),
+                                          text_hash=db.dev_text_hash(row[0]), by="bart")
+                        self._json(200, {"ok": True})
                     elif action == "update":
                         if not account or not _account_known(conn, account):
                             raise ValueError("known account required")
+                        prev = conn.execute("SELECT status FROM dev_requests WHERE id = ? AND account = ?",
+                                            (int(payload.get("id", 0) or 0), account)).fetchone()
                         ok = db.dev_update(
                             conn, int(payload.get("id", 0)), account,
                             text=(str(payload.get("text"))[:8000]
@@ -1525,6 +1824,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             status=status,
                             note=(str(payload.get("note"))[:2000]
                                   if payload.get("note") is not None else None))
+                        if ok and status == "open" and prev and prev[0] == "building":
+                            # The worker handed it back (a denied permission, or
+                            # more than it should do alone): don't hand it the
+                            # same card again next run — it waits for Bart.
+                            db.dev_set_triage(conn, int(payload.get("id", 0)), verdict="session",
+                                              note="Handed back by the worker — needs a session with you.",
+                                              by="claude")
                         self._json(200 if ok else 404, {"ok": ok})
                     else:
                         raise ValueError(f"unknown action {action!r}")

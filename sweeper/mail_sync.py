@@ -86,6 +86,18 @@ _PROMO_SUBJ_RE = re.compile(
     r"\bbuy one\b|\blimited time\b|\blast chance\b|\bclearance\b|"
     r"\bends (today|tonight|tomorrow|soon)\b|\bdeal of the\b|\bshop now\b|"
     r"\border now\b|\bblack friday\b|\bcyber monday\b)", re.I)
+# E223 (Dev #22, Bart: "put fundraising blasts into Promos"): campaign and PAC
+# asks write clickbait subjects ("Bad news, team") and pad their previews with
+# blank characters, so neither is a signal. The sending platform is. Sampled
+# 2026-09-27 across Bart's inboxes: every candidate and party committee blast
+# carried ActionKit in Feedback-ID or unsubscribed through NGP VAN/EveryAction,
+# and no editorial newsletter did (Axios, the Chronicle and Daily Kos use
+# Sailthru/Iterable). PACs on Mailchimp or Substack give themselves away in
+# the sender name instead.
+_FUNDRAISE_PLATFORM_RE = re.compile(
+    r"actionkit|ngpvan|everyaction|actblue|winred|anedot", re.I)
+_FUNDRAISE_SENDER_RE = re.compile(
+    r"(pac|^(dccc|dscc|dnc|dga|dlcc|nrcc|nrsc|rnc|gop))$", re.I)
 # App / bot / role senders that slip past List-Id detection but aren't a
 # person — they belong in Notifications, not People (E34, Bart: "NewsBot
 # and Change Network are apps"). Matches the local part before @; the
@@ -104,7 +116,34 @@ _CAL_SUBJ_PREFIXES = ("invitation:", "accepted:", "declined:", "tentative:",
                       "updated invitation", "canceled event", "cancelled event")
 
 
-def categorize(meta: dict, sender_map: dict | None = None) -> str:
+def _is_fundraising(meta: dict, sender: str) -> bool:
+    """E223: a campaign/PAC blast, told by its sending platform or its name.
+    Only ever asked about mail that is already bulk."""
+    if _FUNDRAISE_PLATFORM_RE.search((meta.get("feedback_id") or "") + " "
+                                     + (meta.get("list_unsub_url") or "")):
+        return True
+    local, _, domain = sender.partition("@")
+    site = domain.split(".")[-2] if domain.count(".") >= 1 else domain
+    return bool(_FUNDRAISE_SENDER_RE.search(site) or _FUNDRAISE_SENDER_RE.search(local))
+
+
+# Dev #55 (Bart: "Any email from my official domain shouldn't be a
+# promotion"): the domains of Bart's own accounts, never a public mailbox.
+_PUBLIC_DOMAINS = {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com",
+                   "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com"}
+
+
+def own_domains(env: dict) -> set:
+    out = set()
+    for k, v in (env or {}).items():
+        if k.startswith("GMAIL_") and k.endswith("_USER") and "@" in (v or ""):
+            d = v.rsplit("@", 1)[1].strip().lower()
+            if d and d not in _PUBLIC_DOMAINS:
+                out.add(d)
+    return out
+
+
+def categorize(meta: dict, sender_map: dict | None = None, own: set | None = None) -> str:
     """Deterministic bundle category from one message's headers (the
     thread's latest message decides). First match wins.
 
@@ -125,6 +164,19 @@ def categorize(meta: dict, sender_map: dict | None = None) -> str:
         return "calendar"
     if _RECEIPT_LOCAL_RE.match(local) or _RECEIPT_SUBJ_RE.search(subj):
         return "receipt"
+    # Dev #55: mail from Bart's own domains is never filed as a promo or a
+    # fundraising blast. ConnectBlue's sales@ is a Google Group, so every RFP
+    # and teammate post carried list headers and a sales@ sender and read as
+    # marketing. Where the rules would say promo, the domain itself is people
+    # (a no-reply there is an update) and a subdomain, a sending tool, is an
+    # update. Every other category is left as the rules decide.
+    domain = sender.rsplit("@", 1)[1] if "@" in sender else ""
+    not_promo = None
+    if own and domain:
+        if domain in own:
+            not_promo = "notification" if _APP_LOCAL_RE.search(local) else "people"
+        elif any(domain.endswith("." + d) for d in own):
+            not_promo = "notification"
     # E205: List-Unsubscribe used to be tested HERE, before everything below,
     # and it swallowed the inbox — 61% of all threads landed in 'newsletter'.
     # Gmail and Yahoo have required that header on bulk mail since 2024, so a
@@ -134,13 +186,15 @@ def categorize(meta: dict, sender_map: dict | None = None) -> str:
     # perfectly and never reached it. So the header is now the WEAKEST signal,
     # not the strongest: the specific rules get first refusal and it only
     # catches what none of them claimed.
-    if _NEWSLETTER_LOCAL_RE.match(local):
-        return "newsletter"          # newsletters@, digest@ — says so itself
     # Content sniffing is gated on structural bulk-ness so it can only ever
     # reclassify mail that is already machine-sent.
     is_bulk = bool(meta.get("bulk") or meta.get("list_unsub"))
+    if is_bulk and _is_fundraising(meta, sender):
+        return not_promo or "promo"  # E223: campaign and PAC asks
+    if _NEWSLETTER_LOCAL_RE.match(local):
+        return "newsletter"          # newsletters@, digest@ — says so itself
     if is_bulk and (_PROMO_LOCAL_RE.match(local) or _PROMO_SUBJ_RE.search(subj)):
-        return "promo"
+        return not_promo or "promo"
     if _APP_LOCAL_RE.search(local):
         return "notification"        # no-reply@, alerts@, updates@, bot@
     if meta.get("list_unsub"):
@@ -270,7 +324,7 @@ def sync_account(account: str, env: dict, lookback_days: int,
                 "unread": t["unread"],
                 "starred": t["starred"],
                 "bulk": bool(meta.get("bulk")),
-                "category": categorize(meta, sender_map),
+                "category": categorize(meta, sender_map, own_domains(env)),
                 "labels": sorted(t["labels"]),
                 "attachments": t["attach"],
                 "link": _gmail_link({"thread_id": thrid, "account_email": user.lower(),

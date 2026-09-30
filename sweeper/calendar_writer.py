@@ -4,8 +4,10 @@ Approved by Bart 2026-07-19 ("make sure the OpenClaw integration can add
 calendar items"). The ICS feeds in sources/calendar_reader.py stay the
 read path; this module is the ONE calendar write, scoped deliberately:
 
-  - create-only: no update, no delete, no RSVP — none may be added without
-    a new explicit Bart decision (same pattern as the no-purge rule)
+  - create-only: no update, no delete — none may be added without a new
+    explicit Bart decision (same pattern as the no-purge rule). RSVP was
+    added by exactly such a decision (2026-09-27) and lives on its own in
+    calendar_rsvp.py
   - own calendars only, NO attendees: an attendee list would put the event
     on other people's calendars and email them invites — that is outbound
     territory (spec §6) and is rejected here outright
