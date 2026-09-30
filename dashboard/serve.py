@@ -502,6 +502,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         jev_on = db.class_account_jev(conn, acct)
                     else:
                         jev_on = False
+                    # E253: your own services (services.py) — each thread's
+                    # bundle, after Bart's merges and off-switches
+                    import services
+                    stbl = services.table(conn)
+                    svc_map = {}
+                    for t in threads:
+                        k = services.resolve(t.get("service"), stbl)
+                        t["svc"] = k
+                        if k:
+                            svc_map[k] = {"label": stbl[k]["label"], "kind": stbl[k]["kind"]}
                     outbox = db.open_outbox(conn)
                     row = conn.execute("SELECT MAX(synced_at) AS s FROM mail_threads").fetchone()
                     synced_at = row["s"] if row else None
@@ -510,6 +520,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {"ok": True, "synced_at": synced_at,
                                  "jev": bool(jev_on),     # Jev-led Smart grouping
                                  "sync": _mail_sync_status(),
+                                 "services": svc_map,
                                  "threads": threads, "outbox": outbox})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
@@ -568,7 +579,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     for e in d["events"]:
                         e.pop("attendees", None)
                         e.pop("organizer", None)
+                from home_view import CAL_ACCOUNT
                 payload = {"ok": True, "start": start_s, "days": days,
+                           "cal_account": CAL_ACCOUNT,   # 📁 files an event under its own account
                            "calendar": out}
                 _CAL_CACHE[key] = (time.time(), payload)
                 self._json(200, payload)
@@ -780,7 +793,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         from common import load_env
                         from sources import gmail_reader
                         accts = list(gmail_reader.scan_accounts(load_env()))
+                        import services
                         self._json(200, {"ok": True, **db.class_roster(conn),
+                                         "services": services.listing(conn),
                                          "jev_key_set": bool((load_env().get("JEV_API_KEY") or "").strip()),
                                          "accounts": [{"account": a, "jev": db.class_account_jev(conn, a)}
                                                       for a in accts]})
@@ -1014,7 +1029,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
-        if parsed.path in ("/projects", "/project"):
+        if parsed.path in ("/projects", "/project", "/notes"):
             # Projects (BUILD_SPEC §6, 2026-09-29): account-less containers
             # that point at items in their own accounts. Reads only.
             try:
@@ -1036,9 +1051,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             out["in"] = {r[0]: r[1] for r in conn.execute(
                                 "SELECT project_id, id FROM project_items WHERE kind = ? AND account IS ? AND ref = ?",
                                 (kind, acct, ref))}
+                    elif parsed.path == "/notes":
+                        # step 4: the Notes page — every note, loose or in a project
+                        out = {"ok": True, "notes": projects.notes_list(
+                            conn, _clean((qs.get("q") or [""])[0], 100) or None)}
                     else:
+                        import mailclass
+                        from common import load_env as _le
                         pid = int(_clean((qs.get("id") or ["0"])[0], 12) or 0)
-                        out = {"ok": True, "project": projects.project_view(conn, pid)}
+                        out = {"ok": True, "project": projects.project_view(
+                            conn, pid, mine=mailclass.own_addresses(_le()))}
                 finally:
                     conn.close()
                 self._json(200, out)
@@ -1584,6 +1606,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     elif a == "note-update":
                         out = {"note": projects.note_update(conn, int(payload.get("note_id", 0) or 0),
                                                             payload.get("title"), payload.get("body"))}
+                    elif a == "note-move":
+                        out = {"note": projects.note_move(conn, int(payload.get("note_id", 0) or 0), pid or None)}
                     elif a == "note-delete":
                         out = {"deleted": projects.note_delete(conn, int(payload.get("note_id", 0) or 0))}
                     else:
@@ -1859,11 +1883,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                                _clean(payload.get("value"), 40))
                         self._json(200, {"ok": True, "classification": out})
                         return
+                    if action in ("service-rename", "service-merge", "service-off"):
+                        # E253: Bart's edits to his own services. Only names,
+                        # bundles and on/off — nothing here touches Gmail.
+                        import services
+                        key = _clean(payload.get("key"), 120)
+                        if action == "service-rename":
+                            services.edit(conn, key, name=_clean(payload.get("name"), 60))
+                        elif action == "service-merge":
+                            services.edit(conn, key, merged_into=_clean(payload.get("into"), 120))
+                        else:
+                            services.edit(conn, key, off=payload.get("off") is True)
+                        self._json(200, {"ok": True})
+                        return
                     if action == "person-add":
                         db.class_person_set(conn, _clean(payload.get("email"), 120),
                                             _clean(payload.get("name"), 80),
                                             _clean(payload.get("group"), 60) or None,
-                                            payload.get("teammate") is not False)
+                                            payload.get("teammate") is not False,
+                                            also=payload.get("also") is True,
+                                            from_grp=_clean(payload.get("from"), 60) or None)
+                    elif action == "person-mate":
+                        db.class_person_teammate(conn, _clean(payload.get("email"), 120),
+                                                 payload.get("teammate") is True)
+                    elif action == "person-leave":
+                        # 2026-09-30: out of one group; their other groups stay
+                        db.class_person_leave(conn, _clean(payload.get("email"), 120),
+                                              _clean(payload.get("group"), 60))
                     elif action == "group-add":
                         db.class_group_set(conn, _clean(payload.get("domain"), 120),
                                            _clean(payload.get("group"), 60))

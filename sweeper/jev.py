@@ -48,8 +48,12 @@ _TYPE_CRITERIA = {
     "Correspondence": "A real person writing to the owner one-to-one or in a small group, outside the owner's team, about anything that is not selling.",
     "Team collaboration": "Colleagues coordinating work: the sender is a teammate or at the owner's company (see `sender_relationship`), or the thread is about shared internal work.",
     "Prospect": "The OWNER is selling or partnering: a lead, customer, advertiser or partner the owner is pursuing or pitched — the owner started or keeps the thread going, or the other side is answering the owner's pitch.",
-    "Cold pitch": "Someone is selling TO the owner without being asked: an unsolicited vendor, agency, SEO, lead-generation, recruiting or partnership pitch, or a follow-up bump to one, from someone the owner has not worked with.",
-    "Spam": "Unwanted or deceptive mail: scams, phishing, fake invoices or security alerts, crypto or prize offers, or mass mail with no real connection to the owner.",
+    # 2026-09-30: Jev judged what a teammate FORWARDED and called 51 of 67
+    # threads from Bart's boss a cold pitch. db.class_effective now refuses
+    # that outright; saying so here keeps new answers from needing it. Not a
+    # QVERSION bump: old answers are already corrected by the guard.
+    "Cold pitch": "Someone is selling TO the owner without being asked: an unsolicited vendor, agency, SEO, lead-generation, recruiting or partnership pitch, or a follow-up bump to one, from someone the owner has not worked with. Never when `sender_relationship` says the sender is a teammate or at the owner's company, even if they are forwarding someone else's pitch or a newsletter: that is Team collaboration.",
+    "Spam": "Unwanted or deceptive mail: scams, phishing, fake invoices or security alerts, crypto or prize offers, or mass mail with no real connection to the owner. Never from a teammate or someone at the owner's company.",
     "Update": "An automated or FYI status message: notifications, alerts, reports, confirmations, no conversation.",
     "Newsletter": "A publication or mailing-list message sent to many people that the owner chose to receive.",
 }

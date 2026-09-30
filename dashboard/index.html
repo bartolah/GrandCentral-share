@@ -1057,6 +1057,8 @@
   .pj-fold div { font-size: 12.5px; color: var(--muted); padding: 2px 8px; border-left: 2px solid var(--line); cursor: pointer; }
   .pj-fold div:hover { color: var(--ink); border-left-color: var(--blue); }
   .pj-fold span { color: var(--faint); }
+  .pj-sug { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pj-sug .chip { cursor: pointer; }
   .pj-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 4px 14px 12px; }
   .pj-note { border: 1px solid var(--line); background: var(--card); border-radius: var(--r, 10px); padding: 10px 12px; cursor: pointer; }
   .pj-note:hover { border-color: var(--blue); }
@@ -2724,6 +2726,7 @@ async function loadMailTodos(){
   OUTBOX = (m.outbox||[]).filter(x=>x.account===account);
   SYNC = m.sync||SYNC||{};
   JEV_ON[account]=!!m.jev;
+  SVC=m.services||{};
   noteNewMail();
   TODOS = (t.todos||[]).filter(x=>x.account===account&&x.state==='open');
   rebuild();
@@ -2893,7 +2896,8 @@ function renderRail(){
       `<button class="scope ${PROJ&&PROJ.view==='page'&&PROJ.id===p.id?'on':''}" title="${esc(p.name)}" onclick="openProject(${p.id})">
         <span class="ic">${projDot(p.color,9)}</span><span class="nm">${esc(p.name)}</span><span class="ct">${(p.counts&&p.counts.todos_total-p.counts.todos_done)||''}</span></button>`).join('') +
     `<button class="scope" title="New project" onclick="projEditDlg()"><span class="ic">＋</span><span class="nm" style="color:var(--blue)">New project</span><span class="ct"></span></button>
-     <button class="scope ${PROJ&&PROJ.view==='list'?'on':''}" title="All projects" onclick="showProjects()"><span class="ic">📁</span><span class="nm">All projects</span><span class="ct">${(PROJECTS||[]).filter(p=>p.status==='open').length||''}</span></button></div>` +
+     <button class="scope ${PROJ&&PROJ.view==='list'?'on':''}" title="All projects" onclick="showProjects()"><span class="ic">📁</span><span class="nm">All projects</span><span class="ct">${(PROJECTS||[]).filter(p=>p.status==='open').length||''}</span></button>
+     <button class="scope ${PROJ&&PROJ.view==='notes'?'on':''}" title="Every note, in a project or not" onclick="showNotes()"><span class="ic">🗒</span><span class="nm">Notes</span><span class="ct">${NOTES?NOTES.length||'':''}</span></button></div>` +
     `<div class="rail-panels"><h4>Panels</h4>` +
     [['brief','◎',"Today's brief"],['cal','📅','Calendar'],['todos','◯','Todo panel'],['proj','📁','Projects'],
      ['wait','⏳','Waiting on'],['ask','✨','Ask Grand Central']].map(([k,ic,nm])=>
@@ -2951,7 +2955,7 @@ function renderCrumbs(){
   const c=[];
   if(PROJ){                                   // Projects sit outside any account
     c.push({t:'⌂',go:"setScope('home',null)",tip:'Home'});
-    c.push({t:'📁 Projects',go:'showProjects()'});
+    c.push(PROJ.view==='notes'?{t:'🗒 Notes'}:{t:'📁 Projects',go:'showProjects()'});
     if(PROJ.view==='page'){ const p=projById(PROJ.id)||(PROJ_PAGE[PROJ.id]&&PROJ_PAGE[PROJ.id].data); c.push({t:p?p.name.slice(0,44):'Project'}); }
     $('#scope-name').innerHTML=c.map((x,ix)=>{ const last=ix===c.length-1;
       return (ix?'<span class="cr-sep">›</span>':'')+`<span class="cr ${last?'on':''}"${x.go&&!last?` onclick="${x.go}"`:''}${x.tip?` title="${esc(x.tip)}"`:''}>${esc(x.t)}</span>`; }).join('');
@@ -3192,7 +3196,9 @@ function groupItems(items){
   const entries=flow.map(i=>({d:String(i.date||''),row:i}));
   Object.entries(groups).forEach(([cat,rows])=>{
     rows.sort(byD);
-    entries.push({d:String(rows[0]?.date||''),row:{grp:cat,rows,date:rows[0]?.date}});
+    // E253: Sales inquiries stay at the top while any is unread or unanswered
+    const hot=grpKind(cat).sales&&rows.some(r=>r.unread||r.raw.last_direction!=='outbound');
+    entries.push({d:hot?'9999':String(rows[0]?.date||''),row:{grp:cat,rows,date:rows[0]?.date}});
   });
   entries.sort((a,b)=>b.d.localeCompare(a.d));
   const out=[];
@@ -3208,7 +3214,8 @@ function groupItems(items){
     const sec={'Needs you':[],'Team':[],'Prospects':[],'Correspondence':[]};
     flow.forEach(i=>{
       const t=i.cls?.type;
-      if(i.needs||pri(i)>=3) sec['Needs you'].push(i);
+      if(isSales(i)) sec['Prospects'].push(i);        // E253: website RFPs are leads
+      else if(i.needs||pri(i)>=3) sec['Needs you'].push(i);
       else if(t==='Team collaboration') sec['Team'].push(i);
       else if(t==='Prospect'||t==='Sales/outreach') sec['Prospects'].push(i);
       else sec['Correspondence'].push(i);
@@ -3253,8 +3260,22 @@ const JEV_TYPE_GRP_KEYS=new Set(['pitch','spam']);
 // Dev #49: Jev's bundles (cold pitches, spam) belong to Smart Inbox; the
 // classic Inbox bundles by the rules alone.
 const jevLed = i => smartOn() && !!JEV_ON[i.account] && !!i.cls && ['jev','you'].includes(i.cls.type_src);
+/* E253 (Bart: "ConnectBlue Notifications should be a bundle, ConnectBlue
+   Sales inquiries (RFPs) from sales@connectblue"): mail from your own
+   services bundles per service, named in Settings → Your services. Website
+   RFPs are leads, so in Smart Inbox they sit with Prospects instead. */
+let SVC={};
+const svcOf = i => i.type==='mail' && i.raw.svc ? SVC[i.raw.svc] : null;
+const isSales = i => svcOf(i)?.kind==='sales';
+function grpKind(g){
+  if(GRP_KIND[g]) return GRP_KIND[g];
+  const s=String(g).startsWith('svc:')&&SVC[g.slice(4)];
+  return s ? {name:s.label, icon:s.kind==='sales'?'forum':'flag', sales:s.kind==='sales'} : {name:g,icon:'label'};
+}
+const grpBulk = g => GRP_BULK[g] || (String(g).startsWith('svc:') ? (grpKind(g).sales?'💼 ':'⚙ ')+grpKind(g).name : '');
 function grpKey(i){
   if(i.type!=='mail') return null;
+  if(svcOf(i)) return isSales(i)&&smartOn() ? null : 'svc:'+i.raw.svc;
   if(GRP_KIND[i.raw.category]) return i.raw.category;           // bulk: the rules' call
   return jevLed(i) ? (JEV_TYPE_GRP[i.cls.type]||null) : null;
 }
@@ -3263,7 +3284,7 @@ function grpKey(i){
    name of the most prominent emails within a grouping, and then icons for
    the others". */
 function grpRowHtml(g){
-  const k=GRP_KIND[g.grp]||{name:g.grp,icon:'label'};
+  const k=grpKind(g.grp);
   const by=new Map();
   g.rows.forEach(r=>{ const nm=String(r.who||'').split('<')[0].trim().replace(/"/g,'')||r.raw.last_from_email||'?';
     const e=by.get(nm)||{nm,em:r.raw.last_from_email,n:0,unread:0}; e.n++; if(r.unread) e.unread++; by.set(nm,e); });
@@ -3272,7 +3293,7 @@ function grpRowHtml(g){
   const named=ranked.slice(0,2).map(e=>`<span class="gs">${face(e)}<b>${esc(e.nm)}</b></span>`).join('<span class="gbar"></span>');
   const rest=ranked.slice(2,9).map(e=>`<span title="${esc(e.nm)}">${face(e)}</span>`).join('');
   const unread=g.rows.some(r=>r.unread), open=SPLIT&&SPLIT.cat===g.grp;
-  const bulk=esc(GRP_BULK[g.grp]||'');
+  const bulk=esc(grpBulk(g.grp));
   return `<div class="grp ${unread?'':'read'} ${open?'open':''}" data-grp="${esc(g.grp)}" onclick="openSplit('${esc(g.grp)}')">
     <span class="gic">${ic(k.icon,'lg')}</span>
     <div class="gb">
@@ -3280,7 +3301,7 @@ function grpRowHtml(g){
         <span class="gw">${fmtDate(g.date)}</span>
         <span class="acts">
           ${actBtn('check','Archive all '+g.rows.length+' in Gmail',`bundleBulk('${bulk}','archive')`)}
-          ${JEV_TYPE_GRP_KEYS.has(g.grp)?'':actBtn('trash','Delete all — Gmail Trash, recoverable 30d',`bundleTrash('${bulk}')`)}</span></div>
+          ${JEV_TYPE_GRP_KEYS.has(g.grp)||k.sales?'':actBtn('trash','Delete all — Gmail Trash, recoverable 30d',`bundleTrash('${bulk}')`)}</span></div>
       <div class="g2">${named}${rest?'<span class="gbar"></span>'+rest:''}</div>
     </div></div>`;
 }
@@ -3290,12 +3311,12 @@ function openSplit(cat){ SPLIT={cat}; closePaneQuiet(); renderList(); $('#list')
 function closeSplit(){ SPLIT=null; renderList(); }
 function closePaneQuiet(){ OPEN=null; if(!(PREVIEW&&innerWidth>980)){ document.body.classList.remove('pane-open'); $('#pane').classList.remove('open'); } }
 function renderSplit(){
-  const k=GRP_KIND[SPLIT.cat]||{name:SPLIT.cat,icon:'label'};
+  const k=grpKind(SPLIT.cat);
   const rows=ITEMS.filter(i=>inScope(i)&&inQ(i)&&i.type==='mail'&&!i.attached&&!i.starred&&grpKey(i)===SPLIT.cat)
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   if(!rows.length){ SPLIT=null; return renderList(); }
   VISIBLE=rows.slice();
-  const bulk=esc(GRP_BULK[SPLIT.cat]||'');
+  const bulk=esc(grpBulk(SPLIT.cat));
   $('#list').innerHTML=`<div class="ib-wrap">
     <div class="split-head">
       <button onclick="closeSplit()" title="Back (Esc)">${ic('back')}</button>
@@ -3303,7 +3324,7 @@ function renderSplit(){
       <span class="ib-count" style="background:var(--chip-bg);border-radius:5px;padding:0 6px;font-size:11.5px;color:var(--muted)">${rows.length}</span>
       <span class="sp"></span>
       <button onclick="bundleBulk('${bulk}','archive')" title="Archive all ${rows.length} in Gmail">${ic('check')}</button>
-      <button onclick="bundleTrash('${bulk}')" title="Delete all — Gmail Trash, recoverable 30d">${ic('trash')}</button>
+      ${k.sales?'':`<button onclick="bundleTrash('${bulk}')" title="Delete all — Gmail Trash, recoverable 30d">${ic('trash')}</button>`}
     </div>
     <div class="ib-card">${rows.slice(0,250).map(rowHtml).join('')}</div></div>`;
   hydrateAvatars($('#list'));
@@ -3341,7 +3362,7 @@ function renderList(){
   // E249: the ⌂ Home tab draws over whatever account scope is underneath
   document.body.classList.toggle('proj-on', !!PROJ);
   if (PROJ) { document.body.classList.remove('home-on','wiz-on','homeall-on');
-    return PROJ.view==='page' ? renderProjectPage() : renderProjectsPage(); }
+    return PROJ.view==='page' ? renderProjectPage() : PROJ.view==='notes' ? renderNotesPage() : renderProjectsPage(); }
   document.body.classList.toggle('homeall-on', HOME_ALL);
   if (HOME_ALL) { document.body.classList.remove('home-on','wiz-on'); return renderHomeAll(); }
   document.body.classList.toggle('home-on', SCOPE.kind==='home');
@@ -3965,6 +3986,41 @@ function enterProj(p){
   PROJ=p; SPLIT=null; closePane(); closeNav&&closeNav();
   renderAcctTabs(); renderRail(); renderCrumbs(); renderList(); $('#list').scrollTop=0;
 }
+function showNotes(){ enterProj({view:'notes', filter:'all'}); loadNotes(); }
+let NOTES=null;
+async function loadNotes(){
+  try { const r=await fetch('/notes',{cache:'no-store'}).then(r=>r.json()); if(r.ok) NOTES=r.notes; } catch(e){ NOTES=NOTES||[]; }
+  if(PROJECTS===null) await loadProjects();
+  if(PROJ&&PROJ.view==='notes') renderList();
+}
+const noteById = id => (NOTES||[]).find(n=>n.id===id);
+/* Step 4: Notes, outside any account like Projects. Stored in the database
+   (Bart 2026-09-29: "let's have Notes live in the database, and we can set up
+   a way to sync or back them up locally later"). */
+function renderNotesPage(){
+  VISIBLE=[];
+  if(NOTES===null){ $('#list').innerHTML='<div class="empty">Loading notes…</div>'; return; }
+  const f=PROJ.filter||'all';
+  const cnt=k=>NOTES.filter(n=>k==='loose'?!n.project_id:k==='proj'?n.project_id:true).length;
+  $('#list').innerHTML=`<div class="ib-wrap">
+    <div class="pj-top"><span class="t">🗒 Notes</span><span class="sp"></span><button class="btn" onclick="noteEditDlg(null,0)">＋ New note</button></div>
+    <input id="nt-q" class="pj-find" placeholder="Search notes…" value="${esc(PROJ.q||'')}" oninput="PROJ.q=this.value;notesFill()" style="margin:0 0 8px">
+    <div class="pj-filters">${[['all','All'],['loose','Not in a project'],['proj','In projects']].map(([k,l])=>`<button class="sm-a ${f===k?'on':''}" onclick="PROJ.filter='${k}';renderList()">${l} <span class="n">${cnt(k)}</span></button>`).join('')}</div>
+    <div id="nt-grid"></div></div>`;
+  notesFill();
+}
+function notesFill(){
+  const el=$('#nt-grid'); if(!el||!PROJ) return;
+  const f=PROJ.filter||'all', q=String(PROJ.q||'').toLowerCase();
+  const rows=NOTES.filter(n=>(f==='loose'?!n.project_id:f==='proj'?n.project_id:true)
+    &&(!q||String(n.title||'').toLowerCase().includes(q)||String(n.body||'').toLowerCase().includes(q)));
+  el.innerHTML=rows.length?`<div class="pj-notes" style="padding:4px 0 12px">${rows.map(n=>`<div class="pj-note" onclick="noteEditDlg(noteById(${n.id}),0)">
+      <b>${esc(n.title||'Untitled')}</b><div>${esc(String(n.body||'').slice(0,260))}</div>
+      <span class="status" style="text-transform:none;letter-spacing:0">${esc(fmtDate(n.updated_at))}
+        ${n.project_id?` · <a onclick="event.stopPropagation();openProject(${n.project_id})">${projDot(n.project_color,8)} ${esc(n.project_name||'project')}</a>`
+          :n.from_project?` · from “${esc(n.from_project)}”`:''}</span></div>`).join('')}</div>`
+    :`<div class="ib-empty">${NOTES.length?'No note matches.':'No notes yet. ＋ New note, or write one on a project page — a note can move in and out of projects.'}</div>`;
+}
 function showProjects(filter){ enterProj({view:'list', filter:filter||'open'}); loadProjects(); }
 function openProject(id){ enterProj({view:'page', id}); loadProject(id); }
 function leaveProj(){ if(!PROJ) return; PROJ=null; document.body.classList.remove('proj-on'); }
@@ -4001,7 +4057,7 @@ async function projSave(id){
     else { const out=await post('/projects',{action:'create',...f}); closeDlg();
       const add=window._pjPendingAdd; window._pjPendingAdd=null;
       if(add){ await post('/projects',{action:'add',id:out.id,kind:add.kind,account:add.account,ref:add.ref,title:add.title});
-        toast(`Project “${f.name}” created — with this ${add.kind==='todo'?'todo':'email'} in it`); loadProjects(); }
+        toast(`Project “${f.name}” created — with this ${{todo:'todo',thread:'email',event:'meeting',contact:'person'}[add.kind]||'item'} in it`); loadProjects(); }
       else { await loadProjects(); openProject(out.id); } }
   } catch(e){ $('#pj-st').textContent=e.message; }
 }
@@ -4055,7 +4111,9 @@ function projAddMenu(ev,id){
   ctxOpen(Math.max(8,r.right-260),r.bottom+4,[
     _mi('◯ New todo in this project…',`projNewTodoDlg(${id})`),
     _mi('🗒 New note',`projNoteDlg(${id})`),
-    '<hr><div class="status" style="padding:4px 10px;text-transform:none;letter-spacing:0">Emails, todos, events and people: use 📁 on them anywhere</div>'].join(''));
+    _mi('👤 A person…',`projPersonDlg(${id})`),
+    _mi('🗒 A note from Notes…',`showNotes()`),
+    '<hr><div class="status" style="padding:4px 10px;text-transform:none;letter-spacing:0">Emails, todos, meetings and people: use 📁 on them anywhere</div>'].join(''));
 }
 function projNewTodoDlg(id){
   const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data; const def=(p&&p.last_account)||ACCT;
@@ -4076,23 +4134,63 @@ async function projNewTodo(id){
 }
 function projNoteDlg(id, noteId){
   const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data; const n=noteId&&p?(p.notes||[]).find(x=>x.id===noteId):null;
-  dlg(`<h3>${n?'Note':'New note'} · ${esc(p?p.name:'')}</h3>
+  noteEditDlg(n, id||0);
+}
+/* One note dialog for the project page and the Notes page. Step 4 (Bart:
+   notes "can also be promoted"): a note sits in one project or in none, and
+   the Project picker moves it without touching its text. */
+function noteEditDlg(n, pid){
+  if(PROJECTS===null) loadProjects();
+  const cur=n?(n.project_id||0):(pid||0);
+  const opts=(PROJECTS||[]).filter(p=>p.status==='open'||p.id===cur);
+  window._ntOpen=n;
+  dlg(`<h3>${n?'Note':'New note'}</h3>
     <label>Title</label><input type="text" id="pj-nt" value="${esc(n&&n.title||'')}">
     <label>Note</label><textarea id="pj-nb" rows="10">${esc(n&&n.body||'')}</textarea>
-    <div class="foot"><button class="btn" onclick="projNoteSave(${id},${noteId||0})">Save</button>
-      ${n?`<button class="btn sec2 warn" onclick="projNoteDel(${id},${noteId})">Delete note</button>`:''}
+    <label>Project</label><select id="pj-np"><option value="0">None — keep it in Notes</option>
+      ${opts.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
+    ${n&&n.from_project&&!n.project_id?`<div class="status" style="text-transform:none;letter-spacing:0">Kept from the deleted project “${esc(n.from_project)}”</div>`:''}
+    <div class="foot"><button class="btn" onclick="noteSave(${n?n.id:0},${cur})">Save</button>
+      ${n?`<button class="btn sec2 warn" onclick="noteDel(${n.id},${cur})">Delete note</button>`:''}
       <button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="pj-st"></span></div>`);
   setTimeout(()=>$(n?'#pj-nb':'#pj-nt')?.focus(),30);
 }
-async function projNoteSave(id,noteId){
-  const title=$('#pj-nt').value, body=$('#pj-nb').value;
-  try { await post('/projects', noteId?{action:'note-update',note_id:noteId,title,body}:{action:'note-add',id,title,body});
-    closeDlg(); projRefresh(id); } catch(e){ $('#pj-st').textContent=e.message; }
+async function noteSave(noteId, was){
+  const title=$('#pj-nt').value, body=$('#pj-nb').value, to=+($('#pj-np').value||0);
+  try {
+    if(noteId){ await post('/projects',{action:'note-update',note_id:noteId,title,body});
+      if(to!==was) await post('/projects',{action:'note-move',note_id:noteId,id:to}); }
+    else await post('/projects',{action:'note-add',id:to,title,body});
+    closeDlg(); if(to!==was&&to) toast('Note filed in '+((projById(to)||{}).name||'the project'));
+    noteRefresh([was,to]);
+  } catch(e){ $('#pj-st').textContent=e.message; }
 }
-async function projNoteDel(id,noteId){
+async function noteDel(noteId, pid){
   if(!confirm('Delete this note? This can’t be undone.')) return;
-  try { await post('/projects',{action:'note-delete',note_id:noteId}); closeDlg(); toast('Note deleted'); projRefresh(id); } catch(e){ toast(e.message); }
+  try { await post('/projects',{action:'note-delete',note_id:noteId}); closeDlg(); toast('Note deleted'); noteRefresh([pid]); } catch(e){ toast(e.message); }
 }
+function noteRefresh(pids){
+  loadProjects();
+  pids.filter(Boolean).forEach(p=>{ if(PROJ_PAGE[p]) loadProject(p); });
+  if(PROJ&&PROJ.view==='notes') loadNotes();
+}
+// ---- people on a project: shared across accounts, suggested from its email
+function projPersonDlg(id){
+  const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data, sug=(p&&p.suggest_people)||[];
+  dlg(`<h3>Add a person to ${esc(p?p.name:'this project')}</h3>
+    <label>Email</label><input type="text" id="pj-pe" list="pj-pe-l" placeholder="name@company.com">
+    <datalist id="pj-pe-l">${[...contactsUniverse()].slice(0,400).map(([em,nm])=>`<option value="${esc(em)}">${esc(nm||'')}</option>`).join('')}</datalist>
+    ${sug.length?`<div class="status" style="text-transform:none;letter-spacing:0;margin-top:8px">On this project's emails:</div>
+      <div class="pj-sug">${sug.map(x=>`<button class="chip" onclick="projAddPerson(${id},'${esc(x.email)}',${esc(JSON.stringify(x.name||''))})">＋ ${esc(x.name||x.email)}</button>`).join('')}</div>`:''}
+    <div class="foot"><button class="btn" onclick="projAddPerson(${id},$('#pj-pe').value.trim(),'')">Add</button><button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="pj-st"></span></div>`);
+  setTimeout(()=>$('#pj-pe')?.focus(),30);
+}
+async function projAddPerson(id,email,name){
+  try { const out=await post('/projects',{action:'add',id,kind:'contact',ref:email,title:name||email});
+    closeDlg(); toast(out.item&&out.item.added===false?'Already on the project':'Added '+(name||email)); projRefresh(id);
+  } catch(e){ const st=$('#pj-st'); if(st) st.textContent=e.message; else toast(e.message); }
+}
+function projOpenEvent(date){ openDock('cal'); calGo(date); }
 async function projRemove(id,itemId){
   try { await projAct({action:'remove',id,item_id:itemId},'Removed from the project — the item itself is untouched'); projRefresh(id); } catch(e){}
 }
@@ -4209,6 +4307,16 @@ function renderProjectPage(){
         ${mails.length?`<div class="pj-fold">${mails.slice(0,6).map(mt=>`<div onclick="event.stopPropagation();projOpenMail('${esc(mt.account)}','${esc(mt.thread_id)}')">✉ ${esc(mt.subject||'(archived — open to load)')}<span> · ${esc(String(mt.last_from||'').split('<')[0].trim().replace(/"/g,''))}${mt.last_date?' · '+esc(fmtDate(mt.last_date)):''}</span></div>`).join('')}${mails.length>6?`<div>+${mails.length-6} more — open the todo</div>`:''}</div>`:''}</div></div>`; };
   const sec=(name,rows,body)=>rows?`<div class="ib-head" data-sec="${esc(name)}"><span class="t">${esc(name)}</span><span class="ib-count">${rows}</span><span class="sp"></span></div><div class="ib-card">${body}</div>`:'';
   const notes=p.notes||[];
+  // meetings: what's coming first (soonest on top), then what's past (latest first)
+  const evKey=it=>(it.date||'')+' '+(it.time==='all-day'?'00:00':it.time||'');
+  const nowK=today+' '+new Date().toTimeString().slice(0,5);
+  const evSorted=[...events.filter(e=>evKey(e)>=nowK).sort((a,b)=>evKey(a).localeCompare(evKey(b))),
+                  ...events.filter(e=>evKey(e)<nowK).sort((a,b)=>evKey(b).localeCompare(evKey(a)))];
+  const evRow=it=>{ const past=evKey(it)<nowK;
+    return `<div class="row pj-item ${past?'read':''}" onclick="projOpenEvent('${esc(it.date||today)}')" title="Open that day on the calendar">
+      <span class="lead" style="background:#6a9bcc">📅</span>
+      <div class="body"><div class="l1"><span class="who">${esc(it.title||'')}</span><span class="meta"><span class="when">${it.date?esc(fmtDate(it.date)):''}${it.time&&it.time!=='all-day'?' · '+esc(it.time):it.time?' · all day':''}</span></span></div>
+        <div class="l3"><span class="prev">${it.granola?`<a href="${esc(it.granola.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🎙 Granola notes</a>`:past?'No Granola notes found':'Upcoming'}</span>${it.account?acctChip(it.account):''}${x(it)}</div></div></div>`; };
   const anchors=[['Needs you',needs.length],['Todos',rest.length+doneT.length],['Emails',otherMail.length],['Notes',notes.length],['Meetings',events.length],['People',people.length]];
   const c=p.counts||{}, pct=projProgress(p);
   $('#list').innerHTML=`<div class="pj-page">
@@ -4233,9 +4341,14 @@ function renderProjectPage(){
     <div class="ib-head" data-sec="Notes"><span class="t">Notes</span><span class="ib-count">${notes.length}</span><span class="sp"></span><button class="qbtn" onclick="projNoteDlg(${id})">＋ Note</button></div>
     ${notes.length?`<div class="pj-notes">${notes.map(n=>`<div class="pj-note" onclick="projNoteDlg(${id},${n.id})"><b>${esc(n.title||'Untitled')}</b><div>${esc(n.body.slice(0,220))}</div><span class="status" style="text-transform:none;letter-spacing:0">${esc(fmtDate(n.updated_at))}</span></div>`).join('')}</div>`
       :`<div class="ib-empty" style="padding:10px 14px">No notes yet.</div>`}
-    ${sec('Meetings',events.length,events.map(it=>`<div class="row read pj-item"><span class="lead" style="background:#6a9bcc">📅</span><div class="body"><div class="l2"><span class="subj">${esc(it.title||'')}</span></div><div class="l3">${acctChip(it.account)}${x(it)}</div></div></div>`).join(''))}
-    ${sec('People',people.length,people.map(it=>`<div class="row read pj-item"><span class="lead" style="background:${avColor(it.ref)}">${initials((it.contact&&it.contact.name)||it.ref)}</span><div class="body"><div class="l1"><span class="who">${esc((it.contact&&it.contact.name)||it.ref)}</span></div><div class="l3"><span class="prev">${esc(it.ref)}</span>${x(it)}</div></div></div>`).join(''))}
-    ${items.length||notes.length?'':`<div class="ib-empty">Nothing in this project yet. Use ＋ Add for a todo or note, or 📁 on any email to bring it here.</div>`}
+    ${sec('Meetings',events.length,evSorted.map(evRow).join(''))}
+    <div class="ib-head" data-sec="People"><span class="t">People</span><span class="ib-count">${people.length}</span><span class="sp"></span><button class="qbtn" onclick="projPersonDlg(${id})">＋ Person</button></div>
+    ${people.length?`<div class="ib-card">${people.map(it=>{ const nm=(it.contact&&it.contact.name)||(it.title&&it.title!==it.ref?it.title:'')||it.ref;
+      return `<div class="row read pj-item"><span class="lead" style="background:${avColor(nm)}">${initials(nm)}${avImg(it.ref)}</span><div class="body"><div class="l1"><span class="who">${esc(nm)}</span></div><div class="l3"><span class="prev">${esc(it.ref)}</span>${x(it)}</div></div></div>`; }).join('')}</div>`:''}
+    ${(p.suggest_people||[]).length?`<div class="pj-sug" style="padding:6px 14px 10px"><span class="status" style="text-transform:none;letter-spacing:0">On this project's emails:</span>
+      ${p.suggest_people.slice(0,5).map(s2=>`<button class="chip" title="${esc(s2.email)} · ${s2.threads} email${s2.threads>1?'s':''}" onclick="projAddPerson(${id},'${esc(s2.email)}',${esc(JSON.stringify(s2.name||''))})">＋ ${esc(s2.name||s2.email)}</button>`).join('')}</div>`
+      :people.length?'':`<div class="ib-empty" style="padding:10px 14px">No people yet — ＋ Person, or 📁 on anyone in Contacts.</div>`}
+    ${items.length||notes.length?'':`<div class="ib-empty">Nothing in this project yet. Use ＋ Add for a todo, note or person, or 📁 on any email, meeting or contact to bring it here.</div>`}
   </div>`;
   hydrateAvatars($('#list'));
 }
@@ -5126,7 +5239,8 @@ function ctFill(){
           ${c.group?`<span class="chip">${esc(c.group)}</span>`:''}${c.teammate?'<span class="chip">teammate</span>':''}
           ${c.edited?'<span class="chip" title="You edited this contact">✎ yours</span>':''}</div>
         <input class="ct-notes" value="${esc(c.notes||'')}" placeholder="Notes…" onchange="ctSave('${esc(c.email)}',{notes:this.value})"></div>
-      <div class="ct-acts"><button class="qbtn" title="Email them" onclick="composeDlg();setTimeout(()=>chipAdd('cp-to',${JSON.stringify(contactStr(c)).replace(/"/g,'&quot;')}),80)">✉</button>
+      <div class="ct-acts"><button class="qbtn" title="Add to a project — people are shared by every account" onclick="projPick(event,{kind:'contact',account:null,ref:'${esc(c.email)}',title:${esc(JSON.stringify(c.name||c.email))}})">📁</button>
+      <button class="qbtn" title="Email them" onclick="composeDlg();setTimeout(()=>chipAdd('cp-to',${JSON.stringify(contactStr(c)).replace(/"/g,'&quot;')}),80)">✉</button>
       <button class="qbtn" title="Keep out of address suggestions" onclick="ctSave('${esc(c.email)}',{hidden:true},true)">Hide</button></div>
     </div>`).join('')+(list.length>200?`<div class="empty">Showing 200 of ${list.length} — search to narrow.</div>`:'')
     +(list.length?'':'<div class="empty">No one matches.</div>');
@@ -5520,7 +5634,7 @@ async function doBundleBulk(name, mode){
     toast(`${mode==='archive'?'Archived':'Dismissed'} ${ok} thread(s) from ${name}`);
   } catch(e){ toast(`Group ${mode} stopped after ${ok} — ${e.message}`); rebuild(); }
 }
-const BUNDLE_NAME = i => GRP_BULK[grpKey(i)];
+const BUNDLE_NAME = i => grpBulk(grpKey(i));
 // E197 (#11): Sent, Drafts, Scheduled and the tool screens do not read the
 // Everything/Today/Mail/Todos lens at all, so the strip stopped pretending.
 const TAB_SCOPES=new Set(['inbox','project','goal','label','allmail','account','snoozed']);
@@ -7212,7 +7326,8 @@ async function clsGroupSave(key){
   try{
     const em=clsOther(i), p=(i.raw.participants||[]).find(x=>emOf(x)===em);
     await post('/classify',{action:'person-add',email:em,
-      name:p?nmOf(p):'',group:grp,teammate:$('#clsg-mate').checked});
+      name:p?nmOf(p):'',group:grp,teammate:$('#clsg-mate').checked,
+      also:true});   // 2026-09-30: adds this group; any other groups they're in stay
     closeDlg(); Object.keys(CLS).forEach(x=>delete CLS[x]); clsLoad(i); toast('Added to '+grp+' — re-classified');
   }catch(e){ $('#clsg-st').textContent=e.message; }
 }
@@ -8756,6 +8871,21 @@ function closeDock(){
 }
 const dockX='<button class="dk-x" onclick="closeDock()" title="Close">✕</button>';
 let CAL_EVS=[]; const CAL_OPEN=new Set();
+/* Projects step 4 (Bart: "promoting a task, note, calendar entry, contacts
+   too"): 📁 on any event, past or upcoming. The ICS feeds carry no stable id,
+   so an event is named date|time|title — calendar_reader's own dedupe key —
+   and filed under the account its calendar belongs to (CAL_ACCT, from the
+   server). */
+let CAL_ACCT={}; const EV_REG={};
+function evProjBtn(e,date){
+  const ref=`${date}|${e.time}|${String(e.title||'').slice(0,280)}`; EV_REG[ref]=e;
+  return `<button class="qbtn" title="Add this meeting to a project — it stays on the calendar" onclick="event.stopPropagation();evProjPick(event,${esc(JSON.stringify(ref))})">📁 Add to project</button>`;
+}
+async function evProjPick(ev,ref){
+  const e=EV_REG[ref]; if(!e) return;
+  if(!Object.keys(CAL_ACCT).length){ try { const c=await fetch('/calendar?start='+dOff(0)+'&days=1').then(r=>r.json()); if(c.cal_account) CAL_ACCT=c.cal_account; } catch(_){} }
+  projPick(ev,{kind:'event', account:CAL_ACCT[e.cal]||null, ref, title:e.title});
+}
 function calExpand(ix){ CAL_OPEN.has(ix)?CAL_OPEN.delete(ix):CAL_OPEN.add(ix); renderDock(); }
 function _lnk(u,pre=''){
   let t=u;
@@ -8793,7 +8923,7 @@ function calEnsure(iso){
     fetch(`/calendar?start=${startISO}&days=42`).then(r=>r.json()),
     fetch(`/daynotes?start=${startISO}&end=${isoLocal(end)}`).then(r=>r.json()),
   ]).then(([c,n])=>{
-    if(c.ok){ c.calendar.forEach(d=>CAL_LIVE[d.date]=d); CAL_FETCHED.add(startISO); }
+    if(c.ok){ c.calendar.forEach(d=>CAL_LIVE[d.date]=d); CAL_FETCHED.add(startISO); if(c.cal_account) CAL_ACCT=c.cal_account; }
     // never clobber a note that's already cached — it may hold unsaved typing
     if(n.ok) n.notes.forEach(x=>{ if(!(x.date in DN_CACHE)) DN_CACHE[x.date]={text:x.text,updated_at:x.updated_at}; });
   }).catch(()=>{}).finally(()=>{
@@ -8830,6 +8960,7 @@ function calEvHtml(e,ix){
       ${e.detail?`<div>${linkify(e.detail)}</div>`:''}
       ${e.project?`<div><span class="chip" onclick="closeOvl();openOvl('project','${esc(e.project)}')">${esc(theaterName(e.project))}</span>${e.why?` <span style="color:var(--faint);font-size:10.5px">via ${esc(e.why)}</span>`:''}</div>`:''}
       <div style="color:var(--faint);font-size:10.5px">calendar: ${esc(e.cal||'?')}</div>
+      <div>${evProjBtn(e,CAL_DATE)}</div>
       ${!e.location&&!e.detail?'<div style="color:var(--faint)">No more detail on the calendar entry.</div>':''}
     </div>`:''}
   </div>`;
@@ -9155,6 +9286,7 @@ function renderCalPage(){
               ${e.location?`<div class="cal-loc">📍 ${esc(e.location)}</div>`:''}
               ${e.detail?`<div class="cal-detail">${linkify(e.detail)}</div>`:''}
               ${e.project?`<div><span class="chip" onclick="closeOvl();openOvl('project','${esc(e.project)}')">${esc(theaterName(e.project))}</span></div>`:''}
+              <div style="margin-top:4px">${evProjBtn(e,CV_SEL)}</div>
             </div></div>`).join('')||'<div class="empty">No events this day.</div>')
           :'<div class="empty">Loading…</div>'}
       </div>

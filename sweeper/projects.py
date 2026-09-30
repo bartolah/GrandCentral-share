@@ -30,6 +30,9 @@ _THREAD_RE = re.compile(r"^\d{1,25}$")
 _EMAIL_RE = re.compile(r"^[^@\s]{1,120}@[^@\s]{1,200}\.[^@\s]{1,40}$")
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+# A calendar event has no stable id in the ICS feeds we read, so it is named
+# the way calendar_reader already de-duplicates it: date|time|title (step 4).
+_EVENT_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\|(all-day|\d{2}:\d{2})\|(.{1,280})$")
 PALETTE = ("#d97757", "#6a9bcc", "#788c5d", "#8b6ac8", "#c9a82d", "#3d7be0", "#b05e43")
 
 
@@ -178,17 +181,25 @@ def add_item(conn, pid: int, kind: str, account: str | None, ref, title: str | N
             raise ValueError("that todo belongs to another account")
         account, title = row["account"], title or row["text"]
     elif kind == "event":
-        account = db.clean_account(account)
-        if not ref or len(ref) > 300:
-            raise ValueError("bad event id")
-        if not _clean_text(title, 300):
-            raise ValueError("an event needs its title and time")
+        # an event keeps the account its calendar belongs to; a calendar that
+        # maps to no account (a shared or subscribed one) leaves it without one
+        account = db.clean_account(account) if account else None
+        m = _EVENT_RE.match(ref)
+        if not m:
+            raise ValueError("bad event — expected date|time|title")
+        title = title or m.group(3)
     else:                                   # contact: shared across accounts
         ref = ref.lower()
         if not _EMAIL_RE.match(ref):
             raise ValueError("bad email address")
         account = None
     title = _clean_text(title, 300) or None
+    # UNIQUE treats NULL accounts as distinct, so a contact (or an event with
+    # no account) is checked here rather than trusted to the index
+    have = conn.execute("SELECT * FROM project_items WHERE project_id = ? AND kind = ? "
+                        "AND account IS ? AND ref = ?", (int(pid), kind, account, ref)).fetchone()
+    if have:
+        return {**dict(have), "added": False}
     with conn:
         cur = conn.execute(
             "INSERT OR IGNORE INTO project_items (project_id, kind, account, ref, title, added_at) "
@@ -247,6 +258,34 @@ def note_update(conn, note_id: int, title=None, body=None) -> dict:
     return dict(conn.execute("SELECT * FROM notes WHERE id = ?", (int(note_id),)).fetchone())
 
 
+def note_move(conn, note_id: int, pid: int | None) -> dict:
+    """Step 4 (Bart: notes "can also be promoted"): a note sits in at most one
+    project; moving it in or back out to Notes never changes its text."""
+    row = conn.execute("SELECT * FROM notes WHERE id = ?", (int(note_id),)).fetchone()
+    if row is None:
+        raise ValueError("no such note")
+    if pid is not None:
+        _get(conn, pid)
+    with conn:
+        conn.execute("UPDATE notes SET project_id = ?, updated_at = ? WHERE id = ?",
+                     (int(pid) if pid else None, db._now_iso(), int(note_id)))
+        for p in {row["project_id"], pid} - {None}:
+            _touch(conn, p)
+    return dict(conn.execute("SELECT * FROM notes WHERE id = ?", (int(note_id),)).fetchone())
+
+
+def notes_list(conn, q: str | None = None) -> list:
+    """The Notes page: every note, loose or in a project, newest first."""
+    sql = ("SELECT n.*, p.name AS project_name, p.color AS project_color FROM notes n "
+           "LEFT JOIN projects p ON p.id = n.project_id")
+    args: tuple = ()
+    q = _clean_text(q, 100)
+    if q:
+        sql += " WHERE n.title LIKE ? OR n.body LIKE ?"
+        args = (f"%{q}%", f"%{q}%")
+    return [dict(r) for r in conn.execute(sql + " ORDER BY n.updated_at DESC LIMIT 500", args)]
+
+
 def note_delete(conn, note_id: int) -> bool:
     """Deleting a note is Bart deleting his own writing, on purpose (the board
     confirms first). It never touches mail."""
@@ -286,7 +325,77 @@ def list_projects(conn) -> list:
     return live + done
 
 
-def project_view(conn, pid: int) -> dict:
+def _granola_for(conn, date: str, time: str, title: str) -> dict | None:
+    """The Granola notes of a meeting: the same local day, a matching title,
+    started within three hours of the calendar time. Only a link and a title
+    — the notes themselves stay in Granola."""
+    want = title.lower().strip()
+    best = None
+    for r in conn.execute("SELECT title, link, last_activity FROM elements "
+                          "WHERE source = 'granola' AND last_activity >= ? AND last_activity < ?",
+                          (_utc_bound(date, -1), _utc_bound(date, 2))):
+        from datetime import datetime
+        try:
+            local = datetime.fromisoformat(r["last_activity"].replace("Z", "+00:00")).astimezone()
+        except ValueError:
+            continue
+        if local.strftime("%Y-%m-%d") != date:
+            continue
+        got = str(r["title"] or "").lower().strip()
+        if not got or not (got == want or got in want or want in got):
+            continue
+        gap = 0 if time == "all-day" else abs(local.hour * 60 + local.minute
+                                              - int(time[:2]) * 60 - int(time[3:]))
+        if gap <= 180 and (best is None or gap < best[0]):
+            best = (gap, {"title": r["title"], "link": r["link"]})
+    return best[1] if best else None
+
+
+def _utc_bound(date: str, days: int) -> str:
+    from datetime import date as _d, timedelta
+    return (_d.fromisoformat(date) + timedelta(days=days)).isoformat()
+
+
+def _suggest_people(conn, items: list, mine=frozenset()) -> list:
+    """Bart: a People list "with suggestions" — whoever writes on the
+    project's own emails and isn't on it yet. Never Bart himself."""
+    have = {i["ref"] for i in items if i["kind"] == "contact"}
+    keys = {(i["account"], i["ref"]) for i in items if i["kind"] == "thread"}
+    for i in items:
+        keys.update((t["account"], t["thread_id"]) for t in i.get("threads") or [])
+    seen: dict[str, dict] = {}
+    for acct, tid in keys:
+        r = conn.execute("SELECT participants, last_from FROM mail_threads WHERE account = ? AND thread_id = ?",
+                         (acct, tid)).fetchone()
+        if not r:
+            continue
+        try:
+            parts = json.loads(r["participants"] or "[]")
+        except ValueError:
+            parts = []
+        counted = set()                 # once per thread, however often listed
+        for raw in parts + [r["last_from"] or ""]:
+            m = re.search(r"([^<>\s\"']+@[^<>\s\"']+)", raw)
+            if not m:
+                continue
+            em = m.group(1).lower()
+            if em in have or em in mine or not _EMAIL_RE.match(em) or re.match(r"(no-?reply|notifications?|mailer-daemon)@", em):
+                continue
+            name = re.sub(r"\s*<.*$", "", raw).strip().strip("\"'")
+            e = seen.setdefault(em, {"email": em, "name": "", "threads": 0})
+            if em not in counted:
+                counted.add(em)
+                e["threads"] += 1
+            if name and "@" not in name and " via " not in name:
+                e["name"] = e["name"] or name
+    for em, e in seen.items():
+        c = conn.execute("SELECT name, hidden FROM contacts WHERE email = ?", (em,)).fetchone()
+        if c and c["name"]:
+            e["name"] = c["name"]
+    return sorted(seen.values(), key=lambda e: (-e["threads"], e["name"] or e["email"]))[:8]
+
+
+def project_view(conn, pid: int, mine=frozenset()) -> dict:
     """One project with every item resolved from where it lives."""
     p = _get(conn, pid)
     p["counts"] = _counts(conn, pid)
@@ -317,7 +426,13 @@ def project_view(conn, pid: int) -> dict:
         elif it["kind"] == "contact":
             c = conn.execute("SELECT name, notes FROM contacts WHERE email = ?", (it["ref"],)).fetchone()
             it["contact"] = dict(c) if c else None
+        elif it["kind"] == "event":
+            m = _EVENT_RE.match(it["ref"])
+            if m:
+                it["date"], it["time"] = m.group(1), m.group(2)
+                it["granola"] = _granola_for(conn, m.group(1), m.group(2), m.group(3))
     p["items"] = items
+    p["suggest_people"] = _suggest_people(conn, items, mine)
     p["notes"] = [dict(r) for r in conn.execute(
         "SELECT * FROM notes WHERE project_id = ? ORDER BY updated_at DESC", (int(pid),))]
     p["accounts"] = sorted({i["account"] for i in items if i["account"]})

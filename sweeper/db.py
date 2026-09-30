@@ -525,6 +525,15 @@ CREATE TABLE IF NOT EXISTS class_people (
   name     TEXT,
   added_at TEXT NOT NULL
 );
+-- 2026-09-30 (Bart: "We have several people who are part of multiple
+-- accounts - companies"): one address can belong to several groups.
+-- class_people.grp stays as the first of them, for rollback.
+CREATE TABLE IF NOT EXISTS class_memberships (
+  email    TEXT NOT NULL,               -- lowercased
+  grp      TEXT NOT NULL,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (email, grp)
+);
 CREATE TABLE IF NOT EXISTS class_groups (
   domain   TEXT PRIMARY KEY,            -- lowercased, e.g. connectblue.com
   grp      TEXT NOT NULL,               -- e.g. ConnectBlue group
@@ -601,6 +610,19 @@ CREATE TABLE IF NOT EXISTS project_items (
   UNIQUE (project_id, kind, account, ref)
 );
 CREATE INDEX IF NOT EXISTS idx_project_items_ref ON project_items (kind, account, ref);
+
+-- Bart's own services (2026-09-30): automated mail from his own domains gets
+-- a bundle per service. Rows appear on their own the first time a service
+-- sends; Bart may rename, merge one into another, or switch it off.
+CREATE TABLE IF NOT EXISTS services (
+  key          TEXT PRIMARY KEY,       -- subdomain host, or an address on a bare domain
+  kind         TEXT NOT NULL DEFAULT 'service',   -- service | sales
+  auto_name    TEXT,                   -- from the sender, refreshed each sync
+  name         TEXT,                   -- Bart's name, when he gives one
+  merged_into  TEXT,
+  off          INTEGER NOT NULL DEFAULT 0,
+  first_seen   TEXT NOT NULL
+);
 
 -- Notes live in the database (Bart 2026-09-29). A note written in a project
 -- carries its project_id; deleting the project keeps the note, with the
@@ -714,6 +736,8 @@ _MIGRATIONS = [
     ("calendar_writes", "action", "ALTER TABLE calendar_writes ADD COLUMN action TEXT"),
     # Dev triage (2026-09-28, Bart: "Do it" — a triage pass before the worker
     # builds). Labels only; the request text is never touched by triage.
+    # 2026-09-30: which of Bart's own services sent the thread (services.key)
+    ("mail_threads", "service", "ALTER TABLE mail_threads ADD COLUMN service TEXT"),
     ("dev_requests", "priority", "ALTER TABLE dev_requests ADD COLUMN priority TEXT"),
     ("dev_requests", "size", "ALTER TABLE dev_requests ADD COLUMN size TEXT"),
     ("dev_requests", "verdict", "ALTER TABLE dev_requests ADD COLUMN verdict TEXT"),
@@ -730,6 +754,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
         if cols and col not in cols:
             conn.execute(ddl)
+    # every person's single group (E212) is also a membership row
+    conn.execute("INSERT OR IGNORE INTO class_memberships (email, grp, added_at) "
+                 "SELECT email, grp, added_at FROM class_people WHERE grp IS NOT NULL AND grp != ''")
 
 
 def _now_iso() -> str:
@@ -1468,8 +1495,8 @@ def upsert_mail_threads(conn: sqlite3.Connection, account: str, rows: list) -> N
                 "INSERT INTO mail_threads (thread_id, account, subject, participants, "
                 "  last_from, last_from_email, last_direction, snippet, last_date, "
                 "  message_count, unread, starred, in_inbox, bulk, category, "
-                "  attachments, link, labels, synced_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?) "
+                "  attachments, link, labels, synced_at, service) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?) "
                 "ON CONFLICT (account, thread_id) DO UPDATE SET "
                 "  subject = excluded.subject, participants = excluded.participants, "
                 "  last_from = excluded.last_from, last_from_email = excluded.last_from_email, "
@@ -1480,7 +1507,7 @@ def upsert_mail_threads(conn: sqlite3.Connection, account: str, rows: list) -> N
                 "  bulk = excluded.bulk, category = excluded.category, "
                 "  attachments = excluded.attachments, "
                 "  link = excluded.link, labels = excluded.labels, "
-                "  synced_at = excluded.synced_at",
+                "  synced_at = excluded.synced_at, service = excluded.service",
                 (r["thread_id"], account, r.get("subject", ""),
                  json.dumps(r.get("participants", [])[:12], ensure_ascii=False),
                  r.get("last_from", ""), r.get("last_from_email", ""),
@@ -1489,7 +1516,7 @@ def upsert_mail_threads(conn: sqlite3.Connection, account: str, rows: list) -> N
                  1 if r.get("starred") else 0, 1 if r.get("bulk") else 0,
                  r.get("category", "other"), r.get("attachments", 0),
                  r.get("link", ""),
-                 json.dumps(r.get("labels") or [], ensure_ascii=False), now))
+                 json.dumps(r.get("labels") or [], ensure_ascii=False), now, r.get("service")))
         if seen:
             marks = ",".join("?" * len(seen))
             conn.execute(
@@ -2230,6 +2257,9 @@ def class_write_jev(conn, account, thread_id, answers: dict, fingerprint: str) -
                      (json.dumps(answers), fingerprint, _now_iso(), account, thread_id))
 
 
+JEV_NEVER_FROM_TEAM = ("Cold pitch", "Spam")
+
+
 def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
     """correction > Jev (switch on, confident) > Haiku > rule, plus where each
     value came from."""
@@ -2244,6 +2274,21 @@ def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
     for f in ("type", "respond", "priority"):
         c = conf.get(f)
         if jev.get(f) is not None and c is not None and c >= JEV_CONF_FLOOR:
+            # Bart, 2026-09-30, of his boss: "His emails are never cold
+            # outreach." Jev reads what a teammate FORWARDS (a newsletter, a
+            # vendor's pitch) and called 51 of Chris's 67 threads a cold
+            # pitch. Who sent it is a fact from the roster, not a judgement:
+            # a teammate's or a company colleague's mail is never cold
+            # outreach or spam, so the rules' type stands.
+            # 2026-09-30: nor is a sales inquiry from Bart's own website
+            if f == "type" and jev[f] in JEV_NEVER_FROM_TEAM \
+                    and (rules.get("relationship") in ("teammate", "company") or rules.get("sales_inquiry")):
+                out["jev_overruled"] = jev[f]
+                who = ("your website's sales form" if rules.get("sales_inquiry")
+                       else "a teammate" if rules.get("relationship") == "teammate" else "your company")
+                out["reasons"] = (out.get("reasons") or []) + [
+                    f"Jev read it as {jev[f].lower()}, but mail from {who} never is"]
+                continue
             out[f], src[f] = jev[f], "jev"
     if jev.get("expects_reply") is not None and out.get("waiting_on", "none") != "none" \
             and jev["expects_reply"] < 0.3:
@@ -2298,29 +2343,91 @@ def class_correct(conn, account: str, thread_id: str, field: str, value: str) ->
     return class_get(conn, account, thread_id)
 
 
+def class_memberships(conn) -> dict:
+    """{email: [groups, alphabetical]}."""
+    out: dict[str, list] = {}
+    for r in conn.execute("SELECT email, grp FROM class_memberships ORDER BY email, grp"):
+        out.setdefault(r["email"], []).append(r["grp"])
+    return out
+
+
+def _sync_primary_group(conn, email: str) -> None:
+    """class_people.grp mirrors the first membership (or none)."""
+    row = conn.execute("SELECT MIN(grp) FROM class_memberships WHERE email = ?", (email,)).fetchone()
+    conn.execute("UPDATE class_people SET grp = ? WHERE email = ?", (row[0], email))
+
+
 def class_roster(conn) -> dict:
-    return {"people": [dict(r, teammate=bool(r["teammate"])) for r in conn.execute(
+    mem = class_memberships(conn)
+    return {"people": [dict(r, teammate=bool(r["teammate"]), groups=mem.get(r["email"], []))
+                       for r in conn.execute(
                 "SELECT email, name, grp, teammate FROM class_people ORDER BY grp, name, email")],
             "groups": [dict(r) for r in conn.execute(
                 "SELECT domain, grp FROM class_groups ORDER BY grp, domain")]}
 
 
 def class_person_set(conn, email: str, name: str = "", grp: str | None = None,
-                     teammate: bool = True) -> str:
-    """A person on the roster: optionally in a company group, teammate or not.
-    Someone who is neither a teammate nor in a group has no reason to be here."""
+                     teammate: bool = True, also: bool = False, from_grp: str | None = None) -> str:
+    """A person on the roster: in any number of company groups, teammate or
+    not. Someone who is neither a teammate nor in a group has no reason to be
+    here. `also` adds `grp` alongside the groups they already have; `from_grp`
+    moves them out of that one group into `grp`; otherwise `grp` replaces all
+    their groups (the E212 behaviour)."""
     email = (email or "").strip().lower()
     grp = (grp or "").strip()[:60] or None
+    from_grp = (from_grp or "").strip()[:60] or None
     if not _EMAIL_RE.fullmatch(email):
         raise ValueError("a full email address is required")
-    if not teammate and not grp:
-        raise ValueError("pick a group, or mark them a teammate")
+    now = _now_iso()
     with conn:
-        conn.execute("INSERT INTO class_people (email, name, grp, teammate, added_at) VALUES (?,?,?,?,?) "
-                     "ON CONFLICT(email) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''), class_people.name), "
-                     "grp=excluded.grp, teammate=excluded.teammate",
-                     (email, (name or "").strip()[:80], grp, 1 if teammate else 0, _now_iso()))
+        exists = conn.execute("SELECT 1 FROM class_people WHERE email = ?", (email,)).fetchone()
+        if also and not grp:
+            raise ValueError("pick a group to add them to")
+        if not exists:
+            conn.execute("INSERT INTO class_people (email, name, grp, teammate, added_at) VALUES (?,?,?,?,?)",
+                         (email, (name or "").strip()[:80], None, 1 if teammate else 0, now))
+        else:
+            conn.execute("UPDATE class_people SET name = COALESCE(NULLIF(?, ''), name), teammate = ? WHERE email = ?",
+                         ((name or "").strip()[:80], 1 if teammate else 0, email))
+        if also:
+            pass                                    # keep what they have
+        elif from_grp:
+            conn.execute("DELETE FROM class_memberships WHERE email = ? AND grp = ?", (email, from_grp))
+        else:
+            conn.execute("DELETE FROM class_memberships WHERE email = ?", (email,))
+        if grp:
+            conn.execute("INSERT OR IGNORE INTO class_memberships (email, grp, added_at) VALUES (?,?,?)",
+                         (email, grp, now))
+        _sync_primary_group(conn, email)
+        left = conn.execute("SELECT COUNT(*) FROM class_memberships WHERE email = ?", (email,)).fetchone()[0]
+        if not teammate and not left:
+            raise ValueError("pick a group, or mark them a teammate")
     return email
+
+
+def class_person_teammate(conn, email: str, teammate: bool) -> bool:
+    """Flip the teammate flag and leave every group membership as it is."""
+    email = (email or "").strip().lower()
+    with conn:
+        left = conn.execute("SELECT COUNT(*) FROM class_memberships WHERE email = ?", (email,)).fetchone()[0]
+        if not teammate and not left:
+            raise ValueError("they're in no group — remove them, or add a group first")
+        cur = conn.execute("UPDATE class_people SET teammate = ? WHERE email = ?", (1 if teammate else 0, email))
+    return cur.rowcount > 0
+
+
+def class_person_leave(conn, email: str, grp: str) -> bool:
+    """Take a person out of ONE group. A teammate with no group left stays on
+    the roster; anyone else with no group left comes off it."""
+    email = (email or "").strip().lower()
+    with conn:
+        cur = conn.execute("DELETE FROM class_memberships WHERE email = ? AND grp = ?", (email, (grp or "").strip()))
+        _sync_primary_group(conn, email)
+        left = conn.execute("SELECT COUNT(*) FROM class_memberships WHERE email = ?", (email,)).fetchone()[0]
+        row = conn.execute("SELECT teammate FROM class_people WHERE email = ?", (email,)).fetchone()
+        if row and not row["teammate"] and not left:
+            conn.execute("DELETE FROM class_people WHERE email = ?", (email,))
+    return cur.rowcount > 0
 
 
 def class_group_set(conn, domain: str, grp: str) -> str:
@@ -2344,6 +2451,8 @@ def class_roster_remove(conn, kind: str, key: str) -> bool:
         raise ValueError(f"unknown roster kind {kind!r}")
     with conn:
         cur = conn.execute(f"DELETE FROM {table} WHERE {col} = ?", ((key or "").strip().lower(),))
+        if kind == "person":
+            conn.execute("DELETE FROM class_memberships WHERE email = ?", ((key or "").strip().lower(),))
     return cur.rowcount > 0
 
 

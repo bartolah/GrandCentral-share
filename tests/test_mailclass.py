@@ -217,6 +217,68 @@ class Pass(unittest.TestCase):
         self.run_pass()
         self.assertEqual(db.class_get(self.conn, A, TID)["group"], "CB group")
 
+    def test_a_person_can_be_in_several_groups_and_each_account_names_its_own(self):
+        # 2026-09-30, Bart: "He's technically part of all three teams."
+        db.class_group_set(self.conn, "one.co", "One")
+        db.class_group_set(self.conn, "two.co", "Two")
+        db.class_person_set(self.conn, "boss@outdoor.com", "Boss", grp="One")
+        db.class_person_set(self.conn, "boss@outdoor.com", "", grp="Two", also=True)
+        person = db.class_roster(self.conn)["people"][0]
+        self.assertEqual((person["groups"], person["teammate"]), (["One", "Two"], True))
+        ros = mc.roster(self.conn)
+        self.assertEqual(mc.group_of("boss@outdoor.com", ros, "Two"), "Two")
+        self.assertEqual(mc.group_of("boss@outdoor.com", ros, "One"), "One")
+        self.assertEqual(mc.group_of("boss@outdoor.com", ros, None), "One")      # else the first
+        env = {"GMAIL_ACCTONE_USER": "me@one.co", "GMAIL_ACCTTWO_USER": "me@two.co"}
+        self.assertEqual((mc.account_group(A, env, ros), mc.account_group(B, env, ros)), ("One", "Two"))
+        r = row(last_from_email="boss@outdoor.com", participants=json.dumps(["Boss <boss@outdoor.com>", ME]))
+        self.assertEqual(mc.classify(r, ros, {}, {ME}, "Two")["group"], "Two")
+        self.assertEqual(mc.classify(r, ros, {}, {ME}, "Two")["relationship"], "teammate")
+
+    def test_leaving_one_group_keeps_the_others(self):
+        db.class_person_set(self.conn, "pat@outside.org", "Pat", grp="One", teammate=False)
+        db.class_person_set(self.conn, "pat@outside.org", "", grp="Two", teammate=False, also=True)
+        db.class_person_leave(self.conn, "pat@outside.org", "One")
+        self.assertEqual(db.class_roster(self.conn)["people"][0]["groups"], ["Two"])
+        # moving out of one group into another touches only that one
+        db.class_person_set(self.conn, "pat@outside.org", "", grp="Three", teammate=False, from_grp="Two")
+        self.assertEqual(db.class_roster(self.conn)["people"][0]["groups"], ["Three"])
+        # a non-teammate with no group left comes off the roster
+        db.class_person_leave(self.conn, "pat@outside.org", "Three")
+        self.assertEqual(db.class_roster(self.conn)["people"], [])
+
+    def test_a_teammate_s_mail_is_never_a_cold_pitch_whatever_jev_says(self):
+        # Bart of his boss: "His emails are never cold outreach." Jev judged
+        # what he forwarded and called 51 of his 67 threads a cold pitch.
+        def eff(rel, jev_type, conf=0.9):
+            r = {"rules": json.dumps({"type": "Team collaboration" if rel != "new" else "Correspondence",
+                                      "relationship": rel, "respond": "unsure"}),
+                 "model": None, "model_source": None,
+                 "jev": json.dumps({"type": jev_type, "confidence": {"type": conf}})}
+            return db.class_effective(r, {}, use_jev=True)
+        for rel in ("teammate", "company"):
+            for bad in ("Cold pitch", "Spam"):
+                e = eff(rel, bad)
+                self.assertEqual((e["type"], e["source"]["type"], e["jev_overruled"]),
+                                 ("Team collaboration", "rules", bad))
+        self.assertEqual(eff("new", "Cold pitch")["type"], "Cold pitch")        # a stranger can pitch
+        self.assertEqual(eff("teammate", "Prospect")["type"], "Prospect")       # other judgements stand
+        # Bart's own correction still wins over everything
+        r = {"rules": json.dumps({"type": "Team collaboration", "relationship": "teammate"}),
+             "model": None, "model_source": None, "jev": None}
+        self.assertEqual(db.class_effective(r, {"type": "Cold pitch"}, use_jev=True)["type"], "Cold pitch")
+
+    def test_a_website_rfp_is_a_prospect_that_jev_cannot_call_a_pitch(self):
+        r = row(service="sales@one.co", last_from_email="sales@one.co",
+                participants=json.dumps(["'One Site' via Sales <sales@one.co>", ME]))
+        ros = {"teammates": {"sales@one.co": "Sales"}, "domains": {}, "hash": "h"}
+        f = mc.classify(r, ros, {}, {ME}, None, {"sales@one.co": "sales"})
+        self.assertEqual((f["type"], f["relationship"], f["sales_inquiry"]), ("Prospect", "new", True))
+        eff = db.class_effective({"rules": json.dumps(f), "model": None, "model_source": None,
+                                  "jev": json.dumps({"type": "Cold pitch", "confidence": {"type": 0.95}})},
+                                 {}, use_jev=True)
+        self.assertEqual((eff["type"], eff["jev_overruled"]), ("Prospect", "Cold pitch"))
+
     def test_roster_validation(self):
         with self.assertRaises(ValueError):
             db.class_person_set(self.conn, "x@y.com", "X", grp=None, teammate=False)

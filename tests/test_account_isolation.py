@@ -332,7 +332,9 @@ class HttpBoundary(unittest.TestCase):
         self.assertEqual(code, 200, out)
         code, out = self.get("/classify/settings")
         self.assertEqual(code, 200, out)
-        self.assertIn({"email": "sam@team.com", "name": "Sam", "grp": None, "teammate": True}, out["people"])
+        # 2026-09-30: each person also carries the list of groups they're in
+        self.assertIn({"email": "sam@team.com", "name": "Sam", "grp": None, "teammate": True,
+                       "groups": []}, out["people"])
         self.assertIsInstance(out["jev_key_set"], bool)
         self.assertNotIn("JEV_API_KEY", json.dumps(out))
         code, out = self.post("/classify", {"action": "person-remove", "key": "sam@team.com"})

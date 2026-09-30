@@ -64,7 +64,8 @@ class Projects(unittest.TestCase):
         self.assertTrue(P.add_item(self.conn, self.pid, "thread", A, "555")["added"])
         self.assertFalse(P.add_item(self.conn, self.pid, "thread", A, "555")["added"])
         for kind, acct, ref in (("thread", None, "555"), ("thread", A, "abc"), ("todo", None, "999"),
-                                ("contact", None, "not-an-email"), ("deal", A, "1"), ("event", A, "e1")):
+                                ("contact", None, "not-an-email"), ("deal", A, "1"), ("event", A, "e1"),
+                                ("event", A, "2026-10-01|9am|Kickoff")):
             with self.assertRaises(ValueError, msg=(kind, acct, ref)):
                 P.add_item(self.conn, self.pid, kind, acct, ref)
 
@@ -121,6 +122,47 @@ class Projects(unittest.TestCase):
             db.link_thread(self.conn, self.todo_a, B, "555")
         with self.assertRaises(ValueError):
             db.add_engagement(self.conn, "no account", account=None)
+
+    def test_a_contact_is_added_once_even_with_no_account(self):
+        self.assertTrue(P.add_item(self.conn, self.pid, "contact", None, "maya@example.com")["added"])
+        self.assertFalse(P.add_item(self.conn, self.pid, "contact", A, "Maya@Example.com")["added"])
+        self.assertEqual(P.project_view(self.conn, self.pid)["counts"]["contact"], 1)
+
+    def test_an_event_keeps_its_calendar_s_account_and_finds_its_granola_notes(self):
+        from datetime import datetime, timezone
+        local = datetime(2026, 10, 1, 9, 5).astimezone()          # 9:05 local, like Granola's start
+        self.conn.execute("INSERT INTO elements (source, source_ref, type, title, link, last_activity) "
+                          "VALUES ('granola', 'not_1', 'meeting', 'Fall kickoff', 'https://notes.example/1', ?)",
+                          (local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),))
+        P.add_item(self.conn, self.pid, "event", A, "2026-10-01|09:00|Fall kickoff")
+        P.add_item(self.conn, self.pid, "event", None, "2026-10-02|all-day|Offsite")   # a calendar with no account
+        ev = {i["ref"]: i for i in P.project_view(self.conn, self.pid)["items"] if i["kind"] == "event"}
+        k = ev["2026-10-01|09:00|Fall kickoff"]
+        self.assertEqual((k["account"], k["date"], k["time"], k["title"]), (A, "2026-10-01", "09:00", "Fall kickoff"))
+        self.assertEqual(k["granola"]["link"], "https://notes.example/1")
+        self.assertIsNone(ev["2026-10-02|all-day|Offsite"]["account"])
+        self.assertIsNone(ev["2026-10-02|all-day|Offsite"]["granola"])
+
+    def test_people_on_the_project_s_emails_are_suggested_never_bart(self):
+        self.conn.execute("UPDATE mail_threads SET participants = ?, last_from = ? WHERE account = ?",
+                          ('["Maya Lin <maya@example.com>", "maya@example.com", "Bart <bart@acctone.com>"]',
+                           "Maya Lin <maya@example.com>", A))
+        P.add_item(self.conn, self.pid, "thread", A, "555")
+        v = P.project_view(self.conn, self.pid, mine={"bart@acctone.com"})
+        self.assertEqual([(x["email"], x["name"], x["threads"]) for x in v["suggest_people"]],
+                         [("maya@example.com", "Maya Lin", 1)])
+        P.add_item(self.conn, self.pid, "contact", None, "maya@example.com")
+        self.assertEqual(P.project_view(self.conn, self.pid, mine={"bart@acctone.com"})["suggest_people"], [])
+
+    def test_a_note_moves_into_a_project_and_back_out_to_notes(self):
+        nid = P.note_add(self.conn, None, "Loose idea", "call Maya")
+        self.assertIsNone(P.notes_list(self.conn)[0]["project_name"])
+        P.note_move(self.conn, nid, self.pid)
+        self.assertEqual(P.notes_list(self.conn, "maya")[0]["project_name"], "Fall Launch")
+        self.assertEqual(P.note_move(self.conn, nid, None)["body"], "call Maya")
+        self.assertEqual(P.notes_list(self.conn, "nothing-matches"), [])
+        with self.assertRaises(ValueError):
+            P.note_move(self.conn, nid, 999)
 
     def test_progress_counts_done_todos(self):
         P.add_item(self.conn, self.pid, "todo", None, str(self.todo_a))

@@ -204,9 +204,22 @@ def categorize(meta: dict, sender_map: dict | None = None, own: set | None = Non
     return "people"
 
 
+def service_context(conn, env: dict) -> dict:
+    """What services.detect needs, loaded once per run (2026-09-30): Bart's
+    own domains (each account's, plus his company-group domains), the roster
+    (people are never services), the group names, and his own addresses."""
+    import mailclass
+    groups = {r["domain"]: r["grp"] for r in conn.execute("SELECT domain, grp FROM class_groups")} if conn else {}
+    people = {r["email"] for r in conn.execute("SELECT email FROM class_people")} if conn else set()
+    import services
+    return {"own": own_domains(env) | set(groups), "people": people, "groups": groups,
+            "mine": mailclass.own_addresses(env), "found": {},
+            "table": services.table(conn) if conn else {}}
+
+
 def sync_account(account: str, env: dict, lookback_days: int,
                  known_dates: dict, log=print,
-                 sender_map: dict | None = None) -> list:
+                 sender_map: dict | None = None, svc_ctx: dict | None = None) -> list:
     """One account's INBOX picture as a list of mail_threads rows.
     known_dates ({thread_id: last_date}) lets us skip unchanged snippets.
     Raises on connect/login failure so main() can count the account failed."""
@@ -311,6 +324,19 @@ def sync_account(account: str, env: dict, lookback_days: int,
                 if typ == "OK" and data and isinstance(data[0], tuple):
                     snippet = _body_snippet(email_mod.message_from_bytes(data[0][1]))
                     fetched += 1
+            category = categorize(meta, sender_map, own_domains(env))
+            svc = None
+            if svc_ctx and not replied and (sender_map or {}).get(_first_email(meta["from"])) != "people":
+                import services
+                svc = services.detect(meta, svc_ctx["own"], svc_ctx["people"], svc_ctx["groups"], svc_ctx["mine"])
+                if svc:
+                    svc_ctx["found"][svc["key"]] = svc
+                    # E253: a service Bart switched off keeps the category it
+                    # always had; a merged one takes the kind of its bundle
+                    tbl = svc_ctx.get("table") or {}
+                    to = services.resolve(svc["key"], tbl) if svc["key"] in tbl else svc["key"]
+                    if to:
+                        category = services.category_for(tbl.get(to, svc), category)
             rows.append({
                 "thread_id": thrid,
                 "subject": meta["subject"] or "(no subject)",
@@ -324,7 +350,8 @@ def sync_account(account: str, env: dict, lookback_days: int,
                 "unread": t["unread"],
                 "starred": t["starred"],
                 "bulk": bool(meta.get("bulk")),
-                "category": categorize(meta, sender_map, own_domains(env)),
+                "category": category,
+                "service": svc["key"] if svc else None,
                 "labels": sorted(t["labels"]),
                 "attachments": t["attach"],
                 "link": _gmail_link({"thread_id": thrid, "account_email": user.lower(),
@@ -489,12 +516,13 @@ def main(argv=None) -> int:
             # E34: apps/bots Bart has marked as "not a person" — forced out
             # of the People bundle. Loaded once for the whole run.
             sender_map = db.sender_categories(conn) if conn else {}
+            svc_ctx = service_context(conn, env) if conn else None
             ok_accounts = 0
             for account in accounts:
                 try:
                     known = db.mail_thread_dates(conn, account) if conn else {}
                     rows = sync_account(account, env, lookback, known, log=log,
-                                        sender_map=sender_map)
+                                        sender_map=sender_map, svc_ctx=svc_ctx)
                     if args.dry_run:
                         cats: dict[str, int] = {}
                         unread = attach = 0
@@ -510,6 +538,12 @@ def main(argv=None) -> int:
                     ok_accounts += 1
                 except Exception as e:
                     log(f"mail_sync:{account} FAILED: {e!r} (existing rows preserved)")
+            if conn is not None and svc_ctx and svc_ctx["found"]:
+                try:
+                    import services
+                    services.register(conn, list(svc_ctx["found"].values()))
+                except Exception as e:
+                    log(f"services register FAILED: {e!r}")
             if conn is not None:
                 # E204: the moment the inbox is current, say so — the board's
                 # "Updated 40s ago" reads this, not the slower passes below

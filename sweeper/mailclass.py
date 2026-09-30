@@ -41,7 +41,7 @@ from datetime import datetime, timedelta, timezone
 
 import db
 
-VERSION = "rules-3"   # rules-3: people in groups; classifications name the group
+VERSION = "rules-4"   # rules-4: website RFPs (services kind "sales") are Prospects
 
 TYPES = ("Correspondence", "Team collaboration", "Sales/outreach", "Update",
          "Newsletter", "Receipt", "Calendar", "Promo", "Other")
@@ -107,7 +107,12 @@ def roster(conn) -> dict:
     'domains': {domain: group}} + a hash of all of it."""
     people = conn.execute("SELECT email, name, grp, teammate FROM class_people").fetchall()
     mates = {r["email"]: r["name"] or "" for r in people if r["teammate"]}
-    members = {r["email"]: r["grp"] for r in people if r["grp"]}
+    # 2026-09-30: a person can be in several groups (Chris owns three of the
+    # companies); each account shows the one that is its own.
+    members = db.class_memberships(conn)
+    for r in people:
+        if r["grp"] and r["email"] not in members:
+            members[r["email"]] = [r["grp"]]
     doms = {r["domain"]: r["grp"] for r in conn.execute(
         "SELECT domain, grp FROM class_groups")}
     h = hashlib.sha1(json.dumps([sorted(mates.items()), sorted(members.items()),
@@ -115,9 +120,22 @@ def roster(conn) -> dict:
     return {"teammates": mates, "members": members, "domains": doms, "hash": h}
 
 
-def group_of(email: str, ros: dict) -> str | None:
-    """The company group an address belongs to: its own entry, else its domain."""
-    return ros.get("members", {}).get(email) or ros["domains"].get(_domain(email))
+def group_of(email: str, ros: dict, prefer: str | None = None) -> str | None:
+    """The company group an address belongs to: its own entry, else its
+    domain. Someone in several groups is named by `prefer` — the group of the
+    account being read — when they are in it, else by their first."""
+    gs = ros.get("members", {}).get(email)
+    if isinstance(gs, str):
+        gs = [gs]
+    if gs:
+        return prefer if prefer in gs else gs[0]
+    return ros["domains"].get(_domain(email))
+
+
+def account_group(account: str, env: dict, ros: dict) -> str | None:
+    """The group an account belongs to: the group of its own address's domain."""
+    addr = (env.get(f"GMAIL_{str(account).upper()}_USER") or "").lower()
+    return ros["domains"].get(_domain(addr)) if addr else None
 
 
 def frequent_counts(conn, account: str, days: int = 90) -> dict:
@@ -160,7 +178,8 @@ _REL_RANK = {r: i for i, r in enumerate(("teammate", "company", "frequent", "kno
 
 
 # ---------------------------------------------------------------- the rules
-def classify(row: dict, ros: dict, freq: dict, own: set) -> dict:
+def classify(row: dict, ros: dict, freq: dict, own: set, acct_group: str | None = None,
+             svc_kinds: dict | None = None) -> dict:
     """One mail_threads row → the rule fields, reasons and a confidence."""
     cat = row.get("category") or "other"
     direction = row.get("last_direction") or "inbound"
@@ -197,9 +216,17 @@ def classify(row: dict, ros: dict, freq: dict, own: set) -> dict:
     else:
         typ = "Other"
 
+    # 2026-09-30: a website RFP through the sales@ group is a lead — a
+    # Prospect, never a teammate's note (sales@ itself is on the roster)
+    sales = (svc_kinds or {}).get(row.get("service")) == "sales"
+    if sales:
+        typ, rel = "Prospect", "new"
+        reasons.insert(0, "a sales inquiry from your website")
+
     who = sender if direction == "inbound" else next(
         (a for a in others if relationship_of(a, ros, freq, own) == rel), "")
-    out = {"type": typ, "relationship": rel, "group": group_of(who, ros) if who else None,
+    out = {"type": typ, "relationship": rel, "group": group_of(who, ros, acct_group) if who else None,
+           "sales_inquiry": sales,
            "respond": "unsure", "priority": None,
            "waiting_on": "none", "waiting_who": None, "follow_up": None}
     conf = 0.9
@@ -253,6 +280,8 @@ def run(conn, env: dict, accounts: list, log=print, now: datetime | None = None)
     done: dict[str, int] = {}
     for account in accounts:
         freq = frequent_counts(conn, account)
+        acct_group = account_group(account, env, ros)
+        svc_kinds = {r["key"]: r["kind"] for r in conn.execute("SELECT key, kind FROM services")}
         have = {r["thread_id"]: r for r in conn.execute(
             "SELECT thread_id, fingerprint, version, roster, classified_at FROM mail_class "
             "WHERE account = ?", (account,))}
@@ -267,7 +296,7 @@ def run(conn, env: dict, accounts: list, log=print, now: datetime | None = None)
                 if (cur and cur["fingerprint"] == _fingerprint(row) and cur["version"] == VERSION
                         and cur["roster"] == ros["hash"] and cur["classified_at"] >= stale):
                     continue
-                fields = classify(row, ros, freq, own)
+                fields = classify(row, ros, freq, own, acct_group, svc_kinds)
                 db.class_write_rules(conn, account, row["thread_id"], fields,
                                      _fingerprint(row), VERSION, ros["hash"], stamp)
                 n += 1

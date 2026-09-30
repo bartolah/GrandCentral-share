@@ -305,6 +305,11 @@ Mockups: Grand Central Design canvas, artboards "Project page" and "Projects pag
 
 **Build order (proposed):** (1) tables + API: projects, project_items (kind, account, ref), project notes; (2) Projects page, project page and pins; (3) 📁 Add to project on emails and todos; (4) notes, events and contacts; (5) project-scoped Ask; (6) the People suggestion on new mail. Each item is keyed by (account, id), never by id alone.
 
+**Step 4 as built (E254, 2026-09-30).**
+- **Events.** The ICS feeds carry no stable event id, so an event is keyed by calendar_reader's own dedupe key, `date|time|title`. It's filed under the account its calendar maps to (`home_view.CAL_ACCOUNT`, sent with `/calendar`); a calendar with no account leaves the event without one. A rescheduled or renamed event therefore reads as a different event. Its Granola notes are matched from `elements` (same local day, matching title, within 3 hours), and only the link and title are shown.
+- **People** are shared across accounts. The project page suggests up to 8 people from the participants of the project's own emails, never Bart's addresses and never no-reply senders. A contact can't be added twice: `add_item` checks first, because the UNIQUE index treats NULL accounts as distinct.
+- **Notes.** A note sits in at most one project (`note_move`). The Notes page is outside the accounts, like Projects (`GET /notes`, `POST /projects` `note-move`). Neither route is in `gc_client.ALLOWED`.
+
 ## E249: the ◫ Day Home and the ⌂ Home tab (2026-09-30)
 
 Built under the 2026-09-29 §6 exception. What keeps it a view, not an owner:
@@ -320,3 +325,20 @@ Built under the 2026-09-29 §6 exception. What keeps it a view, not an owner:
   with titles, times, todo text and the assessor's one-line summaries,
   never snippets or bodies. Per-account notes see that account only.
 * `/home` and `/home/note` are in `gc_client.DENIED`; Ask is unchanged.
+
+## Teammates are never cold outreach; people in several companies (E252, 2026-09-30)
+
+Bart: "Alex Rivera … is my boss and the owner of CrowdBlue, ConnectBlue and CapitolInfluence … He's technically part of all three teams. We should add him to all teams as a teammate. His emails are never cold outreach. We have several people who are part of multiple accounts - companies."
+
+- **The guard.** Who sent a message is a fact from the roster; what kind of message it is is Jev's judgement. Jev read what teammates forwarded and called 51 of Chris's 67 threads (and 139 of Jaime's) a cold pitch. `db.class_effective` now refuses Jev's `Cold pitch` and `Spam` when the rules say the sender is a teammate or in a company group (`JEV_NEVER_FROM_TEAM`); the rules' type stands, `jev_overruled` records what Jev said, and a reason line says so. Bart's correction still beats it. Jev's other answers (Prospect, Correspondence, respond, priority) are untouched. The criteria text in `jev.py` now says the same, without a `QVERSION` bump.
+- **Several groups per person.** `class_memberships (email, grp)` holds any number of groups; `class_people.grp` mirrors the first for rollback. `mailclass.group_of(email, ros, prefer)` names the group of the account being read (`account_group`: the group of the account's own address's domain) when the person is in it. `/classify` gains `also` and `from` on `person-add`, plus `person-leave` and `person-mate`. Nothing about this sends Jev anything new.
+
+## Your own services and website RFPs (E253, 2026-09-30)
+
+Bart: "Let's make Jev smarter about email notifications from our own services and properties and websites … ConnectBlue Notifications should be a bundle, ConnectBlue Sales inquiries (RFPs) from sales@connectblue." Interview answers: RFPs get their own bundle, kept prominent; services are found automatically and editable; one bundle per service (subdomain).
+
+- **Detection** (`sweeper/services.py`, called from `mail_sync.py`). "Own domains" are every account's domains plus the class_groups domains. An automated sender on one of them becomes a service: on a subdomain it's keyed by host (`newsbot.connectblue.org`), on the bare domain by address (`no-reply@connectblue.org`). A sender counts as automated if it writes from a subdomain, from a role address, or sends bulk mail. Roster people, Bart's own addresses and threads he replied to are never services. A Google Group relay carrying a tool ("'No Reply - Mailchimp' via Admin") becomes a service named after the group; one carrying a person stays people mail. Bart's own bulk sends become one "<Company> mailings" service per domain.
+- **Sales inquiries.** Website forms relayed through sales@ ("'ConnectBlue Site' via Sales", or a "New RFP" subject) are kind `sales`. They stay `people` mail, so Jev still reads them. The rules type them as Prospect, and `class_effective` refuses Jev's Cold pitch or Spam for them, the same guard as for teammates. In the classic Inbox their bundle sorts first while any is unread or last-inbound, and it has no Delete all. In Smart Inbox they're listed under Prospects.
+- **Jev and §6.** Any other service's people/other mail becomes `notification`, so it stops reaching Jev. Nothing is widened.
+- **Storage.** A nullable `mail_threads.service` column (the detected key, kept even when switched off so Settings can count it) and a `services` table (auto_name, Bart's name, merged_into, off). Bart's edits survive re-detection. `/mail` returns each thread's resolved `svc` plus a `services` map; a switched-off service keeps its old category at the next sync.
+- **Settings → Classification → Your services** lists each account's services with thread counts. Rename (blank restores the found name), Merge into, and Switch off go through `POST /classify` actions `service-rename`, `service-merge` and `service-off`. The route isn't in `gc_client.ALLOWED`, and none of these actions touches Gmail.

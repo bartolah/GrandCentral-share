@@ -315,22 +315,29 @@
     const groups = {};
     const g = n => (groups[n] = groups[n] || { domains: [], people: [] });
     d.groups.forEach(x => g(x.grp).domains.push(x.domain));
-    d.people.filter(x => x.grp).forEach(x => g(x.grp).people.push(x));
-    const loners = d.people.filter(x => !x.grp);
-    const personRow = x => `<div class="cfg-row"><span class="conn-main">${esc(x.name || '')} <span class="conn-user">${esc(x.email)}</span>
-        ${x.teammate ? '<span class="conn-pill on">teammate</span>' : ''}</span>
-        <input class="cfg-in sm" list="cls-grps" value="${esc(x.grp || '')}" placeholder="No group" title="Move to a group — pick one or type a new name"
-          onkeydown="if(event.key==='Enter')this.nextElementSibling.click()">
-        <button class="btn" onclick="clsMove('${esc(x.email)}', this.previousElementSibling.value, ${x.teammate}, this)">Move</button>
-        <button class="btn" onclick="clsMate('${esc(x.email)}','${esc(x.grp || '')}',${!x.teammate})">${x.teammate ? 'Not a teammate' : 'Make teammate'}</button>
-        <button class="btn del-btn" onclick="clsDel('person','${esc(x.email)}')">Remove</button></div>`;
+    // 2026-09-30 (Bart: "several people who are part of multiple accounts -
+    // companies"): a person can be in several groups and is listed under each.
+    const groupsOf = x => (x.groups && x.groups.length) ? x.groups : (x.grp ? [x.grp] : []);
+    d.people.forEach(x => groupsOf(x).forEach(n => g(n).people.push(x)));
+    const loners = d.people.filter(x => !groupsOf(x).length);
+    const personRow = (x, here) => { const others = groupsOf(x).filter(n => n !== here);
+      return `<div class="cfg-row"><span class="conn-main">${esc(x.name || '')} <span class="conn-user">${esc(x.email)}</span>
+        ${x.teammate ? '<span class="conn-pill on">teammate</span>' : ''}
+        ${others.length ? `<span class="conn-user">also in ${esc(others.join(', '))}</span>` : ''}</span>
+        <input class="cfg-in sm" list="cls-grps" value="" placeholder="${here ? 'Another group…' : 'A group…'}" title="Type or pick a group, then Move or Also add"
+          onkeydown="if(event.key==='Enter')this.nextElementSibling.nextElementSibling.click()">
+        <button class="btn" title="${here ? 'Out of ' + esc(here) + ', into the group typed' : 'Into the group typed'}" onclick="clsMove('${esc(x.email)}', this.previousElementSibling.value, ${x.teammate}, this, '${esc(here || '')}')">Move</button>
+        <button class="btn" title="Keep their current groups and add the one typed" onclick="clsAlso('${esc(x.email)}', this.previousElementSibling.previousElementSibling.value, ${x.teammate}, this)">Also add</button>
+        <button class="btn" onclick="clsMate('${esc(x.email)}',${!x.teammate})">${x.teammate ? 'Not a teammate' : 'Make teammate'}</button>
+        ${here && (others.length || x.teammate) ? `<button class="btn del-btn" title="Out of ${esc(here)} only" onclick="clsLeave('${esc(x.email)}','${esc(here)}')">Leave group</button>` : ''}
+        <button class="btn del-btn" title="Off the roster entirely" onclick="clsDel('person','${esc(x.email)}')">Remove</button></div>`; };
     p.innerHTML = `
       <p class="cfg-note">Grand Central classifies each email: its type, who the sender is to you, whether to respond, who you're waiting on, and when to follow up. These settings decide who counts as your company and your team.</p>
       <datalist id="cls-grps">${Object.keys(groups).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       ${Object.entries(groups).map(([name, gr]) => `
       <div class="cfg-group"><h3>${esc(name)}</h3>
         <div class="cfg-row">${gr.domains.map(dm => `<span class="idtag">${esc(dm)}</span><button class="btn del-btn" onclick="clsDel('group','${esc(dm)}')" title="Remove ${esc(dm)}">✕</button>`).join(' ') || '<span class="empty">No domains — only the people below.</span>'}</div>
-        ${gr.people.map(personRow).join('')}
+        ${gr.people.map(x => personRow(x, name)).join('')}
       </div>`).join('') || '<div class="cfg-group"><h3>Company groups</h3><div class="empty">No groups yet. Add a domain or a person below, e.g. ConnectBlue, Capitol Influence and Northwind Media in one group.</div></div>'}
       <div class="cfg-group"><h3>Add to a group</h3>
         <div class="cfg-note">Everyone at a domain, or one person by address, counts as your company. Teammates' threads you're waiting on follow up after 2 business days.</div>
@@ -340,7 +347,8 @@
           <label class="conn-user"><input type="checkbox" data-f="teammate" checked> teammate</label>
           <button class="btn" onclick="clsAddPerson()">Add person</button><span class="cfg-status"></span></div>
       </div>
-      ${loners.length ? `<div class="cfg-group"><h3>Teammates without a group</h3>${loners.map(personRow).join('')}</div>` : ''}
+      ${loners.length ? `<div class="cfg-group"><h3>Teammates without a group</h3>${loners.map(x => personRow(x, null)).join('')}</div>` : ''}
+      ${svcHtml(d.services || {})}
       <div class="cfg-group"><h3>Jev, per account</h3>
         <div class="cfg-note">When on, Jev (TypeSafe) classifies that account's person-to-person mail. For each thread it sees the subject, who's on it, who wrote last, and up to 400 characters of the latest message. Newsletters and automated mail are never sent, and neither are full messages or attachments. TypeSafe doesn't train on it; its retention period isn't fixed (zero retention is enterprise-only). ${d.jev_key_set ? '' : '<b>Add a Jev API key in Connections to turn any of these on.</b>'}</div>
         ${d.accounts.map(a => `<div class="cfg-row"><span class="conn-main">${esc(a.account.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}</span>
@@ -359,14 +367,45 @@
     clsPost({ action: 'person-add', email: v.email, name: v.name, group: v.group,
               teammate: row.querySelector('[data-f=teammate]').checked }, row.querySelector('.cfg-status'));
   }
-  function clsMate(email, group, teammate) { clsPost({ action: 'person-add', email, group, teammate }, null); }
+  // teammate on/off keeps every group they're in ("also" with no new group is refused, so send one of theirs)
+  function clsMate(email, teammate) { clsPost({ action: 'person-mate', email, teammate }, null); }
+  function clsAlso(email, group, teammate, btn) {
+    group = (group || '').trim();
+    if (!group) { btn.textContent = 'Type a group'; setTimeout(() => { btn.textContent = 'Also add'; }, 2000); return; }
+    clsPost({ action: 'person-add', email, group, teammate, also: true }, null);
+  }
+  function clsLeave(email, group) { clsPost({ action: 'person-leave', email, group }, null); }
   // "I need a way to move a teammate to a group or company" — same upsert,
   // new group; a blank group keeps them as a teammate with no group.
-  function clsMove(email, group, teammate, btn) {
+  function clsMove(email, group, teammate, btn, from) {
     group = (group || '').trim();
-    if (!group && !teammate) { btn.textContent = 'Needs a group'; setTimeout(() => { btn.textContent = 'Move'; }, 2000); return; }
-    clsPost({ action: 'person-add', email, group, teammate }, null);
+    if (!group) { btn.textContent = 'Type a group'; setTimeout(() => { btn.textContent = 'Move'; }, 2000); return; }
+    clsPost({ action: 'person-add', email, group, teammate, from: from || undefined, also: !from || undefined }, null);
   }
+  // E253: mail your own sites and tools send (Bart: "ConnectBlue
+  // Notifications should be a bundle, ConnectBlue Sales inquiries (RFPs) from
+  // sales@connectblue") is found automatically, one bundle per service. Here
+  // Bart renames, merges or switches one off; nothing touches Gmail.
+  function svcHtml(byAcct) {
+    const accts = Object.keys(byAcct);
+    if (!accts.length) return '';
+    const nice = a => a.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `<div class="cfg-group"><h3>Your services</h3>
+      <div class="cfg-note">Automated mail from your own domains — your sites, tools and mailings — gets a bundle of its own in the inbox. New ones appear here by themselves. 💼 Sales inquiries are leads from your website: they stay near the top of the inbox while any is unread or unanswered, and Smart Inbox lists them with Prospects.</div>
+      ${accts.map(a => { const rows = byAcct[a], others = k => rows.filter(r => r.key !== k && !r.merged_into);
+        return `<div class="cfg-note" style="margin-top:10px"><b>${esc(nice(a))}</b></div>` + rows.map(r => `
+        <div class="cfg-row"><span class="conn-main">${r.kind === 'sales' ? '💼 ' : ''}${esc(r.label)} <span class="conn-user">${esc(r.key)} · ${r.count}</span>
+          ${r.off ? '<span class="conn-pill off">off</span>' : ''}${r.merged_into ? `<span class="conn-user">in ${esc((rows.find(x => x.key === r.merged_into) || {}).label || r.merged_into)}</span>` : ''}</span>
+          <input class="cfg-in sm" value="${esc(r.name)}" placeholder="${esc(r.auto_name || '')}" title="Blank goes back to ${esc(r.auto_name || 'the found name')}"
+            onkeydown="if(event.key==='Enter')this.nextElementSibling.click()">
+          <button class="btn" onclick="svcPost({action:'service-rename',key:'${esc(r.key)}',name:this.previousElementSibling.value})">Rename</button>
+          <select class="cfg-in sm" title="Show this service's mail in another bundle" onchange="svcPost({action:'service-merge',key:'${esc(r.key)}',into:this.value})">
+            <option value="">${r.merged_into ? 'Own bundle again' : 'Merge into…'}</option>
+            ${others(r.key).map(o => `<option value="${esc(o.key)}" ${o.key === r.merged_into ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
+          <button class="btn" title="${r.off ? 'Bundle it again' : 'Leave its mail in the inbox as it was before'}" onclick="svcPost({action:'service-off',key:'${esc(r.key)}',off:${!r.off}})">${r.off ? 'Switch on' : 'Switch off'}</button></div>`).join(''); }).join('')}
+    </div>`;
+  }
+  function svcPost(body) { clsPost(body, null); }
   function clsJev(account, on, btn) { clsPost({ action: 'jev', account, on }, btn.nextElementSibling); }
 
   // ---------- shell ----------
@@ -385,7 +424,7 @@
   // Inline onclick handlers in the tab markup need these on window.
   Object.assign(window, { connTestGmail, connAddGmail, connRemoveGmail, connTestSingle,
                           connSaveSingle, connClearSingle, ctxAdd, ctxSave, ctxToggle, ctxDelete,
-                          clsAdd, clsDel, clsJev, clsAddPerson, clsMate, clsMove });
+                          clsAdd, clsDel, clsJev, clsAddPerson, clsMate, clsMove, clsAlso, clsLeave, svcPost });
   show(new URLSearchParams(location.search).get('tab'));
 })();
 </script>
