@@ -113,8 +113,17 @@ def test_guardrails():
     except urllib.error.HTTPError as e:
         check("cross-origin POST is refused", e.code == 403, f"status {e.code}")
 
-    code, body = post("/mail-action", {"action": "trash", "thread_id": "not-a-number", "account": "personal"})
+    code, body = post("/mail-action", {"action": "archive", "thread_id": "not-a-number", "account": "personal"})
     check("a malformed thread id is refused", code in (400, 404), f"{code} {body}")
+
+    # E258: approval to send is a paired browser, checked by the server — an
+    # unpaired caller claiming confirm:true is refused before any handler runs.
+    code, body = post("/send", {"confirm": True, "to": "selftest@example.invalid",
+                                "account": "personal", "thread_id": "1", "body": "x"})
+    check("unpaired /send is refused (E258)", code == 403 and body.get("pairing_required"),
+          f"{code} {body}")
+    code, body = post("/mail-action", {"action": "trash", "thread_id": "1", "account": "personal"})
+    check("unpaired trash is refused (E258)", code == 403, f"{code} {body}")
 
 
 # ------------------------------------------------------------- write paths

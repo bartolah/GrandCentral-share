@@ -31,8 +31,17 @@ Return ONLY JSON: {{"commitments":[{{"i":<msg index>,"promise":"<what, ≤80
 chars>","due":"YYYY-MM-DD or null"}}]}} — empty list if none."""
 
 
+try:
+    import untrusted  # E258: email text is data, never instructions
+except ImportError:  # pragma: no cover - package-relative fallback
+    from . import untrusted
+PROMPT = PROMPT + "\n\n" + untrusted.RULE
+
+
 def run(conn, env: dict, log=print) -> None:
     import imaplib
+    import private
+    priv = private.keys(conn)
     new_msgs = []
     for account, (ukey, pkey) in ACCOUNTS.items():
         user, pw = env.get(ukey, ""), env.get(pkey, "")
@@ -57,6 +66,8 @@ def run(conn, env: dict, log=print) -> None:
                     meta = fetched[0][0]
                     meta = meta.decode("ascii", "replace") if isinstance(meta, bytes) else str(meta)
                     thrid = re.search(r"X-GM-THRID (\d+)", meta)
+                    if thrid and (account, thrid.group(1)) in priv:
+                        continue  # E258: Private threads never reach a model
                     new_msgs.append({"account": account, "uid": u,
                                      "thread_id": thrid.group(1) if thrid else None,
                                      "to": m["to"], "subject": m["subject"],
@@ -79,7 +90,7 @@ def run(conn, env: dict, log=print) -> None:
         resp = client.messages.create(
             model=MODEL, max_tokens=800,
             system=PROMPT.format(today=today),
-            messages=[{"role": "user", "content": json.dumps(payload)}])
+            messages=[{"role": "user", "content": untrusted.fence_json(payload, "sent_mail")}])
         raw = "".join(p.text for p in resp.content if p.type == "text")
         mjs = re.search(r"\{.*\}", raw, re.S)
         found = (json.loads(mjs.group(0)) if mjs else {}).get("commitments") or []

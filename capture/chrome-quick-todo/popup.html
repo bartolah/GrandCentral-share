@@ -17,6 +17,11 @@
       <button id="saveBase">Save</button>
     </div>
     <p class="hint">Falls back to http://localhost:8080 when the board URL is unreachable.</p>
+    <label>Pairing code</label>
+    <div class="row">
+      <input id="pairCode" type="password" placeholder="the board's device pairing code" autocomplete="off">
+    </div>
+    <p class="hint">The same code as the Dev requests panel. Kept in this Chrome only, never synced.</p>
   </div>
 
   <textarea id="text" rows="2" placeholder="New todo… (⌘↵ to add)" autofocus></textarea>
@@ -30,6 +35,9 @@
 
   <div class="row">
     <select id="account"><option value="">Account…</option></select>
+  </div>
+  <div class="row">
+    <select id="project"><option value="">No project</option></select>
   </div>
 
   <textarea id="notes" rows="2" placeholder="Notes (optional)"></textarea>

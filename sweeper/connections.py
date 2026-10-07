@@ -54,6 +54,11 @@ SINGLE = {
     "jev":       {"key": "JEV_API_KEY", "label": "Jev API key",
                   "note": "TypeSafe (typesafe.ai) key for email classification. Used only for accounts switched on in Settings → Classification.",
                   "testable": True},
+    # E269 (§6 2026-10-06): shared with the tracker Worker — it signs click
+    # redirects and authorizes Grand Central's pull of open/click events
+    "tracker":   {"key": "TRACK_SECRET", "label": "Tracking secret",
+                  "note": "Shared secret with the gc-tracker Cloudflare Worker (wrangler secret put SECRET). Opens and clicks stay off until it's set.",
+                  "testable": False},
     "calendar":  {"key": "GCAL_ICS_URLS", "label": "Calendar ICS URLs",
                   "note": "Comma-separated secret iCal URLs. Replace-only; treat as secrets.",
                   "testable": False, "islist": True},

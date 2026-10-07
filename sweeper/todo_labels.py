@@ -259,9 +259,11 @@ def _reconcile_account(conn, imap, account: str, stats: dict, log) -> None:
             2 if r["fresh"] else r["label_synced"])
     gmail: dict[str, set] = {}
     unreadable: set = set()       # labels we could not read — never
+    import private  # E258: a Private thread never links back in via its label
+    priv = {t for a, t in private.keys(conn) if a == account}
     for label in _todo_labels(imap):   # mistake those for "removed"
         try:
-            gmail[label] = _label_threads(imap, label)
+            gmail[label] = {t for t in _label_threads(imap, label) if str(t) not in priv}
         except Exception as e:
             unreadable.add(label.lower())
             log(f"todo_labels:{account} {label!r}: {e!r}")

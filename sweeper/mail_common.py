@@ -159,6 +159,25 @@ def body_html(msg: email.message.Message) -> str:
     return ""
 
 
+def is_attachment_part(part) -> bool:
+    """One rule for which parts are attachments, shared by parse_msg (the
+    chips) and mail_actions.fetch_attachment (the download), whose idx must
+    agree. E267: an embedded image (Content-ID, often no filename) counts too,
+    so the pane can show it in place of its cid: reference."""
+    if part.get_content_maintype() == "multipart":
+        return False
+    if part.get_content_disposition() == "attachment":
+        return True
+    if part.get_filename() and not part.get_content_type().startswith("text/"):
+        return True
+    return part.get_content_maintype() == "image" and bool(part.get("Content-ID"))
+
+
+def content_id(part) -> str:
+    """'<image001.png@01DB>' -> 'image001.png@01DB' ('' when absent)."""
+    return str(part.get("Content-ID") or "").strip().strip("<>").strip()
+
+
 def parse_msg(raw: bytes, cap: int = CONTEXT_CHARS, keep_newlines: bool = False,
               want_html: bool = False) -> dict:
     """A fetched RFC-822 message -> the fields draft-reply and expand need.
@@ -178,9 +197,8 @@ def parse_msg(raw: bytes, cap: int = CONTEXT_CHARS, keep_newlines: bool = False,
     for part in msg.walk():
         if part.get_content_maintype() == "multipart":
             continue
-        disp = part.get_content_disposition()
         fname = part.get_filename()  # email pkg decodes RFC2231/encoded words
-        if disp == "attachment" or (fname and not part.get_content_type().startswith("text/")):
+        if is_attachment_part(part):
             if len(attachments) < 20:
                 payload = part.get_payload(decode=True) or b""
                 attachments.append({
@@ -188,6 +206,7 @@ def parse_msg(raw: bytes, cap: int = CONTEXT_CHARS, keep_newlines: bool = False,
                     "filename": re.sub(r"\s+", " ", _decode(fname or "(unnamed)")),
                     "content_type": part.get_content_type(),
                     "size": len(payload),
+                    "cid": content_id(part),   # E267: matches <img src="cid:…">
                 })
         elif part.get_content_maintype() == "image":
             inline_images += 1

@@ -1,7 +1,7 @@
 # Grand Central
 
 A personal chief-of-staff dashboard, built for one user (Bart) on a Mac mini.
-It sweeps two Gmail accounts, Google Calendar, and Attio into a single command
+It sweeps several Gmail accounts, Google Calendar, and Granola into a single command
 board that answers three questions at three altitudes: *what needs me today*
 (Operational), *is the work advancing the goals* (Strategic), and *what's in
 the inbox* (Mail). Outbound is drafts-by-default; the system has exactly one
@@ -24,7 +24,7 @@ break the UI. The Mail screen is the single sanctioned exception: it reads
                  hourly 07:00–19:00                     every 3 min
   Gmail ×2 ──┐                                     Gmail INBOX headers
   gcal ICS ──┼─→ sweeper/sweep.py ─→ grand_central.json      │
-  Attio   ──┘        │                    │            mail_sync.py
+  Granola ──┘        │                    │            mail_sync.py
                      ▼                    ▼                  │
              data/grand_central.db   dashboard (static HTML/JS,
              (SQLite system of       serve.py on :8080)
@@ -139,7 +139,7 @@ RECONCILIATION.md   early model/architecture decisions
 ```bash
 python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cp config/.env.example config/.env   # Gmail app passwords, ANTHROPIC_API_KEY,
-                                     # ATTIO_API_KEY…  chmod 600 config/.env
+                                     # GRANOLA_TOKEN…  chmod 600 config/.env
 .venv/bin/python sweeper/sweep.py    # one sweep, writes the board JSON
 .venv/bin/python dashboard/serve.py  # board on :8080
 ```

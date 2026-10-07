@@ -65,6 +65,9 @@ class FakeAnthropic:
             text = "not json at all"
         else:
             body = user[user.index("Threads (JSON):") + len("Threads (JSON):"):user.index("Respond with ONLY")]
+            # E258: the threads arrive fenced as untrusted data
+            assert "<untrusted_content" in body, "assess prompt must fence email data"
+            body = body.split(">", 1)[1].rsplit("</untrusted_content", 1)[0]
             rows = [{"n": t["n"], "summary": "sum:" + t["subject"], "reply_needed": True,
                      "importance": 3 if "urgent" in t["subject"] else 1}
                     for t in json.loads(body)]

@@ -379,6 +379,13 @@ def read_account(account: str, env: dict, lookback_days: int = 7,
     try:
         imap.login(user, password)
         log(f"gmail:{account} logged in as {user}")
+        # E258: latch Private threads first; the sweep drops every latched
+        # thread before anything reaches the assessor.
+        try:
+            import private
+        except ImportError:  # pragma: no cover - package-relative fallback
+            from .. import private
+        private.scan_imap(imap, account, log=log)
 
         if inbox_only:
             folders = [("INBOX", "INBOX")]   # E17 backfill: no Sent scan

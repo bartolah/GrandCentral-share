@@ -153,6 +153,26 @@ def _origin_hosts() -> set:
 
 ALLOWED_ORIGIN_HOSTS = _origin_hosts()
 
+
+# E264 (dev #63, BUILD_SPEC §6 2026-10-01): the Quick Todo Chrome extension
+# posts with Origin chrome-extension://<id>, which E161 rightly refuses. One
+# extension gets through: the ID its manifest key pins, and only on a request
+# carrying the device pairing code — so it is Bart's paired device, not just
+# any page or extension that knows the ID.
+def _quicktodo_ext_id() -> str:
+    try:
+        import base64, hashlib
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "capture", "chrome-quick-todo", "manifest.json")
+        with open(path, encoding="utf-8") as f:
+            der = base64.b64decode(json.load(f)["key"])
+        return "".join(chr(ord("a") + int(c, 16)) for c in hashlib.sha256(der).hexdigest()[:32])
+    except Exception:
+        return ""  # no manifest key: no extension gets in
+
+
+QUICKTODO_EXT_ID = _quicktodo_ext_id()
+
 # GET /labels cache: {account: (fetched_at, [label, ...])} — labels change
 # rarely; 5-min TTL keeps thread-opens from hammering IMAP LIST.
 _LABEL_CACHE: dict = {}
@@ -164,6 +184,7 @@ ROOT = os.path.dirname(DIRECTORY)
 sys.path.insert(0, os.path.join(ROOT, "sweeper"))
 
 MAX_BODY = 32 * 1024
+MAX_DOC_BODY = 640 * 1024         # E259: a 100k-character context document, JSON-escaped
 MAX_SEND_BODY = 12 * 1024 * 1024  # E82: /send may carry ≤3 base64 attachments
                                   # (5MB binary cap enforced post-decode; the
                                   # transport cap just needs to exceed b64 bloat)
@@ -192,6 +213,29 @@ _RETIRED_MSG = ("retired: Grand Central is account-first — projects, goals, "
                 "classification, Attio and the old dashboard are gone")
 
 
+_PREVIEW_MAGIC = ((b"%PDF-", "application/pdf"), (b"\x89PNG\r\n\x1a\n", "image/png"),
+                  (b"\xff\xd8\xff", "image/jpeg"), (b"GIF87a", "image/gif"), (b"GIF89a", "image/gif"))
+
+
+def _preview_type(data: bytes) -> str | None:
+    """The type to show an attachment as, judged from its first bytes —
+    PDF, PNG, JPEG, GIF or WebP only; None means download it."""
+    head = bytes(data[:16])
+    for magic, typ in _PREVIEW_MAGIC:
+        if head.startswith(magic):
+            return typ
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def _track_choice(payload: dict):
+    """E269: the composer's 👁 Track toggle — True/False when Bart touched
+    it, None to let tracking.decide() apply the account's default."""
+    v = payload.get("track")
+    return v if isinstance(v, bool) else None
+
+
 def _account_known(conn, account: str) -> bool:
     """A real mail account: configured in config/.env or already synced."""
     try:
@@ -202,6 +246,35 @@ def _account_known(conn, account: str) -> bool:
         pass
     return conn.execute("SELECT 1 FROM mail_threads WHERE account = ? LIMIT 1",
                         (account,)).fetchone() is not None
+
+
+# E260: the desktop app may keep this many requests waiting at once.
+PROPOSALS_PENDING_MAX = 20
+
+
+def _run_as_agent(path: str, body: dict, tool: str) -> tuple:
+    """E260: run one approved desktop request as the agent, over loopback, so
+    the board's own gate judges it again at the moment it runs. Returns
+    (ok, decoded JSON answer)."""
+    import urllib.request
+    import urllib.error
+    import agent_gate
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{PORT}{path}", data=json.dumps(body).encode(), method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json",
+                 "X-GC-Agent-Key": agent_gate.load_key(), "X-GC-Tool": tool[:60]})
+    try:
+        with urllib.request.urlopen(req, timeout=150) as resp:
+            out = json.loads(resp.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        try:
+            out = json.loads(e.read() or b"{}")
+        except ValueError:
+            out = {"ok": False, "error": f"HTTP {e.code}"}
+        return False, out
+    except Exception as e:
+        return False, {"ok": False, "error": repr(e)}
+    return bool(isinstance(out, dict) and out.get("ok", True) is not False), out
 
 
 def _top5_resolved(conn, t: dict, generated_at: str, now: str) -> bool:
@@ -442,15 +515,94 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                       file=sys.stderr, flush=True)
             except Exception:
                 pass
+        gctx = getattr(self, "_gctx", None)
+        if gctx is not None and gctx.allowed_accounts is not None and code < 400:
+            import agent_gate  # E258: an agent only ever sees switched-on accounts
+            obj = agent_gate.filter_response(gctx, obj, self._gate_conn)
+        if code < 400:
+            import private  # E258: Private threads are gone from every view
+            priv = private.keys_cached()
+            if priv:
+                obj = private.scrub(obj, priv, getattr(self, "_gargs", {}).get("account"))
         body = json.dumps(obj).encode()
+        if gctx is not None:
+            signals = 0
+            if gctx.allowed_accounts is not None and code < 400:
+                import untrusted  # injection-shaped text the agent was handed
+                signals = untrusted.neutralize_obj(obj)[1]
+            self._gate_finish(code, len(body), signals)
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
+    # ---- E258: the agent gate (sweeper/agent_gate.py, BUILD_SPEC §6) ----
+    def _gate_conn(self):
+        if getattr(self, "_gconn", None) is None:
+            import db
+            self._gconn = db.connect()
+        return self._gconn
+
+    def _gate(self, method: str, route: str, args: dict) -> bool:
+        """True = go on. False = refused and already answered."""
+        import agent_gate
+        self._gctx = None
+        self._gconn = None
+        self._gargs = args if isinstance(args, dict) else {}
+        try:
+            self._gctx = agent_gate.check(self._gate_conn, self.headers, method, route, args)
+            if not self._gctx.audit and self._gconn is not None:
+                self._gconn.close()
+                self._gconn = None
+            return True
+        except agent_gate.Refused as e:
+            self._gctx = e.ctx
+            print(f"GATE refused {self._gctx.who if e.ctx else '?'} {method} {route}: {e}",
+                  file=sys.stderr, flush=True)
+            self._json(e.status, {"ok": False, "error": f"Refused: {e}", **e.extra})
+            return False
+
+    def _is_agent(self) -> bool:
+        g = getattr(self, "_gctx", None)
+        return g is not None and g.who.startswith("agent")
+
+    def _agent_draft(self, account, to, cc, bcc):
+        """E258 item 5: None for Bart; for an agent, who on the draft is new."""
+        if not self._is_agent():
+            return None
+        import agent_gate
+        return {"new": agent_gate.new_recipients(self._gate_conn(), account, to, cc, bcc)}
+
+    @staticmethod
+    def _agent_note(agent):
+        if not agent:
+            return {}
+        return {"flagged": "GC/Agent-Draft-New" if agent["new"] else "GC/Agent-Draft",
+                "new_recipients": agent["new"],
+                "reminder": ("Saved to Drafts, NOT sent. Flagged for Bart: new to this "
+                             "account — " + ", ".join(agent["new"])) if agent["new"]
+                            else "Saved to Drafts, NOT sent."}
+
+    def _gate_finish(self, code: int, nbytes: int, signals: int = 0):
+        gctx, self._gctx = self._gctx, None
+        if gctx is None or not gctx.audit:
+            return
+        try:
+            import agent_gate
+            agent_gate.finish(self._gate_conn, gctx, code, nbytes, signals)
+        except Exception as e:  # the audit must never break the answer
+            print(f"agent audit failed: {e!r}", file=sys.stderr, flush=True)
+        finally:
+            if getattr(self, "_gconn", None) is not None:
+                self._gconn.close()
+                self._gconn = None
+
     def do_GET(self):
         parsed = urllib.parse.urlsplit(self.path)
+        if not self._gate("GET", parsed.path, {k: v[0] for k, v in
+                          urllib.parse.parse_qs(parsed.query).items()}):
+            return
         if parsed.path in _RETIRED_GET:
             self._json(410, {"ok": False, "error": _RETIRED_MSG})
             return
@@ -517,11 +669,74 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     synced_at = row["s"] if row else None
                 finally:
                     conn.close()
-                self._json(200, {"ok": True, "synced_at": synced_at,
+                gctx = getattr(self, "_gctx", None)
+                if gctx is not None and gctx.allowed_accounts is not None:
+                    # E258: an agent gets one page, not the whole board — the
+                    # whole board is ~1.4MB, which alone would spend the 2MB/hr
+                    # budget. Filters run before the page is cut.
+                    unread = (qs.get("unread") or ["0"])[0] == "1"
+                    starred = (qs.get("starred") or ["0"])[0] == "1"
+                    try:
+                        limit = max(1, min(100, int((qs.get("limit") or ["25"])[0])))
+                    except ValueError:
+                        limit = 25
+                    threads = [t for t in threads
+                               if t.get("account") in gctx.allowed_accounts
+                               and (not unread or t.get("unread"))
+                               and (not starred or t.get("starred"))]
+                    self._json(200, {"ok": True, "synced_at": synced_at,
+                                     "total": len(threads), "threads": threads[:limit]})
+                    return
+                # Dev #66: who Bart tagged VIP / Top prospect (shared by every account)
+                try:
+                    import tiers as _tiers
+                    _c = db.connect()
+                    try:
+                        tier_map = _tiers.tiers(_c)
+                    finally:
+                        _c.close()
+                except Exception:
+                    tier_map = {}
+                self._json(200, {"ok": True, "synced_at": synced_at, "tiers": tier_map,
                                  "jev": bool(jev_on),     # Jev-led Smart grouping
                                  "sync": _mail_sync_status(),
                                  "services": svc_map,
                                  "threads": threads, "outbox": outbox})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path in ("/tracking", "/tracking/decide", "/tracking/summary"):
+            # E269 (§6 2026-10-06): open/click tracking — the per-account
+            # switches for Settings, the composer's 👁 default, and one
+            # account's opens/clicks keyed by thread. Reads only.
+            try:
+                import db, tracking
+                from common import load_env as _le
+                qs = urllib.parse.parse_qs(parsed.query)
+                env = _le()
+                conn = db.connect()
+                try:
+                    acct = _clean((qs.get("account") or [""])[0], 40)
+                    if parsed.path == "/tracking":
+                        from sources.gmail_reader import scan_accounts
+                        out = {"secret_set": bool((env.get("TRACK_SECRET") or "").strip()),
+                               "accounts": [{"account": a, "domain": tracking.domain_for(a, env),
+                                             "healthy": tracking.healthy(conn, tracking.domain_for(a, env)),
+                                             **tracking.settings(conn, a)} for a in scan_accounts(env)]}
+                    else:
+                        if not acct or not _account_known(conn, acct):
+                            raise ValueError("known account required")
+                        if parsed.path == "/tracking/decide":
+                            out = tracking.decide(conn, acct, env, _clean((qs.get("to") or [""])[0], 500),
+                                                  _clean((qs.get("cc") or [""])[0], 500),
+                                                  _clean((qs.get("bcc") or [""])[0], 500))
+                        else:
+                            out = {"threads": tracking.summary(conn, acct)}
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
@@ -998,7 +1213,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             return
                         self._json(200, {"ok": True, "chat": chat})
                     else:
-                        self._json(200, {"ok": True, "chats": db.ask_chats(conn)})
+                        # step 5: ?project=N lists only that project's chats
+                        pj = int((qs.get("project") or ["0"])[0] or 0) or None
+                        self._json(200, {"ok": True, "chats": db.ask_chats(conn, project_id=pj)})
                 finally:
                     conn.close()
             except ValueError:
@@ -1029,7 +1246,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
-        if parsed.path in ("/projects", "/project", "/notes"):
+        if parsed.path in ("/projects", "/project", "/notes", "/projects/suggest"):
             # Projects (BUILD_SPEC §6, 2026-09-29): account-less containers
             # that point at items in their own accounts. Reads only.
             try:
@@ -1051,6 +1268,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             out["in"] = {r[0]: r[1] for r in conn.execute(
                                 "SELECT project_id, id FROM project_items WHERE kind = ? AND account IS ? AND ref = ?",
                                 (kind, acct, ref))}
+                    elif parsed.path == "/projects/suggest":
+                        # step 6: "Add to <project>?" for one account's rows
+                        # and reading pane — new mail from a project person
+                        acct = _clean((qs.get("account") or [""])[0], 40)
+                        if not acct or not _account_known(conn, acct):
+                            raise ValueError("known account required")
+                        out = {"ok": True, "suggest": [
+                            {k: r[k] for k in ("project_id", "name", "color", "thread_id", "person", "person_name")}
+                            for r in projects.suggestions(conn, account=acct)]}
                     elif parsed.path == "/notes":
                         # step 4: the Notes page — every note, loose or in a project
                         out = {"ok": True, "notes": projects.notes_list(
@@ -1099,6 +1325,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": str(e)})
             return
+        if parsed.path == "/context/docs":
+            # E259: context documents per account/project. The list carries
+            # no bodies; ?id= returns one whole. Not an agent route (DENIED).
+            try:
+                import db
+                qs = urllib.parse.parse_qs(parsed.query)
+                conn = db.connect()
+                try:
+                    did = int(_clean((qs.get("id") or ["0"])[0], 12) or 0)
+                    if did:
+                        d = db.get_context_doc(conn, did)
+                        if not d:
+                            raise ValueError("no such document")
+                        out = {"ok": True, "doc": d}
+                    else:
+                        scope = _clean((qs.get("scope") or [""])[0], 60)
+                        out = {"ok": True, "max_chars": db.CONTEXT_DOC_MAX,
+                               "docs": db.list_context_docs(conn, [db._doc_scope(scope)] if scope else None,
+                                                            with_body=False)}
+                finally:
+                    conn.close()
+                self._json(200, out)
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
         if parsed.path == "/context":
             # E19: Bart's context corpus — rules/notes that future
             # automations, prompts, and reply suggestions will draw on.
@@ -1110,6 +1363,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 finally:
                     conn.close()
                 self._json(200, {"ok": True, "context": notes})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/contacts/tiers":
+            # Dev #66: suggested VIPs and Top Prospects (Bart confirms each)
+            try:
+                import db, tiers, mailclass
+                from common import load_env
+                conn = db.connect()
+                try:
+                    self._json(200, {"ok": True, "tiers": tiers.tiers(conn),
+                                     **tiers.suggest(conn, mailclass.own_addresses(load_env()))})
+                finally:
+                    conn.close()
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
@@ -1163,9 +1430,92 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     todos = db.todo_view(conn, account=acct)
                 finally:
                     conn.close()
+                gctx = getattr(self, "_gctx", None)
+                if gctx is not None and gctx.allowed_accounts is not None:
+                    # E258: an agent gets the filtered page and only the fields
+                    # it reads (the whole list is ~90KB of the 2MB/hr budget)
+                    q = {k: (qs.get(k) or [""])[0] for k in
+                         ("state", "starred", "due_before", "search", "limit")}
+                    state = q["state"] or "open"
+                    keep = ("id", "text", "due", "state", "starred", "my_day", "priority",
+                            "account", "labels", "notes", "snoozed_until")
+                    rows = [t for t in todos
+                            if t.get("account") in gctx.allowed_accounts
+                            and (state == "all" or t.get("state") == state)
+                            and (q["starred"] != "1" or t.get("starred"))
+                            and (not q["due_before"] or (t.get("due") and t["due"] <= q["due_before"]))
+                            and (not q["search"] or q["search"].lower() in (t.get("text") or "").lower())]
+                    try:
+                        limit = max(1, min(200, int(q["limit"] or 50)))
+                    except ValueError:
+                        limit = 50
+                    self._json(200, {"ok": True, "total": len(rows),
+                                     "todos": [{k: t[k] for k in keep if t.get(k) not in (None, "", [])}
+                                               for t in rows[:limit]]})
+                    return
                 self._json(200, {"ok": True, "todos": todos})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/agent/proposals":
+            # E260: the desktop app checks on what it asked for; Settings lists
+            # them too. The gate trims rows to switched-on accounts for agents.
+            try:
+                import db
+                qs = urllib.parse.parse_qs(parsed.query)
+                conn = db.connect()
+                try:
+                    pid = (qs.get("id") or [""])[0]
+                    if pid:
+                        row = db.proposal_get(conn, int(pid))
+                        rows = [row] if row else []
+                    else:
+                        status = _clean((qs.get("status") or ["pending"])[0], 12)
+                        if status not in ("pending", "approved", "declined", "failed", "expired"):
+                            raise ValueError(f"unknown status {status!r}")
+                        rows = db.proposal_list(conn, status, limit=50)
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "proposals": rows})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/agent/accounts":
+            # E258: the switches + lockout state for Settings (not an agent route).
+            try:
+                import agent_gate
+                import db
+                from sources.gmail_reader import ACCOUNTS as _KNOWN
+                conn = db.connect()
+                try:
+                    rows = agent_gate.account_rows(conn, list(_KNOWN))
+                    lock = agent_gate.lock_state(conn)
+                    pending = [dict(r) for r in conn.execute(
+                        "SELECT id, scope, kind, text, created_at FROM context_notes "
+                        "WHERE source = 'agent' AND active = 0 ORDER BY id DESC LIMIT 50")]
+                    # the first-week review, on the phone: newest 100 calls
+                    private_rows = [dict(r) for r in conn.execute(
+                        # aliased so the Private scrub doesn't remove the list itself
+                        "SELECT account AS acct, thread_id AS tid, marked_at FROM private_threads "
+                        "ORDER BY marked_at DESC LIMIT 200")]
+                    import calendar_invite
+                    invites = calendar_invite.pending(conn)
+                    recent = [dict(r) for r in conn.execute(
+                        "SELECT ts, principal, tool, method, route, substr(args, 1, 400) AS args, "
+                        "accounts, status, result_bytes, refusal, signals FROM agent_audit "
+                        "ORDER BY id DESC LIMIT 100")]
+                    proposals = db.proposal_list(conn, "pending", limit=50)   # E260
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "accounts": rows, "lock": lock,
+                                 "key_set": bool(agent_gate.load_key()),
+                                 "desktop_key_set": bool(agent_gate.load_key(agent_gate.DESKTOP_KEY_PATH)),
+                                 "pending_context": pending, "pending_proposals": proposals,
+                                 "audit": recent, "private": private_rows, "invites": invites})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
@@ -1183,6 +1533,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 if acct != "all" and acct not in _KNOWN:
                     raise ValueError(f"unknown account {acct!r}")
                 accounts = list(_KNOWN) if acct == "all" else [acct]
+                gctx = getattr(self, "_gctx", None)
+                if gctx is not None and gctx.allowed_accounts is not None:
+                    # E258: an agent's "all" never even searches a switched-off account
+                    accounts = [a for a in accounts if a in gctx.allowed_accounts]
                 rows, errors = [], []
                 for a in accounts:
                     try:
@@ -1195,7 +1549,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 from common import load_env
                 from sources.gmail_reader import ACCOUNTS as _ACCTS
                 env = load_env()
-                emails = {a: env.get(_ACCTS[a][0], "") for a in _ACCTS}
+                emails = {a: env.get(_ACCTS[a][0], "") for a in _ACCTS if a in accounts}
                 self._json(200, {"ok": True, "threads": rows,
                                  "emails": emails,
                                  "errors": errors or None})
@@ -1262,10 +1616,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     _clean((qs.get("uid") or [""])[0], 12),
                     int((qs.get("idx") or ["0"])[0]))
                 safe = re.sub(r'[^\w. ()\[\]-]', "_", name)[:120] or "attachment"
+                # 2026-10-07 (Bart: "preview PDFs and image attachments, before
+                # downloading them"): ?view=1 shows a PDF or a plain image in
+                # the browser — only when the bytes really are that type (magic
+                # number), typed by us, never the sender's label; SVG/HTML and
+                # everything else still download.
+                view = _preview_type(data) if (qs.get("view") or ["0"])[0] == "1" else None
                 self.send_response(200)
-                self.send_header("Content-Type", ctype or "application/octet-stream")
+                self.send_header("Content-Type", view or ctype or "application/octet-stream")
                 self.send_header("Content-Disposition",
-                                 f'attachment; filename="{safe}"')
+                                 f'{"inline" if view else "attachment"}; filename="{safe}"')
+                if view and view.startswith("image/"):
+                    self.send_header("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'")
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("Content-Length", str(len(data)))
                 self.send_header("Cache-Control", "private, max-age=3600")
@@ -1330,6 +1692,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return False
         if not host:
             return False  # includes Origin: null (sandboxed iframe)
+        if source.lower().startswith("chrome-extension://"):
+            if not QUICKTODO_EXT_ID or host != QUICKTODO_EXT_ID:
+                return False
+            import dev_pairing
+            return dev_pairing.verify(self.headers.get("X-GC-Dev-Code"))
         if host in ALLOWED_ORIGIN_HOSTS:
             return True
         own = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]").lower()
@@ -1379,6 +1746,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(400, {"ok": False, "error": str(exc)})
             return
 
+        if route in ("/upload", "/diag") and not self._gate("POST", route, {}):
+            return
+
         if route == "/upload":
             # Raw-body image upload from /upload.html (LAN only, like the
             # whole board). Saved under data/uploads/ for Claude to read —
@@ -1414,11 +1784,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
 
         try:
-            cap = MAX_SEND_BODY if route == "/send" else MAX_BODY
+            cap = (MAX_SEND_BODY if route == "/send" else
+                   MAX_DOC_BODY if route == "/context/docs" else MAX_BODY)
             length = min(int(self.headers.get("Content-Length", 0)), cap)
             payload = json.loads(self.rfile.read(length) or b"{}")
         except ValueError as e:
             self._json(400, {"ok": False, "error": f"bad JSON: {e}"})
+            return
+        if not isinstance(payload, dict):
+            self._json(400, {"ok": False, "error": "body must be a JSON object"})
+            return
+        if not self._gate("POST", route, payload):
             return
 
         if route == "/connections":
@@ -1450,6 +1826,159 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
 
+        elif route == "/agent/accounts":
+            # E258: Bart's per-account switch for agents (human-only in the gate).
+            try:
+                import agent_gate
+                import db
+                acct = _clean(payload.get("account"), 40)
+                conn = db.connect()
+                try:
+                    if not _account_known(conn, acct):
+                        raise ValueError(f"unknown account {acct!r}")
+                    agent_gate.set_account(conn, acct, payload.get("enabled") is True)
+                    on = sorted(agent_gate.enabled_accounts(conn))
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "enabled": on})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/agent/propose":
+            # E260: the Claude desktop app's only write. The gate has already
+            # checked that the action is one an agent may take, in a switched-on
+            # account; here it is only filed. Nothing runs until Bart approves.
+            try:
+                import db
+                gctx = getattr(self, "_gctx", None)
+                if gctx is None or gctx.who != "desktop":
+                    raise PermissionError("only the desktop app files proposals")
+                conn = db.connect()
+                try:
+                    if len(db.proposal_list(conn, "pending", limit=PROPOSALS_PENDING_MAX)) \
+                            >= PROPOSALS_PENDING_MAX:
+                        raise ValueError(f"{PROPOSALS_PENDING_MAX} requests are already "
+                                         "waiting for Bart; ask him to clear some first")
+                    pid = db.proposal_add(conn, _clean(payload.get("tool"), 60) or "?",
+                                          payload.get("account"),
+                                          _clean(payload.get("preview"), 600) or "",
+                                          payload["path"], payload["body"])
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "status": "pending_approval", "id": pid,
+                                 "note": "Filed. Nothing has happened yet: it runs only if "
+                                         "Bart approves it on the board (expires in 24h)."})
+            except PermissionError as e:
+                self._json(403, {"ok": False, "error": str(e)})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/calendar/invite":
+            # E258 item 6: Bart sends (or drops) an invite draft. Human-only
+            # in the gate — the one place attendees ever reach Google.
+            try:
+                import calendar_invite
+                import db
+                iid = int(payload.get("id") or 0)
+                action = _clean(payload.get("action"), 10) or "send"
+                conn = db.connect()
+                try:
+                    if action == "send":
+                        out = calendar_invite.send(conn, iid)
+                    elif action == "drop":
+                        out = {"dropped": calendar_invite.drop(conn, iid)}
+                    else:
+                        raise ValueError(f"unknown action {action!r}")
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, **out})
+            except (ValueError, TypeError) as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/private":
+            # E258: let a Private thread back in (paired browser only). It
+            # reappears on the next sync only if the Private label is gone in
+            # Gmail too — otherwise the next scan latches it again.
+            try:
+                import db
+                import private
+                acct = _clean(payload.get("account"), 40)
+                tid = _clean(payload.get("thread_id"), 25)
+                if not _THRID_RE.match(tid):
+                    raise ValueError("bad thread_id")
+                conn = db.connect()
+                try:
+                    was = private.unmark(conn, acct, tid)
+                finally:
+                    conn.close()
+                private._FAST["at"] = 0.0
+                self._json(200 if was else 404, {"ok": was})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/agent/proposals/decide":
+            # E260: Bart's click (human-only in the gate). Approving runs the
+            # request as an ordinary agent call over loopback, so every E258
+            # check (switches, Private, limits, lockout, audit) applies again
+            # at the moment it runs, not only when it was filed.
+            try:
+                import agent_gate
+                import db
+                pid = int(payload.get("id"))
+                decision = payload.get("decision")
+                if decision not in ("approve", "decline"):
+                    raise ValueError("decision must be approve or decline")
+                conn = db.connect()
+                try:
+                    prop = db.proposal_get(conn, pid)
+                    if not prop:
+                        raise ValueError(f"no request {pid}")
+                    if decision == "approve" and not agent_gate.load_key():
+                        raise ValueError("approved requests run as the agent, and there is no "
+                                         "agent key: run `.venv/bin/python sweeper/agent_gate.py "
+                                         "--new-key` on the Mini first")
+                    if not db.proposal_claim(conn, pid, "approved" if decision == "approve"
+                                             else "declined"):
+                        raise ValueError(f"request {pid} is already {prop['status']}")
+                    if decision == "decline":
+                        self._json(200, {"ok": True, "id": pid, "status": "declined"})
+                        return
+                    ok, result = _run_as_agent(prop["path"], prop["body"],
+                                               "approved:" + prop["tool"])
+                    db.proposal_result(conn, pid, ok, result)
+                finally:
+                    conn.close()
+                self._json(200, {"ok": ok, "id": pid,
+                                 "status": "approved" if ok else "failed", "result": result,
+                                 **({} if ok else {"error": str((result or {}).get("error")
+                                                                or "the action failed")})})
+            except (TypeError, ValueError) as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/agent/reset":
+            # E258: lift an agent lockout after reviewing the audit (human-only).
+            try:
+                import agent_gate
+                import db
+                conn = db.connect()
+                try:
+                    was = agent_gate.reset_lock(conn)
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "was_locked": was})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
         elif route == "/dismiss":
             try:
                 import feedback
@@ -1465,12 +1994,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 import draft_reply  # lazy: pulls in anthropic
                 thread_id = _clean(payload.get("thread_id"), 25)
                 account = _clean(payload.get("account"), 40)
-                out = draft_reply.draft_reply(thread_id, account)
+                # E258: an agent's draft is marked (recipients come from the
+                # thread here, so nobody on it is new)
+                agent = {"new": []} if self._is_agent() else None
+                out = draft_reply.draft_reply(thread_id, account, agent=agent)
                 self._json(200, {"ok": True, **out})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/draft/assist":
+            # 2026-10-06: the composer's ✨ — draft or rewrite from Bart's
+            # prompt, optionally reading his history with these recipients.
+            # Text only; not an agent route (agent_gate allowlists exclude it).
+            try:
+                import draft_reply
+                account = _clean(payload.get("account"), 40)
+                import db
+                conn = db.connect()
+                try:
+                    if not account or not _account_known(conn, account):
+                        raise ValueError("known account required")
+                finally:
+                    conn.close()
+                out = draft_reply.assist(
+                    account, str(payload.get("instruction") or "")[:2000],
+                    draft=str(payload.get("draft") or "")[:20000],
+                    thread_id=_clean(payload.get("thread_id"), 25) or None,
+                    to=_clean(payload.get("to"), 500), cc=_clean(payload.get("cc"), 500),
+                    subject=_clean(payload.get("subject"), 300),
+                    use_history=payload.get("history") is True)
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
 
         elif route == "/reply_options":
             # E157: 2-3 distinct reply options for a thread — pure text back
@@ -1508,14 +2067,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 to = payload.get("to")
                 cc = payload.get("cc")
                 subject = payload.get("subject")
+                agent = self._agent_draft(account, to, cc, payload.get("bcc"))
                 out = draft_reply.save_draft(
                     thread_id, account, body,
                     to=_clean(to, 500) if to else None,
                     cc=_clean(cc, 500) if cc else None,
                     subject=_clean(subject, 300) if subject else None,
                     bcc=_clean(payload.get("bcc"), 500) or None,
+                    agent=agent,
                 )
-                self._json(200, {"ok": True, **out})
+                self._json(200, {"ok": True, **out, **self._agent_note(agent)})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
@@ -1554,6 +2115,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 import draft_reply
                 account = _clean(payload.get("account"), 40)
+                agent = self._agent_draft(account, payload.get("to"), payload.get("cc"),
+                                          payload.get("bcc"))
                 out = draft_reply.compose_draft(
                     account,
                     _clean(payload.get("to"), 500),
@@ -1561,8 +2124,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     str(payload.get("body") or "")[:20000],
                     cc=_clean(payload.get("cc"), 500) if payload.get("cc") else None,
                     bcc=_clean(payload.get("bcc"), 500) or None,
+                    agent=agent,
                 )
-                self._json(200, {"ok": True, **out})
+                self._json(200, {"ok": True, **out, **self._agent_note(agent)})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
@@ -1606,6 +2170,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     elif a == "note-update":
                         out = {"note": projects.note_update(conn, int(payload.get("note_id", 0) or 0),
                                                             payload.get("title"), payload.get("body"))}
+                    elif a == "decline":
+                        # step 6: ✕ "not this one", or stop suggesting a person
+                        out = projects.decline(conn, pid, _clean(payload.get("account"), 40) or None,
+                                               _clean(payload.get("thread_id"), 40) or None,
+                                               _clean(payload.get("person"), 120) or None)
                     elif a == "note-move":
                         out = {"note": projects.note_move(conn, int(payload.get("note_id", 0) or 0), pid or None)}
                     elif a == "note-delete":
@@ -1640,9 +2209,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif route == "/calendar":
             try:
                 import calendar_writer
+                # E258 item 6: attendees are a PROPOSAL (an invite draft). The
+                # event is created without them, exactly as before; Google
+                # emails nobody until Bart clicks Send invites.
+                attendees = None
                 if payload.get("attendees"):
-                    raise ValueError("attendees are not supported — own-calendar "
-                                     "events only (spec §6: no outbound invites)")
+                    import calendar_invite
+                    attendees = calendar_invite.clean_attendees(payload.get("attendees"))
                 out = calendar_writer.create(
                     _clean(payload.get("account"), 40),
                     _clean(payload.get("summary"), 300),
@@ -1652,6 +2225,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     location=_clean(payload.get("location"), 300) if payload.get("location") else None,
                     all_day=bool(payload.get("all_day")),
                 )
+                if attendees:
+                    import agent_gate
+                    import calendar_invite
+                    import db
+                    conn = db.connect()
+                    try:
+                        new = agent_gate.new_recipients(conn, out["account"], ",".join(attendees))
+                        iid = calendar_invite.propose(
+                            conn, out["account"], out, attendees, new,
+                            "agent" if self._is_agent() else "board")
+                    finally:
+                        conn.close()
+                    out["invite_draft"] = {
+                        "id": iid, "attendees": attendees, "new": new,
+                        "note": "Event created WITHOUT attendees. Nobody is invited until "
+                                "Bart clicks Send invites (Settings → Agents)."}
                 self._json(200, {"ok": True, **out})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
@@ -1952,6 +2541,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 import db
                 conn = db.connect()
                 try:
+                    if "tier" in payload or payload.get("tier_decline"):
+                        # Dev #66: Bart tags (or waves off a suggested) VIP / Top prospect
+                        import tiers
+                        if payload.get("tier_decline"):
+                            tiers.decline(conn, _clean(payload.get("email"), 120), _clean(payload.get("tier_decline"), 10))
+                            self._json(200, {"ok": True})
+                        else:
+                            self._json(200, {"ok": True, **tiers.set_tier(
+                                conn, _clean(payload.get("email"), 120), _clean(payload.get("tier"), 10) or None)})
+                        return
                     em = db.contact_set(conn, _clean(payload.get("email"), 120),
                                         name=None if payload.get("name") is None else _clean(payload.get("name"), 80),
                                         notes=None if payload.get("notes") is None else str(payload.get("notes"))[:2000],
@@ -2139,10 +2738,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 if payload.get("new") is True:
                     # E53 (Bart's explicit §6 widening, 2026-07-29): a NEW
                     # email — no thread — through the same confirmed path.
-                    # send_new enforces the identical caps + audit; no
-                    # scheduling for new mail (the outbox is thread-keyed).
+                    # send_new enforces the identical caps + audit. Since
+                    # 2026-10-06 (Bart: "a way to schedule a draft email") a new
+                    # email can be scheduled too: same queue, fired by mail_sync
+                    # through send_new.
                     if payload.get("send_at"):
-                        raise ValueError("scheduling is replies-only for now")
+                        import db
+                        if payload.get("attachments"):
+                            raise ValueError("attachments send now only — scheduling stores text")
+                        body_new = str(payload.get("body") or "")
+                        subj_new = _clean(payload.get("subject"), 300)
+                        if not subj_new:
+                            raise ValueError("subject required for a new email")
+                        if not body_new.strip() or len(body_new) > 20000:
+                            raise ValueError("write a message (under 20000 chars)")
+                        conn = db.connect()
+                        try:
+                            ob_id = db.add_outbox(conn, "", account, to, body_new, _future_iso(payload.get("send_at")),
+                                                  cc_addrs=_clean(payload.get("cc"), 500), bcc_addrs=_clean(payload.get("bcc"), 500),
+                                                  subject=subj_new, track=_track_choice(payload),
+                                                  body_html=str(payload.get("body_html") or "")[:60000] or None,
+                                                  draft_uid=_clean(payload.get("draft_uid"), 20) or None,
+                                                  draft_msgid=_clean(payload.get("draft_msgid"), 40) or None)
+                        finally:
+                            conn.close()
+                        self._json(200, {"ok": True, "scheduled": _future_iso(payload.get("send_at")), "id": ob_id, "to": to})
+                        return
                     import send_mail
                     out = send_mail.send_new(
                         account,
@@ -2154,6 +2775,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         body_html=str(payload.get("body_html") or "")[:60000] or None,
                         attachments=_parse_attachments(payload)
                                     + _fetch_forward_atts(payload, account),
+                        track=_track_choice(payload),
                     )
                     self._json(200, {"ok": True, **out})
                     return
@@ -2181,7 +2803,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     try:
                         ob_id = db.add_outbox(conn, thread_id, account, to, body,
                                               when, cc_addrs=cc, bcc_addrs=bcc,
-                                              subject=subject)
+                                              subject=subject, track=_track_choice(payload),
+                                              body_html=str(payload.get("body_html") or "")[:60000] or None,
+                                              draft_uid=_clean(payload.get("draft_uid"), 20) or None,
+                                              draft_msgid=_clean(payload.get("draft_msgid"), 40) or None)
                     finally:
                         conn.close()
                     self._json(200, {"ok": True, "scheduled": when, "id": ob_id,
@@ -2198,8 +2823,29 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     # E65: optional rich-text alternative (plain part stays
                     # authoritative); scheduled sends remain plain-only.
                     body_html=str(payload.get("body_html") or "")[:60000] or None,
+                    track=_track_choice(payload),
                 )
                 self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/tracking":
+            # E269: Bart's per-account tracking switches. Paired browser only
+            # (agent_gate.HUMAN_ONLY_POST); touches no mail.
+            try:
+                import db, tracking
+                account = _clean(payload.get("account"), 40)
+                conn = db.connect()
+                try:
+                    if not account or not _account_known(conn, account):
+                        raise ValueError("known account required")
+                    vals = {k: payload[k] for k in tracking.SIGNALS if isinstance(payload.get(k), bool)}
+                    out = tracking.set_settings(conn, account, **vals)
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, "settings": out})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
@@ -2490,6 +3136,43 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
 
+        elif route == "/context/docs":
+            # E259: Bart pastes or uploads a context document for an account
+            # or a project. Board clicks only: not an Ask tool, and denied to
+            # agents in gc_client. Nothing here touches Gmail.
+            try:
+                import db
+                action = _clean(payload.get("action"), 10)
+                conn = db.connect()
+                try:
+                    if action == "add":
+                        scope = db._doc_scope(_clean(payload.get("scope"), 60))
+                        kind, _, ref = scope.partition(":")
+                        if kind == "account" and not _account_known(conn, ref):
+                            raise ValueError("unknown account")
+                        if kind == "project":
+                            import projects
+                            projects._get(conn, int(ref))
+                        out = {"id": db.add_context_doc(conn, scope, payload.get("title"),
+                                                        str(payload.get("body") or ""),
+                                                        _clean(payload.get("filename"), 200) or None)}
+                    elif action == "update":
+                        f = payload.get("fields")
+                        f = {k: v for k, v in (f if isinstance(f, dict) else {}).items()
+                             if k in ("title", "body", "active")}
+                        out = {"updated": db.update_context_doc(conn, int(payload.get("id", 0) or 0), f)}
+                    elif action == "delete":
+                        out = {"deleted": db.delete_context_doc(conn, int(payload.get("id", 0) or 0))}
+                    else:
+                        raise ValueError(f"unknown action {action!r}")
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, **out})
+            except (ValueError, TypeError) as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
         elif route == "/context":
             # E19: add/update/toggle/delete one context entry. Data-plane
             # only — nothing here changes classifier or send behavior;
@@ -2500,10 +3183,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 conn = db.connect()
                 try:
                     if action == "add":
+                        by_agent = getattr(self, "_gctx", None) is not None \
+                            and self._gctx.who.startswith("agent")
                         nid = db.add_context(conn, _clean(payload.get("scope"), 80),
                                              _clean(payload.get("kind"), 12) or "note",
-                                             payload.get("text"))
-                        self._json(200, {"ok": True, "id": nid})
+                                             payload.get("text"),
+                                             source="agent" if by_agent else None)
+                        self._json(200, {"ok": True, "id": nid, **(
+                            {"held": True, "note": "saved switched off — it counts once "
+                             "Bart approves it in Settings → Context"} if by_agent else {})})
                     elif action == "update":
                         fields = payload.get("fields")
                         ok = db.update_context(conn, int(payload.get("id", 0)),
@@ -2591,6 +3279,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     raise ValueError("empty command")
                 selection = payload.get("selection")
                 selection = selection if isinstance(selection, dict) else None
+                # E259: the account Bart is looking at, so its context
+                # documents ground the answer
+                if _clean(payload.get("account"), 40):
+                    selection = {**(selection or {}), "account": _clean(payload.get("account"), 40)}
                 # E22: the Ask panel replays its transcript so the server
                 # stays stateless; bound it so a long chat can't grow the
                 # request without limit.
@@ -2605,12 +3297,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 # as a second write when it exists; a crash leaves the
                 # question standing as evidence the ask happened.
                 chat_id = payload.get("chat_id")
+                # Projects step 5: Ask on a project page is fenced to it
+                project_id = int(payload.get("project_id") or 0) or None
+                if project_id:
+                    import db, projects
+                    conn = db.connect()
+                    try:
+                        projects._get(conn, project_id)          # raises on an unknown id
+                    finally:
+                        conn.close()
                 try:
                     import db
                     conn = db.connect()
                     try:
                         if not chat_id:
-                            chat_id = db.ask_start_chat(conn, text)
+                            chat_id = db.ask_start_chat(conn, text, project_id)
                         db.ask_add_message(conn, chat_id, "user", text)
                     finally:
                         conn.close()
@@ -2619,7 +3320,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 out = command_mod.run_command(
                     text, selection=selection, history=history,
                     model=_clean(payload.get("model"), 40) or command_mod.COMMAND_MODEL,
-                    effort=_clean(payload.get("effort"), 10) or None)
+                    effort=_clean(payload.get("effort"), 10) or None,
+                    project_id=project_id)
                 # Best-effort — a storage failure must never cost Bart the
                 # answer he just waited for.
                 try:
@@ -2680,6 +3382,8 @@ def _tailnet_addrs() -> list:
 
 
 if __name__ == "__main__":
+    import egress  # E258: outbound hosts allowlisted (log-only until enforced)
+    egress.install("serve")
     host = socket.gethostname()
     # Still bound to every interface: the guard is verify_request, so the
     # allowlist keeps working when Tailscale's address appears or disappears

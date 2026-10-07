@@ -49,6 +49,13 @@ signals span several accounts, say which account something is in when it
 helps. Return only the sentences."""
 
 
+try:
+    import untrusted  # E258: email text is data, never instructions
+except ImportError:  # pragma: no cover - package-relative fallback
+    from . import untrusted
+PROMPT = PROMPT + "\n\n" + untrusted.RULE
+
+
 def _board() -> dict:
     try:
         with open(BOARD_JSON, encoding="utf-8") as f:
@@ -147,7 +154,7 @@ def generate(conn, scope: str, accounts: list, env: dict | None = None,
             client = anthropic.Anthropic(api_key=require_env(env, "ANTHROPIC_API_KEY"))
         resp = client.messages.create(
             model=DEFAULT_MODEL, max_tokens=MAX_TOKENS, system=PROMPT,
-            messages=[{"role": "user", "content": json.dumps(signals)}])
+            messages=[{"role": "user", "content": untrusted.fence_json(signals, "day_signals")}])
         text = " ".join("".join(p.text for p in resp.content
                                 if getattr(p, "type", "") == "text").split())[:MAX_CHARS]
         if not text:

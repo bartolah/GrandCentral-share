@@ -287,3 +287,31 @@ class AgentsCannotReachHome(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecentTab(HomeCase):
+    """E268: the default Home tab is the newest mail the inbox shows as itself."""
+
+    def _thread(self, tid, subject, when, category="people"):
+        _seed_mail(self.conn, A, tid, subject)
+        self.conn.execute("UPDATE mail_threads SET last_date=?, category=? WHERE account=? AND thread_id=?",
+                          (when, category, A, tid))
+        self.conn.commit()
+
+    def test_recent_is_newest_people_mail_only_capped_at_five(self):
+        for n in range(7):
+            self._thread(f"18000000000000001{n:02d}", f"person {n}", f"2026-10-0{1 + n % 2}T1{n}:00:00Z")
+        self._thread("1800000000000000200", "newsletter", "2026-10-09T00:00:00Z", "newsletter")
+        self._thread("1800000000000000201", "receipt", "2026-10-09T00:00:00Z", "receipt")
+        rec = home_view.section(self.conn, A, TODAY)["recent"]
+        self.assertEqual(len(rec), 5)
+        subjects = [r["subject"] for r in rec]
+        self.assertNotIn("newsletter", subjects)
+        self.assertNotIn("receipt", subjects)
+        dates = [r["last_date"] for r in rec]
+        self.assertEqual(dates, sorted(dates, reverse=True))
+        for r in rec:
+            self.assertEqual(r["account"], A)
+
+    def test_recent_never_reads_another_account(self):
+        self.assertNotIn("School form in B", json.dumps(home_view.section(self.conn, A, TODAY)["recent"]))

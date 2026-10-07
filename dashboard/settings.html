@@ -60,6 +60,13 @@
     if (msg) { b.textContent = msg; b.classList.add('show'); } else b.classList.remove('show');
   }
 
+  // E258: this device's pairing code (set on the board) rides on every write;
+  // credential writes and approving agent Context need it server-side.
+  function gcAuth() {
+    try { const c = localStorage.getItem('gc2_dev_code'); return c ? { 'X-GC-Dev-Code': c } : {}; }
+    catch (e) { return {}; }
+  }
+
   // ---------- E51: Connections tab — sources & credentials ----------
   // The only screen that writes secrets (POST /connections -> config/.env,
   // atomic + chmod 600 + backup). Values are never shown back: each field is
@@ -77,7 +84,7 @@
     if (statusEl) { statusEl.textContent = 'working…'; statusEl.className = 'cfg-status'; }
     try {
       const res = await fetch('/connections', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...gcAuth() },
         body: JSON.stringify(body),
       });
       const out = await res.json();
@@ -218,6 +225,7 @@
         automations and reply suggestions as those get built — nothing acts on an entry yet. Scope
         examples: <b>global</b>, <b>account:personal</b>, <b>label:_VIPs</b>, <b>person:chris@example.com</b>.
         Older <b>project:</b> / <b>goal:</b> notes are kept as written.</div>
+      <div id="docs"><div class="empty">Loading documents…</div></div>
       <div class="cfg-group"><h3>Add context</h3>
         <div class="cfg-add">
           ${inp('scope', 'global', 'md', 'scope — global, account:X, label:X, person:X')}
@@ -239,11 +247,93 @@
             <span class="cfg-status"></span>
           </div>`).join('') + `</div>`).join('') +
       (CTX.length ? '' : '<div class="empty" style="padding:12px 22px">No context yet — add the first statement above.</div>');
+    renderDocs(document.getElementById('docs'));
+  }
+
+  // ---------- E259: context documents — a pasted or uploaded brief per
+  // account or project. Ask, project Ask and reply drafts read the ones in
+  // use. The file is read here in the browser; only its text is saved.
+  let DOCS = [], DOC_SCOPES = [];
+  async function renderDocs(host) {
+    try {
+      const [d, a, pj] = await Promise.all(['/context/docs', '/accounts', '/projects']
+        .map(u => fetch(u, { cache: 'no-store' }).then(r => r.json())));
+      DOCS = d.docs || [];
+      DOC_SCOPES = [...(a.accounts || []).map(x => ['account:' + x, 'Account · ' + x]),
+                    ...(pj.projects || []).map(x => ['project:' + x.id, 'Project · ' + x.name + (x.status === 'done' ? ' (done)' : '')])];
+    } catch (err) { host.innerHTML = `<div class="empty">Could not load documents — ${esc(err.message)}</div>`; return; }
+    const label = sc => (DOC_SCOPES.find(x => x[0] === sc) || [sc, sc])[1];
+    host.innerHTML = `<div class="cfg-group"><h3>Context documents</h3>
+      <div class="cfg-note" style="margin:0 0 8px">A longer brief for one account or one project: who you work with, the rules,
+        the voice. Paste it or load a Markdown/text file (up to 100k characters). Ask reads the documents of the account
+        you are looking at, a project's Ask reads the project's and its accounts', and reply drafts read the account's.
+        Agents (OpenClaw) never see them.</div>
+      <div class="cfg-add" id="doc-form">
+        <select class="cfg-in md" id="doc-scope">${DOC_SCOPES.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select>
+        <input class="cfg-in lg" id="doc-title" placeholder="Title — e.g. ConnectBlue context (Sep 30)">
+        <input type="file" id="doc-file" accept=".md,.markdown,.txt,text/markdown,text/plain" onchange="docFile(this)">
+      </div>
+      <textarea class="cfg-in" id="doc-body" rows="8" style="width:100%" placeholder="Paste the context here, or load a file above"></textarea>
+      <div class="cfg-add"><button class="btn" id="doc-save" onclick="docSave(this)">Add document</button>
+        <button class="btn" onclick="docReset()">Clear</button><span class="cfg-status" id="doc-st"></span></div>
+      ${DOCS.map(x => `<div class="cfg-row"><span class="idtag">${esc(label(x.scope))}</span>
+          <span class="conn-main"><b>${esc(x.title)}</b> <span class="conn-hint">${x.chars < 1000 ? x.chars + ' chars' : (x.chars / 1000).toFixed(1) + 'k chars'}${x.filename ? ' · ' + esc(x.filename) : ''}</span></span>
+          <button class="btn" onclick="docEdit(${x.id})">Edit</button>
+          <button class="btn${x.active ? '' : ' del-btn'}" onclick="docPost({action:'update',id:${x.id},fields:{active:${x.active ? 0 : 1}}})">${x.active ? 'In use ✓' : 'Off'}</button>
+          <button class="btn del-btn" onclick="docDel(${x.id}, this)">Delete</button></div>`).join('') ||
+        '<div class="empty">No documents yet.</div>'}
+    </div>`;
+  }
+  let DOC_EDIT = 0, DOC_FILE = null;
+  function docReset() { DOC_EDIT = 0; DOC_FILE = null; ['doc-title', 'doc-body'].forEach(i => { document.getElementById(i).value = ''; });
+    document.getElementById('doc-scope').disabled = false; document.getElementById('doc-save').textContent = 'Add document'; }
+  function docFile(inp) {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { document.getElementById('doc-body').value = String(rd.result || ''); DOC_FILE = f.name;
+      const t = document.getElementById('doc-title'); if (!t.value.trim()) t.value = f.name.replace(/\.(md|markdown|txt)$/i, '').replace(/[_-]+/g, ' '); };
+    rd.readAsText(f);
+  }
+  async function docEdit(id) {
+    try {
+      const d = (await fetch('/context/docs?id=' + id).then(r => r.json())).doc;
+      DOC_EDIT = id; DOC_FILE = d.filename;
+      document.getElementById('doc-scope').value = d.scope; document.getElementById('doc-scope').disabled = true;
+      document.getElementById('doc-title').value = d.title; document.getElementById('doc-body').value = d.body;
+      document.getElementById('doc-save').textContent = 'Save changes';
+      document.getElementById('doc-form').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) { banner('Could not open the document — ' + err.message); }
+  }
+  async function docPost(body) {
+    try {
+      const out = await fetch('/context/docs', { method: 'POST', headers: { 'Content-Type': 'application/json', ...gcAuth() },
+                                                 body: JSON.stringify(body) }).then(r => r.json());
+      if (!out.ok) throw new Error(out.error || 'rejected');
+      DOC_EDIT = 0; renderDocs(document.getElementById('docs'));
+      return out;
+    } catch (err) { banner('Context document — ' + err.message); throw err; }
+  }
+  async function docSave(btn) {
+    const title = document.getElementById('doc-title').value.trim(), body = document.getElementById('doc-body').value;
+    const st = document.getElementById('doc-st');
+    if (!body.trim()) { st.textContent = 'Paste or load some text first.'; return; }
+    if (body.length > 100000) { st.textContent = `${body.length} characters — 100k at most.`; return; }
+    btn.disabled = true;
+    try {
+      if (DOC_EDIT) await docPost({ action: 'update', id: DOC_EDIT, fields: { title, body } });
+      else await docPost({ action: 'add', scope: document.getElementById('doc-scope').value, title, body, filename: DOC_FILE || undefined });
+    } catch (err) { /* banner shown */ }
+    btn.disabled = false;
+  }
+  function docDel(id, btn) {
+    if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = 'Sure?';
+      setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Delete'; }, 3000); return; }
+    docPost({ action: 'delete', id }).catch(() => {});
   }
 
   async function ctxPost(body) {
     const res = await fetch('/context', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...gcAuth() },
       body: JSON.stringify(body),
     });
     const out = await res.json();
@@ -408,9 +498,170 @@
   function svcPost(body) { clsPost(body, null); }
   function clsJev(account, on, btn) { clsPost({ action: 'jev', account, on }, btn.nextElementSibling); }
 
+  // ---------- E258: Agents — what OpenClaw / Claude (the MCP) may touch ----------
+  // Every write here is human-only on the server: this browser must be paired
+  // (the Dev requests pairing code). Switches, approvals and the lockout reset
+  // are refused to agents and to unpaired callers.
+  async function agentPost(url, body) {
+    const res = await fetch(url, { method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...gcAuth() }, body: JSON.stringify(body) });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.pairing_required
+      ? 'this browser is not paired — enter the pairing code on the board (Dev requests) first'
+      : (out.error || 'failed'));
+    return out;
+  }
+  async function renderAgentsTab(p) {
+    p.innerHTML = '<div class="empty" style="padding:16px 22px">Loading…</div>';
+    let a;
+    try {
+      a = await (await fetch('/agent/accounts', { cache: 'no-store' })).json();
+      if (!a.ok) throw new Error(a.error || 'failed');
+    } catch (err) {
+      p.innerHTML = `<div class="empty" style="padding:16px 22px">Could not load — ${esc(err.message)}</div>`;
+      return;
+    }
+    const paired = !!gcAuth()['X-GC-Dev-Code'];
+    const when = t => esc(String(t || '').replace('T', ' ').replace('Z', ''));
+    p.innerHTML = `
+      <div class="cfg-note">Agents (OpenClaw, Claude through the MCP, the Claude desktop app) can read and act only in the accounts
+        switched on here, within rate limits, and never send, trash, RSVP or send invites. Threads you
+        label <b>Private</b> in Gmail do not exist in Grand Central at all. Every agent call is logged below.
+        ${paired ? '' : '<br><b>This browser is not paired</b> — changes here need the pairing code (board → Dev requests).'}</div>
+      ${a.lock ? `<div class="cfg-group"><h3>⛔ Agent locked out</h3><div class="cfg-row">
+        <span>${when(a.lock.at)} — ${esc(a.lock.reason)}. Review the calls below first.</span>
+        <button class="btn" onclick="agentReset(this)">Lift lockout</button><span class="cfg-status"></span></div></div>` : ''}
+      <div class="cfg-group"><h3>Accounts agents may use</h3>
+        ${a.key_set ? '' : '<div class="cfg-row"><span>No agent key yet — run <code>sweeper/agent_gate.py --new-key</code> on the Mini.</span></div>'}
+        ${a.accounts.map(r => `<div class="cfg-row"><span class="idtag">${esc(r.account)}</span>
+          <span>${r.enabled ? 'on' : 'off'}</span>
+          <button class="btn" onclick="agentAcct('${esc(r.account)}', ${!r.enabled}, this)">${r.enabled ? 'Switch off' : 'Switch on'}</button>
+          <span class="cfg-status"></span></div>`).join('')}
+      </div>
+      <div class="cfg-group" id="desktop-requests"><h3>✋ Claude desktop app is asking (${(a.pending_proposals || []).length})</h3>
+        <div class="cfg-note" style="padding:0 0 6px">Nothing here has happened. Approve runs exactly the request shown, once,
+          as an agent call checked again now. Requests expire after 24 hours.
+          ${a.desktop_key_set ? '' : '<br>No desktop key yet — run <code>sweeper/agent_gate.py --new-desktop-key</code> on the Mini.'}</div>
+        ${(a.pending_proposals || []).length ? a.pending_proposals.map(q => `<div class="cfg-row" style="align-items:flex-start">
+          <span class="idtag">#${q.id} ${esc(q.account)}</span>
+          <span><b>${esc(q.preview)}</b><br><span style="font-size:12px">${esc(q.tool)} · ${when(q.created_at)}</span>
+            <br><code style="font-size:11px;word-break:break-all">POST ${esc(q.path)} ${esc(JSON.stringify(q.body))}</code></span>
+          <button class="btn" onclick="agentDecide(${q.id}, 'approve', this)">Approve</button>
+          <button class="btn" onclick="agentDecide(${q.id}, 'decline', this)">Decline</button><span class="cfg-status"></span></div>`).join('')
+          : '<div class="empty" style="padding:8px 0">Nothing waiting.</div>'}
+      </div>
+      <div class="cfg-group"><h3>Context an agent wants to save (${a.pending_context.length})</h3>
+        ${a.pending_context.length ? a.pending_context.map(c => `<div class="cfg-row">
+          <span class="idtag">#${c.id} ${esc(c.kind)} · ${esc(c.scope)}</span><span>${esc(c.text)}</span>
+          <button class="btn" onclick="agentCtx(${c.id}, true, this)">Approve</button>
+          <button class="btn" onclick="agentCtx(${c.id}, false, this)">Delete</button><span class="cfg-status"></span></div>`).join('')
+          : '<div class="empty" style="padding:8px 0">Nothing waiting.</div>'}
+      </div>
+      <div class="cfg-group"><h3>Invite drafts (${(a.invites || []).length})</h3>
+        ${(a.invites || []).length ? a.invites.map(v => `<div class="cfg-row" style="align-items:flex-start">
+          <span class="idtag">${esc(v.account)}</span>
+          <span><b>${esc(v.summary || '')}</b> · ${when(v.start_at)}<br>Invite: ${esc(v.attendees.join(', '))}
+            ${v.new_attendees.length ? `<br><b style="color:var(--bad,#c33)">New to this account: ${esc(v.new_attendees.join(', '))}</b>` : ''}
+            <br><span style="font-size:12px">proposed by ${esc(v.created_by || '?')}${v.link ? ` · <a href="${esc(v.link)}" target="_blank" rel="noopener">open event</a>` : ''}</span></span>
+          <button class="btn" onclick="agentInvite(${v.id}, 'send', this)">Send invites</button>
+          <button class="btn" onclick="agentInvite(${v.id}, 'drop', this)">Drop</button><span class="cfg-status"></span></div>`).join('')
+          : '<div class="empty" style="padding:8px 0">Nothing waiting. An agent that schedules a meeting proposes attendees here; Google invites nobody until you click Send invites.</div>'}
+      </div>
+      <div class="cfg-group"><h3>Private threads (${(a.private || []).length})</h3>
+        <div class="cfg-row"><span>Threads labelled <b>Private</b> in Gmail are gone from Grand Central —
+          only their ids are kept, so later replies stay out too. To let one back in, remove the label in
+          Gmail first, then press Let back in.</span></div>
+        ${(a.private || []).map(r => `<div class="cfg-row"><span class="idtag">${esc(r.acct)}</span>
+          <span>${esc(r.tid)} · since ${when(r.marked_at)}</span>
+          <button class="btn" onclick="agentUnprivate('${esc(r.acct)}', '${esc(r.tid)}', this)">Let back in</button>
+          <span class="cfg-status"></span></div>`).join('')}
+      </div>
+      <div class="cfg-group"><h3>Recent agent calls</h3>
+        ${a.audit.length ? a.audit.map(r => `<div class="cfg-row" style="align-items:flex-start">
+          <span class="idtag">${when(r.ts)}</span>
+          <span><b>${esc(r.tool || r.route)}</b> ${esc(r.method)} ${esc(r.route)} · ${esc(r.principal)}
+            · ${esc((JSON.parse(r.accounts || '[]')).join(', ') || '—')} · ${r.status} · ${r.result_bytes || 0}B
+            ${r.signals ? ` · <b>⚠ ${r.signals} injection signal(s)</b>` : ''}
+            ${r.refusal ? `<br><span style="color:var(--bad,#c33)">refused: ${esc(r.refusal)}</span>` : ''}
+            <br><code style="font-size:11px;word-break:break-all">${esc(r.args || '')}</code></span></div>`).join('')
+          : '<div class="empty" style="padding:8px 0">No agent calls yet.</div>'}
+      </div>`;
+  }
+  async function agentAcct(account, enabled, btn) {
+    try { await agentPost('/agent/accounts', { account, enabled }); renderAgentsTab(document.getElementById('pane')); }
+    catch (e) { btn.nextElementSibling.textContent = e.message; btn.nextElementSibling.className = 'cfg-status err'; }
+  }
+  async function agentCtx(id, approve, btn) {
+    try {
+      await agentPost('/context', approve ? { action: 'update', id, fields: { active: 1 } } : { action: 'delete', id });
+      renderAgentsTab(document.getElementById('pane'));
+    } catch (e) { btn.parentElement.querySelector('.cfg-status').textContent = e.message; }
+  }
+  // E260: Bart's click on a desktop-app request (human-only on the server).
+  async function agentDecide(id, decision, btn) {
+    const st = btn.parentElement.querySelector('.cfg-status');
+    btn.parentElement.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    st.textContent = decision === 'approve' ? 'Running…' : '';
+    try {
+      await agentPost('/agent/proposals/decide', { id, decision });
+      renderAgentsTab(document.getElementById('pane'));
+    } catch (e) {
+      st.textContent = e.message; st.className = 'cfg-status err';
+      setTimeout(() => renderAgentsTab(document.getElementById('pane')), 4000);
+    }
+  }
+  async function agentUnprivate(account, thread_id, btn) {
+    if (!confirm('Let this thread back into Grand Central?\n\nIf it still has the Private label in Gmail, it will be removed again on the next sync.')) return;
+    try { await agentPost('/private', { account, thread_id }); renderAgentsTab(document.getElementById('pane')); }
+    catch (e) { btn.nextElementSibling.textContent = e.message; btn.nextElementSibling.className = 'cfg-status err'; }
+  }
+  async function agentInvite(id, action, btn) {
+    if (action === 'send' && !confirm('Send these invites now?\n\nGoogle will email every attendee the event title and description.')) return;
+    try { await agentPost('/calendar/invite', { id, action }); renderAgentsTab(document.getElementById('pane')); }
+    catch (e) { const st = btn.parentElement.querySelector('.cfg-status'); st.textContent = e.message; st.className = 'cfg-status err'; }
+  }
+  async function agentReset(btn) {
+    try { await agentPost('/agent/reset', {}); renderAgentsTab(document.getElementById('pane')); }
+    catch (e) { btn.nextElementSibling.textContent = e.message; btn.nextElementSibling.className = 'cfg-status err'; }
+  }
+
+  // ---------- E269: Tracking — opens and clicks on Grand Central sends ----------
+  // BUILD_SPEC §6, 2026-10-06. Bart: "make them configure-able for each email
+  // account". Each signal switches per account; nothing here touches mail.
+  const TRK_SIG = [['enabled', 'Track by default', 'On when anyone outside your companies is on the email. The 👁 in the composer overrides it either way.'],
+                   ['clicks', 'Link clicks', 'Links pass through t.<domain> so a click is seen.'],
+                   ['ping', 'Ping on first real open', 'iMessage / push the first time someone actually opens it.'],
+                   ['waiting', 'Feed Waiting on', '"Opened, no reply" after 3 days moves it up in follow-ups.']];
+  async function renderTrackingTab(p) {
+    let d;
+    try { d = await (await fetch('/tracking', { cache: 'no-store' })).json(); if (!d.ok) throw new Error(d.error || 'failed'); }
+    catch (err) { p.innerHTML = `<div class="empty" style="padding:16px 22px">Could not load — ${esc(err.message)}</div>`; return; }
+    const nice = a => a.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    p.innerHTML = `
+      <p class="cfg-note">Grand Central can tell you when an email you sent from it is opened, and which links were clicked. It adds an invisible image (and, if you choose, passes links) through <b>t.&lt;your domain&gt;</b>. The tracker stores a random code, the time and a rough source, never the recipient's address or anything in the email. Opens by Apple Mail's prefetch and security scanners are shown as automatic and never counted.</p>
+      ${d.secret_set ? '' : '<div class="cfg-group"><div class="cfg-note"><b>Not switched on yet.</b> Tracking starts once the tracker is deployed and its secret is saved in Connections → Tracking secret. Until then no email is changed.</div></div>'}
+      ${d.accounts.map(a => `<div class="cfg-group"><h3>${esc(nice(a.account))} <span class="conn-user">${a.domain ? 't.' + esc(a.domain) : 'no company domain'}</span>
+          ${a.domain ? (a.healthy ? '<span class="conn-pill on">live</span>' : '<span class="conn-pill off">not live</span>') : ''}</h3>
+        ${a.domain ? TRK_SIG.map(([k, label, note]) => `<div class="cfg-row"><label class="conn-main" style="display:flex;gap:8px;align-items:center">
+            <input type="checkbox" ${a[k] ? 'checked' : ''} ${k !== 'enabled' && !a.enabled ? 'disabled' : ''} onchange="trkSet('${esc(a.account)}','${k}',this.checked,this)"> ${label}
+            <span class="conn-user">${esc(note)}</span></label><span class="cfg-status"></span></div>`).join('')
+          : '<div class="cfg-note">A free-mail address (gmail.com) has no domain of its own to track from, so this account is never tracked.</div>'}
+      </div>`).join('')}`;
+  }
+  async function trkSet(account, key, on, el) {
+    const st = el.closest('.cfg-row').querySelector('.cfg-status');
+    try {
+      const res = await fetch('/tracking', { method: 'POST', headers: { 'Content-Type': 'application/json', ...gcAuth() }, body: JSON.stringify({ account, [key]: on }) });
+      const out = await res.json(); if (!out.ok) throw new Error(out.error || 'rejected');
+      if (key === 'enabled') renderTrackingTab(document.getElementById('pane'));
+      else { st.textContent = 'saved'; st.className = 'cfg-status'; setTimeout(() => { st.textContent = ''; }, 1500); }
+    } catch (err) { st.textContent = err.message; st.className = 'cfg-status err'; el.checked = !on; }
+  }
+
   // ---------- shell ----------
   const TABS = [['connections', 'Connections', renderConnectionsTab], ['context', 'Context', renderContextTab],
-                ['classification', 'Classification', renderClassificationTab]];
+                ['classification', 'Classification', renderClassificationTab], ['agents', 'Agents', renderAgentsTab],
+                ['tracking', 'Tracking', renderTrackingTab]];
   function show(id) {
     const tab = TABS.find(t => t[0] === id) || TABS[0];
     banner('');
@@ -423,8 +674,9 @@
   }
   // Inline onclick handlers in the tab markup need these on window.
   Object.assign(window, { connTestGmail, connAddGmail, connRemoveGmail, connTestSingle,
-                          connSaveSingle, connClearSingle, ctxAdd, ctxSave, ctxToggle, ctxDelete,
-                          clsAdd, clsDel, clsJev, clsAddPerson, clsMate, clsMove, clsAlso, clsLeave, svcPost });
+                          connSaveSingle, connClearSingle, docFile, docEdit, docPost, docSave, docDel, docReset, ctxAdd, ctxSave, ctxToggle, ctxDelete,
+                          clsAdd, clsDel, clsJev, clsAddPerson, clsMate, clsMove, clsAlso, clsLeave, svcPost,
+                          agentAcct, agentCtx, agentReset, agentUnprivate, agentInvite, agentDecide, trkSet });
   show(new URLSearchParams(location.search).get('tab'));
 })();
 </script>

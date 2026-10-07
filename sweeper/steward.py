@@ -92,8 +92,10 @@ def audit_senders(env: dict | None = None, log=print, dry_run: bool = False,
             blocks.append(f'- {c["email"]} (display "{c["who"]}", {c["n"]} thread(s))\n'
                           f'  subjects: {c["subjects"][:300]}\n'
                           f'  snippet: {c["snippet"][:160]}')
+        import untrusted  # E258: subjects and snippets are other people's text
         prompt = _PROMPT.format(rules=_corpus_rules(conn),
-                                senders="\n".join(blocks))
+                                senders=untrusted.wrap("\n".join(blocks), "senders")
+                                + "\n" + untrusted.RULE)
 
         import anthropic
         client = anthropic.Anthropic(api_key=require_env(env, "ANTHROPIC_API_KEY"))

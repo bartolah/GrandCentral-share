@@ -143,6 +143,27 @@ def read_meetings(env: dict, log=print, hours: int = LOOKBACK_HOURS) -> list:
     return out
 
 
+def get_note(env: dict, note_id: str) -> dict:
+    """One meeting's Granola notes — its AI summary (with the action items in
+    it), never the transcript. Projects step 5: project Ask reads these for
+    meetings filed in the project (BUILD_SPEC §6, 2026-09-30). Read-only."""
+    import requests
+    token = env.get("GRANOLA_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("GRANOLA_TOKEN not set in config/.env")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", str(note_id or "")):
+        raise ValueError("bad Granola note id")
+    r = requests.get(f"{API_URL}/{note_id}", headers={"Authorization": f"Bearer {token}"}, timeout=30)
+    if r.status_code == 404:
+        raise ValueError("Granola has no processed notes for that meeting yet")
+    r.raise_for_status()
+    doc = r.json()
+    notes = doc.get("summary_markdown") or doc.get("summary_text") or ""
+    return {"title": (doc.get("title") or "").strip(), "created": doc.get("created_at") or "",
+            "notes": notes[:12000], "action_items": extract_action_items(notes),
+            "link": doc.get("web_url") or ""}
+
+
 def _main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Granola meetings reader (read-only)")
     ap.add_argument("--hours", type=int, default=LOOKBACK_HOURS)

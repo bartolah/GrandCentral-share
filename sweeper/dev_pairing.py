@@ -40,7 +40,9 @@ try:
 except ImportError:  # run as a script / imported with sweeper/ on sys.path
     from common import DATA_DIR
 
-PAIRING_PATH = os.path.join(DATA_DIR, "dev_pairing.json")
+# GC_DEV_PAIRING_PATH: tests point this at a scratch file (E258 made the code
+# the human credential for send, so the scratch server needs one it controls).
+PAIRING_PATH = os.environ.get("GC_DEV_PAIRING_PATH") or os.path.join(DATA_DIR, "dev_pairing.json")
 
 
 def _normalize(code: str) -> str:

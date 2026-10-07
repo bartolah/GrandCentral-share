@@ -50,6 +50,48 @@ MAX_BODY_CHARS = 20000
 MAX_RECIPIENTS = 10
 
 
+def _tracking(account: str, env: dict, to: str, cc: str, bcc: str, body: str,
+              body_html: str | None, track: bool | None, log=print) -> dict | None:
+    """E269 (BUILD_SPEC §6, 2026-10-06): if this send is tracked, the HTML
+    part with its image and signed links, plus the token and a Message-ID to
+    find a new email's thread later. Any failure here means the email goes
+    out untracked — tracking never blocks or changes a send otherwise."""
+    try:
+        import tracking
+        from email.utils import make_msgid
+        conn = db.connect()
+        try:
+            d = tracking.decide(conn, account, env, to, cc, bcc, override=track)
+        finally:
+            conn.close()
+        if not d["on"]:
+            return None
+        token = tracking.new_token()
+        html, links = tracking.prepare(body_html, body, token, d["domain"],
+                                       env["TRACK_SECRET"].strip(), d["clicks"])
+        return {"token": token, "html": html, "links": links, "clicks": d["clicks"],
+                "message_id": make_msgid(domain=d["domain"])}
+    except Exception as e:
+        log(f"send_mail: tracking skipped ({e!r}) — sending untracked")
+        return None
+
+
+def _track_record(trk: dict | None, account: str, thread_id: str, send_id, subject: str,
+                  to: str, cc: str, log=print) -> None:
+    if not trk:
+        return
+    try:
+        import tracking
+        conn = db.connect()
+        try:
+            tracking.record(conn, trk["token"], account, thread_id, send_id, subject, to, cc,
+                            trk["links"], trk["message_id"], trk["clicks"])
+        finally:
+            conn.close()
+    except Exception as e:
+        log(f"send_mail: tracked send not recorded ({e!r})")
+
+
 def _parse_addrs(raw: str) -> list:
     """'Name <a@b>, c@d' -> [(name, addr), ...], validated."""
     out = []
@@ -94,12 +136,15 @@ def send_reply(thread_id: str, account: str, body: str, to: str,  # noqa: E501
                *, attachments: list | None = None,
                cc: str | None = None, subject: str | None = None,
                bcc: str | None = None, body_html: str | None = None,
+               track: bool | None = None,
                env: dict | None = None, log=print) -> dict:
     """Send one reply on `thread_id`. `to` is REQUIRED and authoritative —
     it must be the recipient list the human confirmed; nothing is derived
     silently except threading headers and a missing subject. Bcc counts
     toward the recipient cap; smtplib.send_message delivers to it but
     strips the header from the transmitted copy."""
+    import private
+    private.guard(account, thread_id)  # E258: a Private thread does not exist here
     body = (body or "").strip()
     if not body:
         raise ValueError("empty body")
@@ -139,6 +184,10 @@ def send_reply(thread_id: str, account: str, body: str, to: str,  # noqa: E501
     if headers["in_reply_to"]:
         msg["In-Reply-To"] = headers["in_reply_to"]
         msg["References"] = headers["references"]
+    trk = _tracking(account, env, msg["To"], msg.get("Cc", ""), msg.get("Bcc", ""), body, body_html, track, log)
+    if trk:
+        body_html = trk["html"]
+        msg["Message-ID"] = trk["message_id"]
     msg.set_content(body)
     # E65: Bart-authored rich text rides as the HTML alternative; the plain
     # part above stays authoritative (and is what the audit measures).
@@ -157,19 +206,21 @@ def send_reply(thread_id: str, account: str, body: str, to: str,  # noqa: E501
 
     conn = db.connect()
     try:
-        db.record_send(conn, thread_id=thread_id, account=account,
-                       to_addrs=to_log, cc_addrs=cc_log, bcc_addrs=bcc_log,
-                       subject=subject, body_chars=len(body))
+        send_id = db.record_send(conn, thread_id=thread_id, account=account,
+                                 to_addrs=to_log, cc_addrs=cc_log, bcc_addrs=bcc_log,
+                                 subject=subject, body_chars=len(body))
     finally:
         conn.close()
+    _track_record(trk, account, thread_id, send_id, subject, to_log, cc_log, log)
 
     log(f"send_mail: sent to {to_log} on {account} ({len(body)} chars)")
-    return {"to": to_log, "cc": cc_log, "subject": subject, "sent": True}
+    return {"to": to_log, "cc": cc_log, "subject": subject, "sent": True, "tracked": bool(trk)}
 
 
 def send_new(account: str, body: str, to: str, subject: str,
              cc: str | None = None, bcc: str | None = None,
              body_html: str | None = None, attachments: list | None = None,
+             track: bool | None = None,
              env: dict | None = None, log=print) -> dict:
     """Send one NEW email (no thread) — E53, Bart's explicit §6 widening
     2026-07-29. Identical guardrails to send_reply: explicit human-confirmed
@@ -209,6 +260,10 @@ def send_new(account: str, body: str, to: str, subject: str,
     if bcc_pairs:
         msg["Bcc"] = ", ".join(f"{n} <{a}>" if n else a for n, a in bcc_pairs)
     msg["Subject"] = subject
+    trk = _tracking(account, env, msg["To"], msg.get("Cc", ""), msg.get("Bcc", ""), body, body_html, track, log)
+    if trk:
+        body_html = trk["html"]
+        msg["Message-ID"] = trk["message_id"]
     msg.set_content(body)
     if body_html and body_html.strip():
         msg.add_alternative(body_html[:60000], subtype="html")
@@ -222,11 +277,12 @@ def send_new(account: str, body: str, to: str, subject: str,
 
     conn = db.connect()
     try:
-        db.record_send(conn, thread_id="", account=account,
-                       to_addrs=to_log, cc_addrs=cc_log, bcc_addrs=bcc_log,
-                       subject=subject, body_chars=len(body))
+        send_id = db.record_send(conn, thread_id="", account=account,
+                                 to_addrs=to_log, cc_addrs=cc_log, bcc_addrs=bcc_log,
+                                 subject=subject, body_chars=len(body))
     finally:
         conn.close()
+    _track_record(trk, account, "", send_id, subject, to_log, cc_log, log)
 
     log(f"send_mail: sent NEW '{subject}' to {to_log} on {account} ({len(body)} chars)")
-    return {"to": to_log, "cc": cc_log, "subject": subject, "sent": True}
+    return {"to": to_log, "cc": cc_log, "subject": subject, "sent": True, "tracked": bool(trk)}

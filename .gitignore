@@ -12,6 +12,8 @@ __pycache__/
 logs/*.log
 logs/*.png
 logs/*.json
+# E258: agent audit + egress logs carry full tool arguments (draft text)
+logs/*.jsonl
 # registry snapshots written by the sweeper on every registry edit — machine
 # output, and the account-first work retires the registry anyway
 config/backups/*.yaml
@@ -24,3 +26,6 @@ data/
 
 # macOS
 .DS_Store
+
+# wrangler local state (E269 tracker)
+integrations/tracker/.wrangler/

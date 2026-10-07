@@ -164,6 +164,58 @@ class Projects(unittest.TestCase):
         with self.assertRaises(ValueError):
             P.note_move(self.conn, nid, 999)
 
+    def _mail(self, acct, tid, frm, when, **kw):
+        row = {"subject": "Hi", "last_direction": "inbound", "in_inbox": 1, "category": "people"}
+        row.update(kw)
+        self.conn.execute("INSERT INTO mail_threads (thread_id, account, subject, last_from, last_from_email, "
+                          "last_date, in_inbox, category, last_direction) VALUES (?,?,?,?,?,?,?,?,?)",
+                          (tid, acct, row["subject"], frm, frm, when, row["in_inbox"], row["category"],
+                           row["last_direction"]))
+
+    def test_new_mail_from_a_project_person_is_suggested_until_filed_or_declined(self):
+        P.add_item(self.conn, self.pid, "contact", None, "maya@example.com")
+        added = self.conn.execute("SELECT added_at FROM project_items WHERE kind='contact'").fetchone()[0]
+        later = "9999-01-01T00:00:00Z"
+        self._mail(A, "700", "maya@example.com", later)
+        self._mail(B, "700", "maya@example.com", later)                      # same id, other account
+        self._mail(A, "701", "maya@example.com", later, last_direction="outbound")   # Bart wrote last
+        self._mail(A, "702", "maya@example.com", later, category="newsletter")
+        self._mail(A, "703", "maya@example.com", later, in_inbox=0)
+        self._mail(A, "704", "someone@else.com", later)
+        got = {(s["account"], s["thread_id"]) for s in P.suggestions(self.conn)}
+        self.assertEqual(got, {(A, "700"), (B, "700")})
+        self.assertEqual({s["thread_id"] for s in P.suggestions(self.conn, account=B)}, {"700"})
+        P.add_item(self.conn, self.pid, "thread", A, "700")                   # filed → gone
+        P.decline(self.conn, self.pid, B, "700")                              # not this one → gone
+        self.assertEqual(P.suggestions(self.conn), [])
+        self._mail(A, "705", "maya@example.com", later)
+        P.decline(self.conn, self.pid, person="maya@example.com")             # stop suggesting her
+        self.assertEqual(P.suggestions(self.conn), [])
+        self.assertTrue(added)
+
+    def test_a_new_person_s_last_30_days_are_suggested_once_on_the_project_page(self):
+        from datetime import datetime, timedelta, timezone
+        ago = lambda d: (datetime.now(timezone.utc) - timedelta(days=d)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self._mail(A, "710", "maya@example.com", ago(5))
+        self._mail(A, "711", "maya@example.com", ago(45))
+        P.add_item(self.conn, self.pid, "contact", None, "maya@example.com")
+        self.assertEqual(P.suggestions(self.conn), [])                         # rows: only new mail
+        page = P.project_view(self.conn, self.pid)["suggested"]
+        self.assertEqual([(s["thread_id"], s["new"]) for s in page], [("710", False)])
+
+    def test_a_thread_inside_one_of_the_project_s_todos_is_not_suggested(self):
+        P.add_item(self.conn, self.pid, "contact", None, "maya@example.com")
+        self._mail(A, "720", "maya@example.com", "9999-01-01T00:00:00Z")
+        db.link_thread(self.conn, self.todo_a, A, "720")
+        P.add_item(self.conn, self.pid, "todo", None, str(self.todo_a))
+        self.assertEqual(P.suggestions(self.conn), [])
+
+    def test_a_done_project_suggests_nothing(self):
+        P.add_item(self.conn, self.pid, "contact", None, "maya@example.com")
+        self._mail(A, "730", "maya@example.com", "9999-01-01T00:00:00Z")
+        P.complete(self.conn, self.pid)
+        self.assertEqual(P.suggestions(self.conn), [])
+
     def test_progress_counts_done_todos(self):
         P.add_item(self.conn, self.pid, "todo", None, str(self.todo_a))
         P.add_item(self.conn, self.pid, "todo", None, str(self.todo_b))

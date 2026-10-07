@@ -60,7 +60,7 @@
     list.prepend(row);
     const st = row.querySelector('.st');
     try {
-      const res = await fetch('/upload?name=' + encodeURIComponent(file.name), { method: 'POST', body: file });
+      const res = await fetch('/upload?name=' + encodeURIComponent(file.name), { method: 'POST', body: file, headers: (() => { try { const c = localStorage.getItem('gc2_dev_code'); return c ? { 'X-GC-Dev-Code': c } : {}; } catch (e) { return {}; } })() });
       const out = await res.json();
       if (!out.ok) throw new Error(out.error || 'rejected');
       st.textContent = 'saved ✓ ' + out.name;

@@ -233,6 +233,11 @@ def sync_account(account: str, env: dict, lookback_days: int,
     imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
     try:
         imap.login(user, password)
+        # E258: latch every thread labelled Private anywhere in the account
+        # before reading the inbox, then leave all latched threads out.
+        import private
+        private.scan_imap(imap, account, log=log)
+        priv = private.keys()
         typ, _ = imap.select("INBOX", readonly=True)
         if typ != "OK":
             raise RuntimeError("could not SELECT INBOX")
@@ -302,6 +307,17 @@ def sync_account(account: str, env: dict, lookback_days: int,
                 imap.select("INBOX", readonly=True)
             except Exception:
                 pass
+
+        for thrid in [k for k, t in threads.items()
+                      if (account, str(k)) in priv or private.has_label(t["labels"])]:
+            if private.has_label(threads[thrid]["labels"]):
+                import db
+                c = db.connect()
+                try:
+                    private.mark(c, account, thrid)
+                finally:
+                    c.close()
+            del threads[thrid]
 
         eff = lambda t: max(t["latest_dt"], t.get("outbound_dt") or t["latest_dt"])
         ordered = sorted(threads.items(), key=lambda kv: eff(kv[1]), reverse=True)
@@ -408,16 +424,33 @@ def send_due_outbox(conn, env: dict, log=print) -> int:
     rows = db.due_outbox(conn)
     if not rows:
         return 0
-    from send_mail import send_reply
+    from send_mail import send_new, send_reply
     sent = 0
     for row in rows:
         db.set_outbox_status(conn, row["id"], "sending")
         try:
-            send_reply(row["thread_id"], row["account"], row["body"],
-                       to=row["to_addrs"], cc=row["cc_addrs"] or None,
-                       subject=row["subject"] or None,
-                       bcc=row["bcc_addrs"] or None, env=env, log=log)
+            track = None if row.get("track") is None else bool(row["track"])
+            if row["thread_id"]:
+                send_reply(row["thread_id"], row["account"], row["body"],
+                           to=row["to_addrs"], cc=row["cc_addrs"] or None,
+                           subject=row["subject"] or None,
+                           bcc=row["bcc_addrs"] or None, body_html=row.get("body_html"),
+                           env=env, log=log, track=track)
+            else:
+                # 2026-10-06: a scheduled NEW email (a draft Bart scheduled)
+                send_new(row["account"], row["body"], row["to_addrs"], row["subject"] or "",
+                         cc=row["cc_addrs"] or None, bcc=row["bcc_addrs"] or None,
+                         body_html=row.get("body_html"), env=env, log=log, track=track)
             db.set_outbox_status(conn, row["id"], "sent")
+            if row.get("draft_uid"):
+                # the draft it came from is now sent — out of Gmail Drafts
+                # (Trash, recoverable), best-effort
+                try:
+                    import mail_actions
+                    mail_actions.trash_draft(row["account"], row["draft_uid"], row.get("draft_msgid") or "",
+                                             env=env, log=log)
+                except Exception as e:
+                    log(f"outbox: #{row['id']} sent, but its draft stayed in Drafts ({e!r})")
             sent += 1
             log(f"outbox: sent #{row['id']} to {row['to_addrs']} "
                 f"(scheduled {row['send_at']})")
@@ -603,6 +636,13 @@ def main(argv=None) -> int:
                     notify.run(conn, env, log=log)
                 except Exception as e:
                     log(f"notify pass FAILED: {e!r}")
+                try:
+                    # E269: opens and clicks from the tracker Worker (inert
+                    # until TRACK_SECRET is set and a t.<domain> answers)
+                    import tracking
+                    tracking.pull(conn, env, log=log)
+                except Exception as e:
+                    log(f"tracking pass FAILED: {e!r}")
             elapsed = time.monotonic() - started
             summary = (f"{datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S')} "
                        f"accounts={ok_accounts}/{len(accounts)} in {elapsed:.1f}s")
@@ -619,4 +659,6 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    import egress  # E258: outbound hosts allowlisted (log-only until enforced)
+    egress.install("mail_sync")
     raise SystemExit(main())

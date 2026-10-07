@@ -26,6 +26,30 @@ import urllib.request
 
 BASE_URL = os.environ.get("GC_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
 
+# E258: the board decides what an agent may do (sweeper/agent_gate.py). This
+# process identifies itself with the key in data/agent_key.json so the board
+# applies the agent policy, account switches, limits and audit to it. The
+# tables below stay as a second, local layer.
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+KEY_PATH = os.environ.get("GC_AGENT_KEY_PATH") or os.path.join(_ROOT, "data", "agent_key.json")
+
+# E260: the Claude desktop app runs this same client with its own key, which
+# the board holds to one account per read and proposals only.
+DESKTOP_KEY_PATH = (os.environ.get("GC_DESKTOP_KEY_PATH")
+                    or os.path.join(_ROOT, "data", "agent_key_desktop.json"))
+PROFILE = "agent"
+
+# gc_mcp points this at the stdio server so the board's audit names the tool.
+current_tool = lambda: None  # noqa: E731
+
+
+def _agent_key() -> str:
+    try:
+        with open(KEY_PATH) as f:
+            return str(json.load(f).get("key") or "")
+    except (OSError, ValueError):
+        return ""
+
 # Per-endpoint timeouts in seconds. Drafting calls a model (~10s observed);
 # a sweep is ~4 minutes but /sweep returns as soon as it has kicked the job.
 DEFAULT_TIMEOUT = 30.0
@@ -52,6 +76,7 @@ ALLOWED = {
     ("GET", "/mail/search"),
     ("GET", "/context"),
     ("GET", "/labels"),
+    ("GET", "/calendar"),       # E258: find free time for scheduling (read-only)
     ("POST", "/draft"),
     ("POST", "/draft/save"),
     ("POST", "/draft/compose"),
@@ -79,11 +104,22 @@ DENIED: dict[tuple[str, str], str] = {
     ("*", "/draft/discard"): "removing a draft is a Trash write — dashboard click only (E224).",
     ("*", "/outbox"): "scheduled sends are dashboard-only territory.",
     ("*", "/connections"): "credential writes are explicitly not an agent tool (E51).",
+    ("*", "/tracking"): "what gets tracked in Bart's outgoing mail is his switch (E269, §6 2026-10-06).",
     ("*", "/command"): (
         "that is the dashboard's own LLM command bar with write tools attached; "
         "calling it would nest an agent inside an agent."
     ),
     ("*", "/upload"): "writes files to disk; not an agent path.",
+    ("*", "/attachment"): "attachments never leave through an agent (§6 E258 egress).",
+    ("*", "/agent/accounts"): "which accounts agents may touch is Bart's switch (§6 E258).",
+    ("*", "/agent/reset"): "only Bart lifts an agent lockout (§6 E258).",
+    ("*", "/agent/proposals/decide"): "approving a desktop request is Bart's click (§6 E260).",
+    ("*", "/private"): "the Private label is Bart's alone (§6 E258).",
+    ("*", "/calendar/invite"): "invites go out on Bart's click only (§6 E258 invite drafts).",
+    ("*", "/context/docs"): (
+        "Bart's context documents can hold internal-only material (pricing, "
+        "clearances); they ground his own Ask and drafts, not agents (E259)."
+    ),
     ("*", "/home"): (
         "the cross-account Home is a view for Bart only; no agent tool gains a "
         "cross-account read (BUILD_SPEC §6, 2026-09-29)."
@@ -106,6 +142,19 @@ ACTION_ALLOW: dict[str, set[str]] = {
     "/mail/triage": {"pin", "unpin", "snooze", "unsnooze", "done", "undone",
                      "move", "unmove", "note", "my_day"},
 }
+
+
+def use_desktop_profile() -> None:
+    """E260: the Claude desktop app, with its own key. Since §6 2026-10-06
+    (Bart: "Desktop: everything direct") it makes the agent's writes itself —
+    drafts, todos, triage, mail actions, calendar — but not notes or sweeps.
+    The board enforces the same; this is the local layer."""
+    global KEY_PATH, ALLOWED, PROFILE
+    PROFILE = "desktop"
+    KEY_PATH = DESKTOP_KEY_PATH
+    ALLOWED = ({(m, p) for m, p in ALLOWED if m == "GET" and p != "/calendar"}
+               | {(m, p) for m, p in ALLOWED if m == "POST" and p not in ("/context", "/sweep")}
+               | {("GET", "/agent/proposals"), ("POST", "/agent/propose")})
 
 
 class GCError(Exception):
@@ -163,6 +212,17 @@ def request(method: str, path: str, params: dict | None = None,
 
     data = None
     headers = {"Accept": "application/json"}
+    key = _agent_key()
+    if not key:
+        flag = "--new-desktop-key" if PROFILE == "desktop" else "--new-key"
+        raise GCError(
+            f"No agent key at {KEY_PATH}. On the Mini run "
+            f"`.venv/bin/python sweeper/agent_gate.py {flag}`, then restart the MCP client."
+        )
+    headers["X-GC-Agent-Key"] = key
+    tool = current_tool()
+    if tool:
+        headers["X-GC-Tool"] = tool
     if body is not None:
         data = json.dumps(body).encode("utf-8")
         headers["Content-Type"] = "application/json"

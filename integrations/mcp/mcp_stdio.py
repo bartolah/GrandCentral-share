@@ -61,12 +61,18 @@ class Tool:
 
 
 class Server:
-    def __init__(self, name: str, version: str, log=None):
+    def __init__(self, name: str, version: str, log=None, instructions: str | None = None,
+                 audit=None):
         self.name = name
         self.version = version
         self.tools: dict[str, Tool] = {}
         self._log = log or (lambda *a, **k: None)
         self._initialized = False
+        # E258: the standing rule every client gets at initialize, and a hook
+        # that sees every tool call (name, args, result size, error).
+        self.instructions = instructions
+        self._audit = audit or (lambda *a, **k: None)
+        self.current_tool: str | None = None
 
     # -- registration -------------------------------------------------------
 
@@ -90,11 +96,14 @@ class Server:
             version = asked if asked in KNOWN_PROTOCOL_VERSIONS else PREFERRED_PROTOCOL_VERSION
             self._initialized = True
             self._log(f"initialize from {params.get('clientInfo', {})} -> protocol {version}")
-            return _result(msg_id, {
+            result = {
                 "protocolVersion": version,
                 "capabilities": {"tools": {"listChanged": False}},
                 "serverInfo": {"name": self.name, "version": self.version},
-            })
+            }
+            if self.instructions:
+                result["instructions"] = self.instructions
+            return _result(msg_id, result)
 
         if method in ("notifications/initialized", "initialized"):
             return None
@@ -111,22 +120,28 @@ class Server:
             tool = self.tools.get(name)
             if tool is None:
                 return _error(msg_id, INVALID_PARAMS, f"No such tool: {name}")
+            self.current_tool = name
             try:
-                out = tool.handler(**args)
-                return _result(msg_id, {"content": [_text(out)], "isError": False})
+                content = _text(tool.handler(**args))
+                self._audit(name, args, len(content["text"]), None)
+                return _result(msg_id, {"content": [content], "isError": False})
             except TypeError as exc:
                 # Bad/missing arguments from the model — a tool-level error so
                 # the agent can read it and correct itself, not a transport error.
+                self._audit(name, args, 0, f"bad arguments: {exc}")
                 return _result(msg_id, {
                     "content": [_text(f"Bad arguments for {name}: {exc}")],
                     "isError": True,
                 })
             except Exception as exc:
                 self._log(f"tool {name} failed: {exc}\n{traceback.format_exc()}")
+                self._audit(name, args, 0, f"{type(exc).__name__}: {exc}")
                 return _result(msg_id, {
                     "content": [_text(f"{type(exc).__name__}: {exc}")],
                     "isError": True,
                 })
+            finally:
+                self.current_tool = None
 
         if is_notification:
             return None

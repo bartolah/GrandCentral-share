@@ -305,10 +305,36 @@ Mockups: Grand Central Design canvas, artboards "Project page" and "Projects pag
 
 **Build order (proposed):** (1) tables + API: projects, project_items (kind, account, ref), project notes; (2) Projects page, project page and pins; (3) 📁 Add to project on emails and todos; (4) notes, events and contacts; (5) project-scoped Ask; (6) the People suggestion on new mail. Each item is keyed by (account, id), never by id alone.
 
+**Steps 5 and 6 — agreed with Bart 2026-09-30 (interview; BUILD_SPEC §6 entry of the same date).**
+
+| Question | Bart's answer |
+|---|---|
+| Where project Ask lives | A box at the top of the project page; it opens the ✨ panel fenced to the project, and those chats are kept with the project |
+| What it may do | Read and draft only: answers, summaries, reply drafts saved to Gmail Drafts for threads in the project. No archive/snooze/todo changes, no writing notes |
+| Meetings | It reads the Granola notes (summary + action items) of meetings filed in the project, fetched when needed — not transcripts |
+| Model | Whatever the ✨ panel is set to (Sonnet 5 by default), switchable |
+| What triggers "Add to <project>?" | A thread whose latest message is from someone on the project's People list (not a CC; not their whole company) |
+| Where it shows | All three: a "📁 <project>?" chip on the inbox row (✓ file / ✕ not this one), a banner in the open email, and a "Suggested" strip on the project page |
+| Mail already there when a person is added | Their threads from the last 30 days still in an inbox are suggested once, on the project page |
+| ✕ "Not this one" | Remembers that thread for that project only; the banner also offers "Stop suggesting <person> for <project>" |
+
+Build notes: suggestions are computed, not stored, from project contacts × mail_threads (latest message inbound from that address), minus threads already in the project and minus a small `project_declines` table (project_id, account, thread_id | person). Bulk mail never suggests. Project Ask runs `command.py` with a project scope: its context is the project view, `get_thread`/`search`/`draft_*` refuse anything not filed in the project, and every other tool is absent.
+
+**Steps 5 and 6 as built (E257, E256, 2026-09-30).** Step 6: `projects.suggestions()` is computed on read; ✕ writes `project_declines` (a thread, or a whole person for that project). Step 5: `sweeper/project_ask.py` holds the project prompt, context and four tools (`read_thread`, `meeting_notes`, `draft_preview`, `draft_save`). Each tool checks that its thread or meeting is filed in the project, so the fence doesn't depend on the prompt. `command.run_command(project_id=…)` swaps them in and drops the "currently open" selection. `ask_chats.project_id` keeps a project's chats with it; deleting a project turns them into ordinary chats. Granola notes are fetched on demand with `granola_reader.get_note()` (summary only).
+
 **Step 4 as built (E254, 2026-09-30).**
 - **Events.** The ICS feeds carry no stable event id, so an event is keyed by calendar_reader's own dedupe key, `date|time|title`. It's filed under the account its calendar maps to (`home_view.CAL_ACCOUNT`, sent with `/calendar`); a calendar with no account leaves the event without one. A rescheduled or renamed event therefore reads as a different event. Its Granola notes are matched from `elements` (same local day, matching title, within 3 hours), and only the link and title are shown.
 - **People** are shared across accounts. The project page suggests up to 8 people from the participants of the project's own emails, never Bart's addresses and never no-reply senders. A contact can't be added twice: `add_item` checks first, because the UNIQUE index treats NULL accounts as distinct.
 - **Notes.** A note sits in at most one project (`note_move`). The Notes page is outside the accounts, like Projects (`GET /notes`, `POST /projects` `note-move`). Neither route is in `gc_client.ALLOWED`.
+
+## E259: context documents, and an Ask that knows Projects and Notes (2026-09-30)
+
+Bart: "The Grand Central AI that's built in isn't aware of the changes that we've made to projects and notes … I would like to be able to upload additional context (like an MD file) or just paste in the context associated with any of my accounts or projects." And: reorganize the pending ConnectBlue todos under no more than 10 ConnectBlue projects.
+
+- **Context documents** (`context_docs`: scope `account:<slug>` or `project:<id>`, title, body up to 100k characters, filename, on/off). Unlike `context_notes` (one statement, 500 characters), these are whole briefs. Pasted, or a .md/.txt file read in the browser (only its text is stored). Added from the project page (＋ Context) and from Settings → Context. `GET/POST /context/docs`; the POST body cap is 640 KB for this route only.
+- **Who reads them.** The main Ask: the documents of the account on screen (the client sends `account`; not on ⌂ Home), plus a catalog of the rest and `read_context_doc`. Project Ask: the project's documents, then those of the accounts its items live in (60k characters). Reply drafts and reply options: the thread's account's documents (20k). Agents never: `/context/docs` is in `gc_client.DENIED` and outside the E258 agent gate's lists, because a brief can hold internal-only material. Writing one is human-only (`agent_gate.HUMAN_ONLY_POST`, a paired browser), since a document grounds every Ask and draft for its account. Deleting a project turns its documents into Notes marked with its name, like its notes.
+- **The main Ask and Projects/Notes.** Its snapshot lists the open projects; `query_projects` (list, or one project resolved through `project_ask.context`), `query_notes` (search, or one whole note) and `read_context_doc` are read-only. Filing, creating projects and writing notes stay board clicks (§6 2026-09-29/30); the prompt says so. No §6 entry: nothing it may do was widened, only what it can read, and it could already read every account's mail.
+- **ConnectBlue set-up** (`config/seeds/connectblue/`, `sweeper/project_seed.py`). A plan of 10 projects (Amendment, Causes Amplify, Northstar Labs, Capitol Influence, Grand Central, ConnectBlue Partner Platform, NewsBot, SalesDB, ConnectBlue Marketing, Sales & Proposals), each with a short brief, plus two account documents: the Sep 30 ConnectBlue context as given, and the older memory export with its internal rate card removed (the Sep 30 doc says pricing belongs in its own internal-only file) and em-dashes made plain dashes. Keywords sort the account's open todos that are in no project yet; a tie between two projects files into both, a tie of three or more is left out, and the two broad projects (Marketing, Sales) lose a tie to a specific one. Dry run by default, `--move ID="Project"` and `--skip ID` to correct a line, `--apply` to write. This is a one-off, reviewed filing on Bart's request, not a return of automatic classification. `config/seeds/` stays out of the shareable copy.
 
 ## E249: the ◫ Day Home and the ⌂ Home tab (2026-09-30)
 
@@ -342,3 +368,41 @@ Bart: "Let's make Jev smarter about email notifications from our own services an
 - **Jev and §6.** Any other service's people/other mail becomes `notification`, so it stops reaching Jev. Nothing is widened.
 - **Storage.** A nullable `mail_threads.service` column (the detected key, kept even when switched off so Settings can count it) and a `services` table (auto_name, Bart's name, merged_into, off). Bart's edits survive re-detection. `/mail` returns each thread's resolved `svc` plus a `services` map; a switched-off service keeps its old category at the next sync.
 - **Settings → Classification → Your services** lists each account's services with thread counts. Rename (blank restores the found name), Merge into, and Switch off go through `POST /classify` actions `service-rename`, `service-merge` and `service-off`. The route isn't in `gc_client.ALLOWED`, and none of these actions touches Gmail.
+
+
+## Open and click tracking (E269, agreed 2026-10-06)
+
+Bart: "What's involved in order to have Grand Central track when my emails are opened?" → "Let's do it. Yes, this is through our Google Workspace for sales and campaign emails." BUILD_SPEC §6 entry of the same date.
+
+| Question | Bart's answer |
+|---|---|
+| Where the image and links load from | Each account's own domain: `t.<account domain>` (keeps ConnectBlue and Capitol Influence separate) |
+| When tracking is on | On for work accounts when a recipient is outside the company groups; off for teammates and Personal; 👁 Track toggle per send |
+| What it does with the signal | All four: opens on the thread, link clicks, a ping on the first real open, and feeding Waiting on. **Each switchable per account** |
+| Campaigns | Composer mail only; bulk campaigns keep their sender's own stats |
+
+**Shape.**
+- `integrations/tracker/` holds a Cloudflare Worker (`worker.js`, `wrangler.toml`) with a D1 table of events. Routes:
+  - `GET /o/<token>.gif`: logs an open and returns a 1×1 GIF.
+  - `GET /c/<token>/<n>/<sig>?u=<url>`: logs a click, then 302s to `u` only if `sig` = HMAC(secret, token|n|u).
+  - `GET /events?after=<id>`: needs a bearer secret; Grand Central pulls with it.
+  - `GET /health`.
+
+  Stored per event: token, kind, link index, time, a source label (`proxy-google`, `apple-prefetch`, `scanner`, `client`) from user agent, ASN org and timing, and country. No IP, no content.
+- `sweeper/tracking.py`: per-account settings, the decision whether a given send is tracked, token minting, adding the image and rewriting links in the HTML part (plain text untouched), the event pull (run by mail_sync), stripping tracking from GC's own reading pane, and summaries.
+- Tables: `track_sends` (token, account, thread_id, mail_sends id, subject, recipients, opts), `track_events` (pulled), `track_settings` (account → on/clicks/ping/waiting).
+- **Real vs automatic opens:**
+  - automatic: Apple's prefetch, known security scanners (by ASN), and anything within 30 seconds of sending
+  - real: Gmail's image proxy (it fetches when the recipient opens) and ordinary mail clients
+
+  "Opened" counts only real opens. Automatic ones are shown greyed as "probably automatic".
+- **Limits, said plainly in the UI:**
+  - With several recipients, an open is the email's, not a person's.
+  - Gmail's proxy caches images, so repeat opens undercount.
+  - Opening your own Sent copy in Gmail can count; Grand Central's own pane never does.
+- **Deploy needs Bart:**
+  - `wrangler login` (or a Cloudflare API token)
+  - a DNS route `t.<domain>` per account domain
+  - the shared secret, stored in `config/.env` as `TRACK_SECRET` via Connections
+
+  Until `/health` answers on a domain, sends from that account aren't tracked.

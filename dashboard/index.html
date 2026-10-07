@@ -490,6 +490,13 @@
   .hday-f .st { white-space: nowrap; font-size: 11.5px; }
   .hday-f .st.owed { color: var(--red); } .hday-f .st.chase { color: var(--note-head); }
   .hday-none { padding: 6px 10px; color: var(--faint); font-size: 12.5px; }
+  .hday-tabs { display: flex; align-items: center; gap: 4px; padding: 10px 6px 4px; }
+  .hday-tabs button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 10px; border-radius: 999px; cursor: pointer; }
+  .hday-tabs button:hover { background: var(--hover); }
+  .hday-tabs button.on { background: var(--hover); color: var(--ink); }
+  .hday-tabs .n { font-size: 11px; color: var(--faint); font-weight: 600; margin-left: 2px; }
+  .hday-tabs .sp { flex: 1; }
+  .hday-tabs a { font-size: 12px; color: var(--blue); cursor: pointer; padding-right: 4px; }
   .hday-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .hday-tiles a { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px 16px; color: var(--ink); text-decoration: none; cursor: pointer; }
   .hday-tiles a:hover { border-color: var(--blue); }
@@ -1057,6 +1064,49 @@
   .pj-fold div { font-size: 12.5px; color: var(--muted); padding: 2px 8px; border-left: 2px solid var(--line); cursor: pointer; }
   .pj-fold div:hover { color: var(--ink); border-left-color: var(--blue); }
   .pj-fold span { color: var(--faint); }
+  .srch-accts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 2px 14px 8px; font-size: 12px; color: var(--muted); }
+  .srch-accts .chip { cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .srch-accts .chip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .pj-ask { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 14px 10px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  .pj-ask input { flex: 1 1 260px; border: 0; background: none; color: var(--ink); font-size: 13.5px; outline: none; min-width: 0; }
+  .pj-ask-past { font-size: 11.5px; color: var(--faint); }
+  .pj-ask-past a { cursor: pointer; color: var(--muted); }
+  .pj-ask-past a:hover { color: var(--blue); }
+  .ask-fence { margin: 0 14px 6px; padding: 6px 9px; border-radius: 8px; background: var(--chip-bg); font-size: 11.5px; color: var(--muted); }
+  .ask-fence a { cursor: pointer; color: var(--blue); margin-left: 4px; white-space: nowrap; }
+  #cw.drop-on, #composer.drop-on { outline: 2px dashed var(--blue); outline-offset: -4px; }
+  .ai-box { border: 1px solid var(--blue); border-radius: 10px; padding: 8px 10px; margin: 0 0 8px; background: var(--card); }
+  .ai-box .ai-top { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 4px; }
+  .ai-box .ai-top a { cursor: pointer; color: var(--faint); }
+  .ai-box textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--input-bg); color: var(--ink); font: inherit; resize: vertical; }
+  .ai-box .ai-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .ai-box .ai-row label { display: flex; align-items: center; gap: 5px; text-transform: none; letter-spacing: 0; margin: 0; }
+  .ai-box .sp { flex: 1; }
+  .ai-box .ai-text { white-space: pre-wrap; font-size: 13px; padding: 8px; border-radius: 8px; background: var(--chip-bg); max-height: 260px; overflow: auto; margin-top: 6px; }
+  .draft-all { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); margin: 0 8px; text-transform: none; letter-spacing: 0; }
+  .tier-chip { font-size: 11px; }
+  .tier-sug { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+  /* the avatar image is absolute: its circle must be the positioned box, or
+     it stretches over the whole page (it did, on Home, 2026-10-06) */
+  .tier-sug .lead { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 8px; color: #fff; font-weight: 700; font-size: 11px; flex: 0 0 auto; }
+  .tier-sug .ts-who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  .tier-sug .muted { color: var(--faint); font-size: 11.5px; }
+  .tier-sug-h { font-size: 11.5px; color: var(--muted); margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .04em; }
+  .tier-box:empty { display: none; }
+  .tier-box { padding: 4px 16px 10px; }
+  .cbar .cb.trk { opacity: .45; }
+  .cbar .cb.trk.on { opacity: 1; color: var(--blue); background: var(--chip-bg); border-radius: 6px; }
+  .trk-chip { font-size: 11px; color: var(--faint); white-space: nowrap; }
+  .trk-chip.on { color: var(--blue); }
+  .trk-chip.nudge { color: var(--amber, #c98a1c); font-weight: 600; }
+  .trk-banner { margin: 6px 0 8px; padding: 7px 10px; border-radius: 9px; background: var(--chip-bg); font-size: 12.5px; color: var(--ink); }
+  .trk-banner .muted { color: var(--faint); }
+  .pj-q { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 0 2px 0 6px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); white-space: nowrap; }
+  .pj-q button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 3px; font-size: 11px; }
+  .pj-q button:hover { color: var(--blue); }
+  .pj-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--chip-bg); font-size: 13px; }
+  .pj-banner .sp { flex: 1; }
   .pj-sug { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .pj-sug .chip { cursor: pointer; }
   .pj-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 4px 14px 12px; }
@@ -1278,6 +1328,19 @@
     background: var(--panel); text-decoration: none; max-width: 100%; }
   .att span { color: var(--faint); font-size: 10.5px; }
   .att:hover { border-color: var(--blue); color: var(--blue); }
+  .att > a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+  .att .att-dl { margin-left: 4px; padding-left: 6px; border-left: 1px solid var(--line); opacity: .7; }
+  .att .att-dl:hover { opacity: 1; color: var(--blue); }
+  #attv { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,.72); display: flex; flex-direction: column; padding: 18px; }
+  #attv .attv-bar { display: flex; align-items: center; gap: 8px; color: #fff; padding: 0 4px 10px; }
+  #attv .attv-bar .tool, #attv .attv-bar .btn { color: #fff; }
+  #attv .attv-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  #attv .attv-n span { font-weight: 400; opacity: .7; font-size: 12px; }
+  #attv .attv-body { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  #attv iframe { width: min(1100px, 100%); height: 100%; border: 0; border-radius: 8px; background: #fff; }
+  #attv img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; background: #fff; }
+  #attv .empty { color: #fff; }
+  @media (max-width: 700px) { #attv { padding: 8px; } }
   /* E76: dock day-nav + full-page month calendar */
   .cal-monsel { border: 1px solid var(--line); border-radius: 7px; font-size: 11px; padding: 2px 2px; color: var(--muted); max-width: 82px; background: var(--input-bg); }
   .dock h3 .cal-nav { padding: 2px 5px; font-size: 12px; }
@@ -1311,6 +1374,12 @@
   .ask-turn { margin: 10px 0; }
   .ask-turn.you { text-align: right; }
   .ask-turn.you .bub { background: var(--blue-soft); color: var(--ink); }
+  /* E265: a proposal from Ask. Nothing happens until Bart clicks it. */
+  .ask-card { margin: 6px 0 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; font-size: 12.5px; text-align: left; }
+  .ask-card .ac-acct { font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; }
+  .ask-card .ac-line { white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
+  .ask-card .ac-line.body { color: var(--muted); max-height: 160px; overflow: auto; }
+  .ask-card .ac-act { display: flex; gap: 6px; align-items: center; margin-top: 7px; font-size: 11.5px; color: var(--muted); }
   .ask-turn .bub { display: inline-block; text-align: left; background: var(--hover); border-radius: 12px; padding: 8px 12px; max-width: 92%; white-space: pre-wrap; overflow-wrap: break-word; }
   .ask-form { display: flex; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
   .ask-form textarea { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; resize: none; height: 60px; background: var(--input-bg); color: var(--ink); }
@@ -2384,6 +2453,8 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
       <button class="tbtn" id="nf-btn" title="Notifications — alerts land here (connection drops, credential problems, a stuck sweeper)">🔔<span id="nf-badge" hidden></span></button>
       <div class="me-menu" id="nf-menu" hidden style="min-width:290px;max-width:340px;max-height:60vh;overflow:auto"></div>
     </div>
+    <!-- E260: the Claude desktop app only asks; this shows there is something to approve. -->
+    <button class="tbtn" id="appr-btn" hidden onclick="location.href='/settings.html?tab=agents#desktop-requests'" title="The Claude desktop app is waiting for your approval">✋<span id="appr-n"></span></button>
     <button class="tbtn" id="fb-btn" onclick="fbDlg()" title="Flag something on this screen (⌘⇧F) — files it as a dev request with the element and the context">⚑</button>
     <div style="position:relative" id="skin-wrap">
       <button class="tbtn" id="skin-btn" onclick="skinMenu()" title="Skin — pick how Grand Central looks">◐</button>
@@ -2399,6 +2470,7 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
         <h5>Configure</h5>
         <a href="/settings.html?tab=context">📚 Context</a>
         <a href="/settings.html?tab=connections">🔌 Connections — accounts &amp; keys</a>
+        <a href="/settings.html?tab=agents">🤖 Agents — what Claude may touch</a>
         <hr>
         <!-- E206: on a phone the top bar carried seven controls and the search
              box was truncated to "Filter th". The skin picker moves in here,
@@ -2686,13 +2758,37 @@ async function post(url, body, headers, opts){
   const payload=JSON.stringify(body);
   // keepalive lets a held send finish if the tab closes (browsers cap it at 64 KB)
   const keepalive=!!(opts&&opts.keepalive)&&payload.length<60000;
-  try { r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json',...(headers||{})}, body: payload, keepalive }); }
+  // E258: a paired device's code rides on every write — the server, not this
+  // page, decides which actions need it (send, trash, RSVP, invites, …).
+  const paired=devCode(); const auth=paired?{'X-GC-Dev-Code':paired}:{};
+  try { r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json',...auth,...(headers||{})}, body: payload, keepalive }); }
   catch(e){ throw new Error('connection lost — NOT saved. Your text is still here; retry once the red bar clears'); }
   let out;
   try { out = await r.json(); }
   catch(e){ throw new Error('the server answered '+r.status+' instead of data — NOT saved; retry in a moment'); }
-  if (!out.ok) throw Object.assign(new Error(out.error || 'request failed'), {data: out});
+  if (!out.ok){
+    if(out.pairing_required && url!=='/dev') pairDlg();
+    throw Object.assign(new Error(out.error || 'request failed'), {data: out});
+  }
   return out;
+}
+/* E258: sending, trashing, RSVP and the other human-only actions need this
+   device's pairing code (the same one Dev requests use). */
+function pairDlg(){
+  dlg(`<h3>🔑 Pair this device</h3>
+    <div class="status" style="text-transform:none;letter-spacing:0">Sending, trashing, RSVP and invites only work from a paired device. Enter the pairing code once; nothing you typed is lost — try the action again after.</div>
+    <input id="pair-code" class="tp-notes" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX" style="min-height:0;width:100%;margin:12px 0">
+    <div class="foot"><button class="btn" onclick="pairSubmit()">Pair</button>
+      <button class="btn sec2" onclick="closeDlg()">Cancel</button></div>`);
+  setTimeout(()=>$('#pair-code')?.focus(),50);
+}
+async function pairSubmit(){
+  const code=($('#pair-code')?.value||'').trim(); if(!code) return;
+  try {
+    await post('/dev',{action:'check'},{'X-GC-Dev-Code':code});
+    try{ localStorage.setItem('gc2_dev_code',code); }catch(e){ toast('This browser won’t store the code — private window?'); return; }
+    closeDlg(); toast('Paired — try that again');
+  } catch(e){ toast(e.data?.pairing_required?'That code didn’t match':'Failed — '+e.message); }
 }
 
 /* ================= data ================= */
@@ -2727,9 +2823,60 @@ async function loadMailTodos(){
   SYNC = m.sync||SYNC||{};
   JEV_ON[account]=!!m.jev;
   SVC=m.services||{};
+  TIERS=m.tiers||{};
   noteNewMail();
   TODOS = (t.todos||[]).filter(x=>x.account===account&&x.state==='open');
   rebuild();
+  loadPjSug(account);
+  loadTrackSum(account);
+}
+/* Projects step 6 (Bart 2026-09-30): "Add to <project>?" when someone on a
+   project's People list writes. Only a suggestion — nothing is filed until
+   ✓, and filing only points at the thread; Gmail is never touched. */
+let PJ_SUG={};          // thread_id -> [{project_id,name,color,person}] for ACCT
+async function loadPjSug(account){
+  account=account||ACCT;
+  try { const r=await fetch('/projects/suggest?account='+encodeURIComponent(account),{cache:'no-store'}).then(r=>r.json());
+    if(!r.ok||account!==ACCT) return;
+    const m={}; (r.suggest||[]).forEach(x=>(m[x.thread_id]=m[x.thread_id]||[]).push(x));
+    const changed=JSON.stringify(m)!==JSON.stringify(PJ_SUG); PJ_SUG=m;
+    if(changed){ renderList(); pjSugBar(); }
+  } catch(e){}
+}
+const pjSugFor = i => i&&i.type==='mail'&&i.account===ACCT ? (PJ_SUG[i.raw.thread_id]||[]) : [];
+function pjSugChip(i){
+  return pjSugFor(i).slice(0,2).map(x=>`<span class="pj-q" title="${esc(x.person)} is on ${esc(x.name)} — add this thread to it?" onclick="event.stopPropagation()">
+    ${projDot(x.color,7)} ${esc(x.name.slice(0,22))}?<button onclick="event.stopPropagation();pjSugAdd(${x.project_id},'${esc(i.account)}','${esc(i.raw.thread_id)}')" title="Add to ${esc(x.name)}">✓</button><button onclick="event.stopPropagation();pjSugNo(${x.project_id},'${esc(i.account)}','${esc(i.raw.thread_id)}')" title="Not this one">✕</button></span>`).join('');
+}
+function pjSugBar(){
+  const bar=$('#pj-sug-bar'); if(!bar||!MSG_CTX) return;
+  const i=findItem(MSG_CTX.key), sg=pjSugFor(i);
+  const nameOf=x=>{ const n=nmOf(i.raw.last_from||''); return x.person_name||(n&&!n.includes('@')?n:x.person); };
+  bar.innerHTML=sg.map(x=>{ const who=nameOf(x);
+    return `<div class="pj-banner">${projDot(x.color,9)}<span><b>${esc(who)}</b> is on <b>${esc(x.name)}</b> — add this thread?</span><span class="sp"></span>
+      <button class="qbtn" onclick="pjSugAdd(${x.project_id},'${esc(i.account)}','${esc(i.raw.thread_id)}')">📁 Add</button>
+      <button class="qbtn" onclick="pjSugNo(${x.project_id},'${esc(i.account)}','${esc(i.raw.thread_id)}')">Not this one</button>
+      <button class="qbtn" title="Keep ${esc(x.person)} on the project, but stop asking about their mail" onclick="pjSugStop(${x.project_id},'${esc(x.person)}')">Stop suggesting ${esc(who.split(' ')[0])}</button></div>`; }).join('');
+}
+async function pjSugAfter(pid){
+  await loadPjSug(ACCT); renderList(); pjSugBar(); loadProjects();
+  if(PROJ_PAGE[pid]) loadProject(pid);
+}
+async function pjSugAdd(pid,account,tid){
+  try { await post('/projects',{action:'add',id:pid,kind:'thread',account,ref:tid});
+    toast(`Added to ${(projById(pid)||{}).name||'the project'} — it stays in your inbox`); pjSugAfter(pid); } catch(e){ toast(e.message); }
+}
+async function pjSugNo(pid,account,tid){
+  try { await post('/projects',{action:'decline',id:pid,account,thread_id:tid}); pjSugAfter(pid); } catch(e){ toast(e.message); }
+}
+async function pjSugStop(pid,person){
+  try { await post('/projects',{action:'decline',id:pid,person});
+    toast(`No more suggestions from ${person} for ${(projById(pid)||{}).name||'this project'}`); pjSugAfter(pid); } catch(e){ toast(e.message); }
+}
+async function pjSugAddAll(pid){
+  const p=PROJ_PAGE[pid]&&PROJ_PAGE[pid].data; const sg=(p&&p.suggested)||[];
+  let n=0; for(const x of sg){ try { await post('/projects',{action:'add',id:pid,kind:'thread',account:x.account,ref:x.thread_id}); n++; } catch(e){} }
+  toast(`Added ${n} email${n===1?'':'s'} to ${(p&&p.name)||'the project'}`); pjSugAfter(pid);
 }
 async function loadBoard(){
   BOARD = await fetch('/grand_central.json?t='+Date.now()).then(r=>r.json());
@@ -3020,9 +3167,11 @@ async function setScope(kind,id){
     try { const d=await fetch('/drafts?account='+encodeURIComponent(ACCT)).then(r=>r.json()); DRAFTS=(d.drafts||[]).filter(x=>x.account===ACCT); }
     catch(e){ DRAFTS=[]; toast('Could not load drafts — '+e.message); }
   }
-  if (kind==='sent' && !SENT){
+  // Dev #57 ("I don't see the email I just sent … in my Sent mail"): Sent
+  // was read once per session; a copy older than a minute is read again.
+  if (kind==='sent' && (!SENT || Date.now()-SENT_AT>60000)){
     $('#list').innerHTML='<div class="empty">Loading sent mail from Gmail…</div>';
-    try { const d=await fetch('/sent?account='+encodeURIComponent(ACCT)).then(r=>r.json()); SENT=(d.sent||[]).filter(x=>x.account===ACCT); SENT_NEXT=d.next_before||null; }
+    try { const d=await fetch('/sent?account='+encodeURIComponent(ACCT)).then(r=>r.json()); SENT=(d.sent||[]).filter(x=>x.account===ACCT); SENT_NEXT=d.next_before||null; SENT_AT=Date.now(); }
     catch(e){ SENT=[]; toast('Could not load sent — '+e.message); }
   }
   renderRail(); renderList(); renderBulk();
@@ -3121,6 +3270,11 @@ function qMatch(i,t){
       return v==='urgent'?p>=3:v==='high'?p>=2:v==='low'?p<=1:String(p)===v;
     }
     case 'needs': return (v==='reply'||v==='you')&&!!i.needs;
+    // Dev #59: waiting:me — the ball's in your court; waiting:them — you're chasing
+    case 'waiting': {
+      const w=i.cls?.waiting_on||'none';
+      return v==='me'||v==='you' ? w==='me' : v==='them'||v==='others' ? (w==='teammate'||w==='outside') : w===v;
+    }
     case 'has':
       if(v==='attachment'||v==='attachments') return !!i.attachments;
       if(v==='note') return !!i.note;
@@ -3185,6 +3339,7 @@ function groupItems(items){
     if(i.type==='todo') todos.push(i);
     else if(attached.has(i.key)) return;
     else if(i.starred) starred.push(i);          // E86: star outranks category
+    else if(tierOf(i)) flow.push(i);             // Dev #66: a VIP's mail is never bundled away
     else if(grpKey(i)){ const g=grpKey(i); (groups[g]=groups[g]||[]).push(i); }
     else flow.push(i);
   });
@@ -3211,10 +3366,12 @@ function groupItems(items){
     // first; the bundles (cold pitches, spam, updates, …) sit underneath.
     const pri=i=>i.cls?.priority??-1;
     const byP=(a,b)=>pri(b)-pri(a)||(b.cls?.value??-1)-(a.cls?.value??-1)||byD(a,b);
-    const sec={'Needs you':[],'Team':[],'Prospects':[],'Correspondence':[]};
+    const sec={'⭐ VIP':[],'🎯 Top prospects':[],'Needs you':[],'Team':[],'Prospects':[],'Correspondence':[]};
     flow.forEach(i=>{
-      const t=i.cls?.type;
-      if(isSales(i)) sec['Prospects'].push(i);        // E253: website RFPs are leads
+      const t=i.cls?.type, tier=tierOf(i);
+      if(tier==='vip') sec['⭐ VIP'].push(i);           // Dev #66: top of the inbox
+      else if(tier==='prospect') sec['🎯 Top prospects'].push(i);
+      else if(isSales(i)) sec['Prospects'].push(i);        // E253: website RFPs are leads
       else if(i.needs||pri(i)>=3) sec['Needs you'].push(i);
       else if(t==='Team collaboration') sec['Team'].push(i);
       else if(t==='Prospect'||t==='Sales/outreach') sec['Prospects'].push(i);
@@ -3225,10 +3382,18 @@ function groupItems(items){
     if(bundles.length) out.push(['Bundled',bundles]);
     return out;
   }
+  // Dev #66: in the classic Inbox too, VIP and Top-prospect mail that's unread
+  // or waiting on Bart sits above the time buckets
+  const live=i=>i.unread||i.raw.last_direction!=='outbound';
+  [['vip','⭐ VIP'],['prospect','🎯 Top prospects']].forEach(([t,n])=>{
+    const rows=entries.filter(e=>!e.row.grp&&tierOf(e.row)===t&&live(e.row)).map(e=>e.row);
+    if(rows.length) out.push([n,rows]);
+  });
+  const pinned=new Set(out.flatMap(([,rows])=>rows));
   const age=d=>{ const iso=String(d||'').slice(0,10);
     return iso>=dOff(-7)?'Last 7 days':iso>=dOff(-30)?'Earlier this month':'Older'; };
   const buckets=new Map();
-  entries.forEach(e=>{ const b=age(e.d); if(!buckets.has(b)) buckets.set(b,[]); buckets.get(b).push(e.row); });
+  entries.filter(e=>!pinned.has(e.row)).forEach(e=>{ const b=age(e.d); if(!buckets.has(b)) buckets.set(b,[]); buckets.get(b).push(e.row); });
   buckets.forEach((rows,name)=>{ rows._age=true; out.push([name,rows]); });
   return out;
 }
@@ -3265,6 +3430,20 @@ const jevLed = i => smartOn() && !!JEV_ON[i.account] && !!i.cls && ['jev','you']
    services bundles per service, named in Settings → Your services. Website
    RFPs are leads, so in Smart Inbox they sit with Prospects instead. */
 let SVC={};
+/* Dev #66 (Bart: "a new user type - VIP … folk who we need to respond to and
+   stay in touch with frequently. Also, Top Prospects."): tags Bart sets on
+   people, shared by every account. VIP mail goes to the top of the inbox;
+   Top Prospects get their own section next to it. */
+let TIERS={};
+const TIER_LABEL={vip:'⭐ VIP', prospect:'🎯 Top prospect'};
+function tierOf(i){
+  if(!i||i.type!=='mail') return null;
+  const ems=[(i.raw.last_from_email||'').toLowerCase(), ...(i.raw.participants||[]).map(emOf)];
+  if(ems.some(e=>TIERS[e]==='vip')) return 'vip';
+  if(ems.some(e=>TIERS[e]==='prospect')) return 'prospect';
+  return null;
+}
+const tierChip=i=>{ const t=tierOf(i); return t?`<span class="tier-chip ${t}" title="${TIER_LABEL[t]}">${t==='vip'?'⭐':'🎯'}</span>`:''; };
 const svcOf = i => i.type==='mail' && i.raw.svc ? SVC[i.raw.svc] : null;
 const isSales = i => svcOf(i)?.kind==='sales';
 function grpKind(g){
@@ -3436,10 +3615,16 @@ function renderList(){
     const chips=groups.filter(([n])=>!skip.has(n)).map(([n,rows])=>{
       const count=n==='Bundled'?rows.reduce((a,g)=>a+(g.rows?g.rows.length:1),0):rows.length;
       return `<button class="sm-a" onclick="smartJump(${esc(JSON.stringify(n))})">${esc(n)} <span class="n">${count}</span></button>`; }).join('');
-    if(chips) html = `<div class="sm-anchors">${chips}</div>` + html;
+    // Dev #59: "Waiting on me" filters to the threads where it's your move
+    const wm=items.filter(i=>i.cls?.waiting_on==='me').length;
+    const wq=/(^|\s)waiting:me\b/i.test(Q);
+    const wmBtn=wm||wq?`<button class="sm-a ${wq?'on':''}" title="Only threads where someone's waiting on your reply" onclick="smWaitMe()">⏳ Waiting on me <span class="n">${wm}</span></button>`:'';
+    if(chips||wmBtn) html = `<div class="sm-anchors">${chips}${wmBtn}</div>` + html;
   }
   if (SEARCH_ROWS){
-    html = `<div class="sec">Gmail search · ${SEARCH_ROWS.length} <span class="fold" onclick="SEARCH_ROWS=null;renderList()">✕ clear</span></div>` +
+    const others=acctIds().filter(a=>a!==ACCT);
+    html = `<div class="sec">Gmail search in ${esc(acctLabel(ACCT))} · ${SEARCH_ROWS.length} <span class="fold" onclick="SEARCH_ROWS=null;renderList()">✕ clear</span></div>`
+      + (others.length?`<div class="srch-accts"><span>Search instead in</span>${others.map(a=>`<button class="chip" onclick="searchIn('${esc(a)}')"><i style="background:${acctColor(a)}"></i>${esc(acctLabel(a))}</button>`).join('')}</div>`:'') +
       SEARCH_ROWS.map(rowHtml).join('') + html;
     SEARCH_ROWS.forEach(r=>VISIBLE.unshift(r));
   }
@@ -3637,6 +3822,7 @@ function homeGo(id,tab){ setScope('project',id); TAB=tab; syncTabs(); renderList
 function homeOpen(pid,key){ setScope('project',pid); TAB='all'; syncTabs(); renderList(); openItem(key); }
 function homeAsk(q){
   if(!q.trim()) return;
+  if(ASK_PROJ){ ASK_PROJ=null; ASK_LOG=[]; ASK_CHAT=null; }   // Home's Ask is never fenced to a project
   if(DOCK!=='ask'){ DOCK='ask';
     document.querySelectorAll('.dk').forEach(x=>x.classList.toggle('on',x.dataset.dock==='ask'));
     $('#dock').classList.add('open'); renderAsk(); }
@@ -4098,6 +4284,8 @@ async function projDelete(id){
     delete PROJ_PAGE[id]; await loadProjects(); if(PROJ&&PROJ.view==='page'&&PROJ.id===id) showProjects(); } catch(e){}
 }
 function projMore(ev,id){
+  // Dev #65: stop the click here, or the document's close-anywhere handler shuts the menu as it opens
+  ev.stopPropagation();
   const p=projById(id)||(PROJ_PAGE[id]&&PROJ_PAGE[id].data); if(!p) return;
   const r=ev.currentTarget.getBoundingClientRect();
   ctxOpen(Math.max(8,r.right-250),r.bottom+4,[
@@ -4107,6 +4295,7 @@ function projMore(ev,id){
     '<hr>', _mi('🗑 Delete project — keeps its content',`projDeleteDlg(${id})`,'warn')].join(''));
 }
 function projAddMenu(ev,id){
+  ev.stopPropagation(); // Dev #65, as projMore
   const r=ev.currentTarget.getBoundingClientRect();
   ctxOpen(Math.max(8,r.right-260),r.bottom+4,[
     _mi('◯ New todo in this project…',`projNewTodoDlg(${id})`),
@@ -4131,6 +4320,48 @@ async function projNewTodo(id){
     await post('/projects',{action:'add',id,kind:'todo',ref:String(out.id)});
     closeDlg(); toast('Todo added in '+acctLabel(account)); projRefresh(id); if(account===ACCT) loadMailTodos();
   } catch(e){ $('#pj-st').textContent=e.message; }
+}
+/* E259: a context document — Bart's standing brief for an account or a
+   project, pasted or loaded from a Markdown/text file (read in the browser;
+   nothing is uploaded as a file). Ask, project Ask and reply drafts read it. */
+async function ctxDocDlg(scope, docId, after){
+  let d=null;
+  if(docId){ try { d=(await fetch('/context/docs?id='+docId).then(r=>r.json())).doc; } catch(e){ toast(e.message); return; } }
+  window._ctxAfter=after||null;
+  dlg(`<h3>${d?'Context document':'Add context'}</h3>
+    <label>Title</label><input type="text" id="cx-t" value="${esc(d&&d.title||'')}" placeholder="e.g. Partner rules and voice">
+    <label>Paste it, or load a file <span class="status" style="text-transform:none;letter-spacing:0">(.md or .txt, up to 100k characters)</span></label>
+    <input type="file" id="cx-f" accept=".md,.markdown,.txt,text/markdown,text/plain" onchange="ctxDocFile(this)">
+    <textarea id="cx-b" rows="14" placeholder="Who we work with, what may and may not be said, the voice…">${esc(d&&d.body||'')}</textarea>
+    ${d?`<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="cx-on" ${d.active?'checked':''}> In use (off keeps it here without Ask reading it)</label>`:''}
+    <div class="foot"><button class="btn" onclick="ctxDocSave('${esc(scope)}',${docId||0})">Save</button>
+      ${d?`<button class="btn sec2 warn" onclick="ctxDocDel(${d.id})">Delete</button>`:''}
+      <button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="cx-st"></span></div>`);
+  window._ctxFile=d&&d.filename||null;
+  setTimeout(()=>$(d?'#cx-b':'#cx-t')?.focus(),30);
+}
+function ctxDocFile(inp){
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  if(f.size>400000){ $('#cx-st').textContent='That file is too large — 100k characters at most.'; return; }
+  const rd=new FileReader();
+  rd.onload=()=>{ $('#cx-b').value=String(rd.result||''); window._ctxFile=f.name;
+    if(!$('#cx-t').value.trim()) $('#cx-t').value=f.name.replace(/\.(md|markdown|txt)$/i,'').replace(/[_-]+/g,' '); };
+  rd.readAsText(f);
+}
+async function ctxDocSave(scope, docId){
+  const title=$('#cx-t').value.trim(), body=$('#cx-b').value;
+  if(!body.trim()){ $('#cx-st').textContent='Paste or load some text first.'; return; }
+  if(body.length>100000){ $('#cx-st').textContent='That is '+body.length+' characters — 100k at most.'; return; }
+  try {
+    if(docId) await post('/context/docs',{action:'update',id:docId,fields:{title,body,active:$('#cx-on')?$('#cx-on').checked:true}});
+    else await post('/context/docs',{action:'add',scope,title,body,filename:window._ctxFile||undefined});
+    closeDlg(); toast('Context saved'); if(window._ctxAfter) window._ctxAfter();
+  } catch(e){ $('#cx-st').textContent=e.message; }
+}
+async function ctxDocDel(id){
+  if(!confirm('Delete this context document? Ask and drafts stop reading it.')) return;
+  try { await post('/context/docs',{action:'delete',id}); closeDlg(); toast('Context deleted'); if(window._ctxAfter) window._ctxAfter(); }
+  catch(e){ $('#cx-st').textContent=e.message; }
 }
 function projNoteDlg(id, noteId){
   const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data; const n=noteId&&p?(p.notes||[]).find(x=>x.id===noteId):null;
@@ -4307,6 +4538,16 @@ function renderProjectPage(){
         ${mails.length?`<div class="pj-fold">${mails.slice(0,6).map(mt=>`<div onclick="event.stopPropagation();projOpenMail('${esc(mt.account)}','${esc(mt.thread_id)}')">✉ ${esc(mt.subject||'(archived — open to load)')}<span> · ${esc(String(mt.last_from||'').split('<')[0].trim().replace(/"/g,''))}${mt.last_date?' · '+esc(fmtDate(mt.last_date)):''}</span></div>`).join('')}${mails.length>6?`<div>+${mails.length-6} more — open the todo</div>`:''}</div>`:''}</div></div>`; };
   const sec=(name,rows,body)=>rows?`<div class="ib-head" data-sec="${esc(name)}"><span class="t">${esc(name)}</span><span class="ib-count">${rows}</span><span class="sp"></span></div><div class="ib-card">${body}</div>`:'';
   const notes=p.notes||[];
+  // step 6: mail from the project's people, waiting for a ✓ or ✕
+  const sug=p.suggested||[];
+  const sugRow=x=>{ const n=nmOf(x.last_from||''), who=x.person_name||(n&&!n.includes('@')?n:x.person);
+    return `<div class="row ${x.unread?'':'read'} pj-item" onclick="projOpenMail('${esc(x.account)}','${esc(x.thread_id)}')">
+      <span class="lead" style="background:${avColor(who)}">${initials(who)}${avImg(x.person)}</span>
+      <div class="body"><div class="l1"><span class="who">${esc(who)}</span><span class="meta"><span class="when">${fmtDate(x.last_date)}</span></span></div>
+        <div class="l2"><span class="subj">${esc(x.subject||'(no subject)')}</span></div>
+        <div class="l3"><span class="prev">${x.new?'New since they joined the project':'From before they joined — suggested once'}</span>${acctChip(x.account)}
+          <button class="qbtn" onclick="event.stopPropagation();pjSugAdd(${id},'${esc(x.account)}','${esc(x.thread_id)}')">📁 Add</button>
+          <button class="tool pj-x" title="Not this one" onclick="event.stopPropagation();pjSugNo(${id},'${esc(x.account)}','${esc(x.thread_id)}')">${ic('x')}</button></div></div></div>`; };
   // meetings: what's coming first (soonest on top), then what's past (latest first)
   const evKey=it=>(it.date||'')+' '+(it.time==='all-day'?'00:00':it.time||'');
   const nowK=today+' '+new Date().toTimeString().slice(0,5);
@@ -4317,7 +4558,7 @@ function renderProjectPage(){
       <span class="lead" style="background:#6a9bcc">📅</span>
       <div class="body"><div class="l1"><span class="who">${esc(it.title||'')}</span><span class="meta"><span class="when">${it.date?esc(fmtDate(it.date)):''}${it.time&&it.time!=='all-day'?' · '+esc(it.time):it.time?' · all day':''}</span></span></div>
         <div class="l3"><span class="prev">${it.granola?`<a href="${esc(it.granola.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🎙 Granola notes</a>`:past?'No Granola notes found':'Upcoming'}</span>${it.account?acctChip(it.account):''}${x(it)}</div></div></div>`; };
-  const anchors=[['Needs you',needs.length],['Todos',rest.length+doneT.length],['Emails',otherMail.length],['Notes',notes.length],['Meetings',events.length],['People',people.length]];
+  const anchors=[...(sug.length?[['Suggested',sug.length]]:[]),['Needs you',needs.length],['Todos',rest.length+doneT.length],['Emails',otherMail.length],['Context',(p.context_docs||[]).length],['Notes',notes.length],['Meetings',events.length],['People',people.length]];
   const c=p.counts||{}, pct=projProgress(p);
   $('#list').innerHTML=`<div class="pj-page">
     <div class="pj-head">
@@ -4334,10 +4575,18 @@ function renderProjectPage(){
       ${p.description?`<div class="pj-desc">${esc(p.description)}</div>`:''}
       ${c.todos_total?`<span class="pj-bar big"><b style="width:${pct}%"></b></span>`:''}
     </div>
+    <div class="pj-ask"><span>✨</span><input id="pj-ask-in" placeholder="Ask about ${esc(p.name)} — what’s open, a summary, a draft reply… ⏎"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();projAsk(${id})}">
+      ${(p.chats||[]).length?`<span class="pj-ask-past">${p.chats.map(c=>`<a onclick="askOpen(${c.id})" title="${esc(c.title)}">${esc(c.title.slice(0,28))}</a>`).join(' · ')}</span>`:''}</div>
     <div class="sm-anchors">${anchors.map(([n,k])=>`<button class="sm-a" ${k?'':'disabled'} onclick="smartJump(${esc(JSON.stringify(n))})">${n} <span class="n">${k}</span></button>`).join('')}</div>
+    ${sug.length?`<div class="ib-head" data-sec="Suggested"><span class="t">Suggested</span><span class="ib-count">${sug.length}</span><span class="sp"></span><button class="qbtn" onclick="pjSugAddAll(${id})">📁 Add all</button></div>
+      <div class="ib-card">${sug.map(sugRow).join('')}</div>`:''}
     ${sec('Needs you',needs.length,needs.map(it=>it.kind==='todo'?todoRow(it):mailRow(it)).join(''))}
     ${sec('Todos',rest.length+doneT.length,[...rest,...doneT].map(todoRow).join(''))}
     ${sec('Emails',otherMail.length,otherMail.map(mailRow).join(''))}
+    <div class="ib-head" data-sec="Context"><span class="t">Context</span><span class="ib-count">${(p.context_docs||[]).length}</span><span class="sp"></span><button class="qbtn" onclick="ctxDocDlg('project:${id}',0,()=>projRefresh(${id}))" title="Paste or upload a brief (Markdown or text) that Ask and drafts read for this project">＋ Context</button></div>
+    ${(p.context_docs||[]).length?`<div class="pj-notes">${p.context_docs.map(d=>`<div class="pj-note ${d.active?'':'read'}" onclick="ctxDocDlg('project:${id}',${d.id},()=>projRefresh(${id}))"><b>📄 ${esc(d.title)}</b><div>${esc(d.filename||'Pasted')} · ${(d.chars||0)<1000?(d.chars||0)+' characters':((d.chars/1000).toFixed(1)+'k characters')}${d.active?'':' · off'}</div><span class="status" style="text-transform:none;letter-spacing:0">${esc(fmtDate(d.updated_at))}</span></div>`).join('')}</div>`
+      :`<div class="ib-empty" style="padding:10px 14px">No context yet. ＋ Context to paste or upload a brief (who the partners are, the rules, the voice) — Ask and reply drafts read it.</div>`}
     <div class="ib-head" data-sec="Notes"><span class="t">Notes</span><span class="ib-count">${notes.length}</span><span class="sp"></span><button class="qbtn" onclick="projNoteDlg(${id})">＋ Note</button></div>
     ${notes.length?`<div class="pj-notes">${notes.map(n=>`<div class="pj-note" onclick="projNoteDlg(${id},${n.id})"><b>${esc(n.title||'Untitled')}</b><div>${esc(n.body.slice(0,220))}</div><span class="status" style="text-transform:none;letter-spacing:0">${esc(fmtDate(n.updated_at))}</span></div>`).join('')}</div>`
       :`<div class="ib-empty" style="padding:10px 14px">No notes yet.</div>`}
@@ -4416,8 +4665,31 @@ function hdayFollowRow(r){
     <span class="s">${esc(r.subject)}</span>
     <span class="st ${r.kind==='owed'?'owed':'chase'}">${esc(r.state)}</span>${hdayVal(r.value)}</div>`;
 }
+/* E268 (Bart: "two tabs for each Account, the default should just be the
+   most recent 'real' emails (non bundled), the second tab should be 'Needs
+   You'"): Recent is the newest mail the inbox shows as itself; Needs You is
+   the two lists Home had before. The pick is remembered per account. */
+let HOME_TAB=null;
+function homeTab(a){
+  if(!HOME_TAB){ try{ HOME_TAB=JSON.parse(localStorage.getItem('gc2_home_tab')||'{}')||{}; }catch(e){ HOME_TAB={}; } }
+  return HOME_TAB[a]==='needs'?'needs':'recent';
+}
+function homeSetTab(a,t){
+  homeTab(a); HOME_TAB[a]=t;
+  try{ localStorage.setItem('gc2_home_tab',JSON.stringify(HOME_TAB)); }catch(e){}
+  renderList();   // as homeToggleAcct
+}
 function hdayMailBlock(s){
-  return `<div class="hday-sub"><span>Top emails</span><a onclick="hdayGo('${esc(s.account)}','inbox')">Inbox</a></div>
+  const a=esc(s.account), t=homeTab(s.account), nNeed=s.top.length+s.follows.length;
+  const tabs=`<div class="hday-tabs" role="tablist">
+      <button role="tab" aria-selected="${t==='recent'}" class="${t==='recent'?'on':''}" onclick="homeSetTab('${a}','recent')">Recent</button>
+      <button role="tab" aria-selected="${t==='needs'}" class="${t==='needs'?'on':''}" onclick="homeSetTab('${a}','needs')">Needs You${nNeed?` <span class="n">${nNeed}</span>`:''}</button>
+      <span class="sp"></span><a onclick="hdayGo('${a}','inbox')">Inbox</a></div>`;
+  if(t==='recent'){
+    const rec=s.recent||[];
+    return tabs+(rec.length?rec.map(hdayMailRow).join(''):'<div class="hday-none">No new mail from people.</div>');
+  }
+  return tabs+`<div class="hday-sub"><span>Top emails</span></div>
     ${s.top.length?s.top.map(hdayMailRow).join(''):'<div class="hday-none">Nothing high-scoring waiting.</div>'}
     <div class="hday-sub"><span>Reply or follow up</span></div>
     ${s.follows.length?s.follows.map(hdayFollowRow).join(''):'<div class="hday-none">Nothing waiting on you here.</div>'}`;
@@ -4546,7 +4818,7 @@ function renderHomeAll(){
       ${isOpen?`<div class="hday-body">${hdayMailBlock(s)}</div>`:''}</section>`; };
   $('#list').innerHTML=`<div class="hday">${hdayHead(evs, null, '')}
     <div class="hday-grid"><div class="hday-left">
-      ${hdayNote('', 'The day')}${hdayAsk()}
+      ${hdayNote('', 'The day')}${hdayAsk()}${tierHomeCard()}
       <div class="hday-h">Your accounts</div>
       ${secs.map(card).join('')||'<div class="empty">No accounts yet.</div>'}
     </div>${hdayRight(secs, evs, null)}</div></div>`;
@@ -4563,7 +4835,7 @@ function renderHomeDay(){
   const mtg=evs.filter(e=>e.account===a).length;
   $('#list').innerHTML=`<div class="hday">${hdayHead(evs, a, toggle)}
     <div class="hday-grid"><div class="hday-left">
-      ${hdayNote(a, 'The day in '+acctLabel(a))}${hdayAsk()}
+      ${hdayNote(a, 'The day in '+acctLabel(a))}${hdayAsk()}${tierHomeCard()}
       <div class="hday-tiles">
         <a onclick="hdayGo('${esc(a)}','inbox')"><b>${s.counts.emails}</b><span>emails in the inbox</span></a>
         <a onclick="openCalPage()"><b>${mtg}</b><span>${mtg===1?'meeting':'meetings'} today</span></a>
@@ -4599,6 +4871,16 @@ function renderFresh(){
     +(SYNC.ok_accounts!=null?` · ${SYNC.ok_accounts}/${SYNC.accounts} accounts`:'')+' — ':'')+'click to check every account now';
 }
 setInterval(renderFresh,15000);
+// E260: requests from the Claude desktop app waiting for Bart. Count only;
+// the request itself is read and approved in Settings → Agents.
+async function loadApprovals(){
+  try{
+    const d=await (await fetch('/agent/proposals?status=pending',{cache:'no-store'})).json();
+    const n=(d&&d.ok&&d.proposals)?d.proposals.length:0;
+    const b=$('#appr-btn'); if(!b) return;
+    b.hidden=!n; $('#appr-n').textContent=n>1?String(n):'';
+  }catch(e){}
+}
 async function refreshMail(){
   if(SYNC_BUSY) return;
   SYNC_BUSY=true; renderFresh();
@@ -5211,6 +5493,44 @@ async function loadUnassigned(){
    address book thing." One account's address book, from its own mail; a
    name or note edited here is Bart's and wins in every account's typeahead. */
 let CT_Q='', CT_AUTO=false;
+// Dev #66: tag from a suggestion, or wave it off ("Not now" is remembered)
+function tierSetLocal(em,tier){ if(tier) TIERS[em]=tier; else delete TIERS[em]; TIER_SUG=null; renderList(); }
+async function tierTag(em,tier,btn){
+  try { await post('/contacts',{email:em,tier}); tierSetLocal(em,tier);
+    toast(tier?`${TIER_LABEL[tier]}: ${em}`:'Tag removed'); } catch(e){ toast(e.message); }
+}
+async function tierNo(em,tier){
+  try { await post('/contacts',{email:em,tier_decline:tier}); TIER_SUG=null; renderList(); } catch(e){ toast(e.message); }
+}
+let TIER_SUG=null, TIER_SUG_BUSY=false;
+function tierSuggestions(){
+  if(TIER_SUG||TIER_SUG_BUSY) return TIER_SUG;
+  TIER_SUG_BUSY=true;
+  fetch('/contacts/tiers',{cache:'no-store'}).then(r=>r.json()).then(d=>{ if(d.ok){ TIER_SUG=d; TIERS=d.tiers||TIERS; renderList(); } })
+    .catch(()=>{}).finally(()=>{ TIER_SUG_BUSY=false; });
+  return null;
+}
+function tierSugHtml(max=4, compact=false){
+  const d=tierSuggestions(); if(!d) return '';
+  const row=(c,t)=>`<div class="tier-sug"><span class="lead" style="background:${avColor(c.name||c.email)}">${initials(c.name||c.email)}</span>
+      <span class="ts-who"><b>${esc(c.name||c.email)}</b> <span class="muted">${esc(c.email)} · ${esc(c.why)}</span></span>
+      <button class="qbtn" onclick="event.stopPropagation();tierTag('${esc(c.email)}','${t}')">${t==='vip'?'⭐ Make VIP':'🎯 Top prospect'}</button>
+      <button class="qbtn" title="Don't suggest them for this again" onclick="event.stopPropagation();tierNo('${esc(c.email)}','${t}')">Not now</button></div>`;
+  const v=(d.vip||[]).slice(0,max), p=(d.prospect||[]).slice(0,max);
+  if(!v.length&&!p.length) return '';
+  return `${v.length?`<div class="tier-sug-h">⭐ Suggested VIPs — people you write to most${compact?'':' (you tag; nothing is automatic)'}</div>${v.map(c=>row(c,'vip')).join('')}`:''}
+    ${p.length?`<div class="tier-sug-h">🎯 Suggested Top prospects — mail read as a prospect</div>${p.map(c=>row(c,'prospect')).join('')}`:''}`;
+}
+// Bart chose suggestions in Contacts AND a weekly card on Home; ✕ hides the card until next week
+const isoWeek=()=>{ const d=new Date(); const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day); const y=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return t.getUTCFullYear()+'-'+Math.ceil(((t-y)/864e5+1)/7); };
+function tierHomeCard(){
+  let hid=''; try { hid=localStorage.getItem('gc2_tier_week')||''; } catch(e){}
+  if(hid===isoWeek()) return '';
+  const body=tierSugHtml(3,true); if(!body) return '';
+  return `<section class="hday-acct tier-card"><div class="hday-acct-top"><b>Who matters most?</b><span class="sp"></span>
+      <a onclick="try{localStorage.setItem('gc2_tier_week',isoWeek())}catch(e){};renderList()" title="Hide until next week">✕</a></div>
+    <div class="hday-body" style="border-top:none">${body}</div></section>`;
+}
 function renderContacts(){
   VISIBLE=[];
   if(!CONTACTS[ACCT]){ $('#list').innerHTML='<div class="empty">Loading contacts…</div>';
@@ -5222,7 +5542,8 @@ function renderContacts(){
       oninput="CT_Q=this.value;ctFill()">
     <label class="status" style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;margin-top:6px">
       <input type="checkbox" ${CT_AUTO?'checked':''} onchange="CT_AUTO=this.checked;ctFill()"> Show automated senders
-      (${(CONTACTS[ACCT]||[]).filter(c=>c.auto).length})</label></div><div id="ct-list" class="ua-list"></div>`;
+      (${(CONTACTS[ACCT]||[]).filter(c=>c.auto).length})</label></div>
+    <div class="tier-box">${tierSugHtml(6)}</div><div id="ct-list" class="ua-list"></div>`;
   ctFill();
 }
 function ctFill(){
@@ -5237,9 +5558,11 @@ function ctFill(){
         <div class="ua-meta"><span class="chip">${esc(c.email)}</span><span class="chip">${c.threads} thread${c.threads===1?'':'s'}</span>
           ${c.last?`<span class="chip">last ${esc(fmtDate(c.last))}</span>`:''}
           ${c.group?`<span class="chip">${esc(c.group)}</span>`:''}${c.teammate?'<span class="chip">teammate</span>':''}
-          ${c.edited?'<span class="chip" title="You edited this contact">✎ yours</span>':''}</div>
+          ${c.edited?'<span class="chip" title="You edited this contact">✎ yours</span>':''}
+          ${TIERS[c.email]?`<span class="chip">${TIER_LABEL[TIERS[c.email]]}</span>`:''}</div>
         <input class="ct-notes" value="${esc(c.notes||'')}" placeholder="Notes…" onchange="ctSave('${esc(c.email)}',{notes:this.value})"></div>
-      <div class="ct-acts"><button class="qbtn" title="Add to a project — people are shared by every account" onclick="projPick(event,{kind:'contact',account:null,ref:'${esc(c.email)}',title:${esc(JSON.stringify(c.name||c.email))}})">📁</button>
+      <div class="ct-acts"><button class="qbtn" title="Name, notes, company and teammate" onclick="contactEditDlg('${esc(c.email)}',${esc(JSON.stringify(c.name||''))})">✎</button>
+      <button class="qbtn" title="Add to a project — people are shared by every account" onclick="projPick(event,{kind:'contact',account:null,ref:'${esc(c.email)}',title:${esc(JSON.stringify(c.name||c.email))}})">📁</button>
       <button class="qbtn" title="Email them" onclick="composeDlg();setTimeout(()=>chipAdd('cp-to',${JSON.stringify(contactStr(c)).replace(/"/g,'&quot;')}),80)">✉</button>
       <button class="qbtn" title="Keep out of address suggestions" onclick="ctSave('${esc(c.email)}',{hidden:true},true)">Hide</button></div>
     </div>`).join('')+(list.length>200?`<div class="empty">Showing 200 of ${list.length} — search to narrow.</div>`:'')
@@ -5570,11 +5893,37 @@ $('#list').addEventListener('click', e=>{
 function bundleTrash(name){
   const items=ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i)&&i.type==='mail'&&!i.starred&&!i.attached&&BUNDLE_NAME(i)===name);
   if(!items.length) return;
+  // Dev #64 (Bart, 10-01: "10 or fewer … no need to have a second
+  // confirmation", chose "≤10, keep 10s Undo"; BUILD_SPEC §6): a small group
+  // goes on one click, held 10 seconds behind Undo like a single delete.
+  // Still Gmail Trash, still human-only; more than 10 keeps the dialog.
+  if(items.length<=10){ bundleTrashHeld(name,items); return; }
   dlg(`<h3>🗑 Delete all of ${esc(name)}?</h3>
     <div class="status" style="margin:4px 0 10px">Moves <b>${items.length} thread(s)</b> to Gmail Trash — recoverable there for 30 days, then Gmail purges them. Grand Central has no purge button by design.</div>
     <div class="foot">
       <button class="btn danger" onclick="closeDlg();doBundleTrash('${esc(name)}')">Delete ${items.length} threads</button>
       <button class="btn sec2" onclick="closeDlg()">Cancel</button></div>`);
+}
+function bundleTrashHeld(name,items){
+  items.forEach(i=>DROPPED.set(i.key,Date.now()));
+  const gone=new Set(items.map(i=>i.key));
+  MAIL=MAIL.filter(t=>!gone.has('m:'+t.account+':'+t.thread_id));
+  rebuild();
+  queueUndo(`Deleting ${items.length} from ${name} — Gmail Trash`, async ()=>{
+    let ok=0;
+    try {
+      for(let at=0; at<items.length; at+=5){
+        const out=await post('/mail/bulk',{action:'trash',
+          items:items.slice(at,at+5).map(i=>({thread_id:i.raw.thread_id,account:i.account}))});
+        ok+=(out.results||[]).filter(r=>r.ok).length;
+      }
+      toast(`Deleted ${ok} thread(s) from ${name} — in Gmail Trash 30 days`);
+    } catch(e){
+      // some may already be in Trash, so let the server say what is left
+      items.forEach(i=>DROPPED.delete(i.key));
+      toast(`Delete stopped after ${ok} — ${e.message}; refreshing`); loadMailTodos();
+    }
+  }, ()=>{ items.forEach(i=>{ DROPPED.delete(i.key); if(!MAIL.includes(i.raw)) MAIL.push(i.raw); }); rebuild(); }, 10000);
 }
 async function doBundleTrash(name){
   const items=ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i)&&i.type==='mail'&&!i.starred&&!i.attached&&BUNDLE_NAME(i)===name);
@@ -5778,7 +6127,7 @@ function valChip(i){
 function rowTail(i){
   const lbl=(i.labels||[])[0];
   const proj='';
-  return `<span class="tail">`+valChip(i)
+  return `<span class="tail">`+tierChip(i)+pjSugChip(i)+(i.type==='mail'?trkChip(i.account,i.raw.thread_id):'')+valChip(i)
     + (i.needs?`<span class="owed" title="A reply is owed">↩ ${fdAge(i.date)??0}d</span>`:'')
     + (i.note?`<span class="chip" style="background:var(--amber-soft);color:var(--note-head)" title="${esc(i.note)}">📝 ${esc(i.note.slice(0,24))}</span>`:'')
     + (lbl?`<span class="chip lbl" style="${lblStyle(lbl)}" onclick="event.stopPropagation();setScope('label','${esc(lbl)}')" title="Show everything labelled ${esc(lbl)}">${esc(lbl)}</span>`
@@ -5836,11 +6185,12 @@ function rowHtml(i, idx){
     ? actBtn('move','Move to another todo',`moveTodoDlg('${esc(own.key)}','${esc(i.account)}','${esc(i.raw.thread_id)}')`)
       + actBtn('into','Back to the inbox — take it out of this todo',`returnThread('${esc(own.key)}','${esc(i.account)}','${esc(i.raw.thread_id)}')`)
     : '';
+  // Dev #62 (Bart: "Archive and the checkmark seem the same. Let's just keep
+  // the checkmark."): on an email ✓ is Gmail archive, as on a bundle header.
   const acts=todoActs+actBtn('reply','Reply / draft',`replyOptions('${k}')`)
-    + actBtn('archive','Archive',`archiveItem('${k}')`)
     + actBtn('clock','Snooze',`snoozeDlg('${k}')`)
     + actBtn(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)
-    + actBtn('check','Handled',`handledItem('${k}')`)
+    + actBtn('check','Archive in Gmail (e)',`archiveItem('${k}')`)
     + actBtn('todo','Create or add to an account todo',`todoPick(['${k}'])`)
     + actBtn('folder','Add to project',`projPickKey(event,'${k}')`)
     + actBtn('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`).replace('<button ','<button class="warn" ')
@@ -5909,12 +6259,11 @@ function mailCtxHtml(i){
   return [
     _mi('📖 Open',`openItem('${k}')`),
     _mi('✍ Reply / draft',`replyOptions('${k}')`),
-    _mi('🗄 Archive',`archiveItem('${k}')`),
+    _mi('✓ Archive',`archiveItem('${k}')`),
     _mi('⏰ Snooze…',`snoozeDlg('${k}')`),
     // Star writes through to Gmail; pin is retired (star does the same job).
     _mi(i.starred?'★ Unstar':'☆ Star',`starItem('${k}')`),
     _mi('🏷 Label…',`labelDlg('${k}')`),
-    _mi('✓ Handled',`handledItem('${k}')`),
     _mi('◯ Create or add to todo…',`todoPick(['${k}'])`),
     _mi('📁 Add to project…',`projPickKey(null,'${k}')`),
     // E221 (Dev #20): inside a todo, its emails can leave again. moveTodoDlg
@@ -6058,21 +6407,56 @@ function fmtDate(d){
 }
 
 /* ------- drafts / outbox views ------- */
+/* Bart 2026-10-06: "I need a way to delete drafts from the list view and from
+   the full view. I need a way to select more than one." Deleting is Gmail
+   Trash (recoverable 30 days), held behind Undo like every other delete. */
+const DRAFT_SEL=new Set();
+const draftKey=d=>d.account+':'+d.draft_uid;
+function draftsDelete(keys){
+  const gone=(DRAFTS||[]).filter(d=>keys.includes(draftKey(d)));
+  if(!gone.length) return;
+  DRAFTS=DRAFTS.filter(d=>!keys.includes(draftKey(d))); keys.forEach(k=>DRAFT_SEL.delete(k)); renderList();
+  queueUndo(`${gone.length} draft${gone.length>1?'s':''} deleted — Gmail Trash`, async()=>{
+    let bad=0;
+    for(const d of gone){ try { await post('/draft/discard',{account:d.account,draft_uid:d.draft_uid,gm_msgid:d.gm_msgid}); } catch(e){ bad++; } }
+    if(bad) toast(`${bad} draft${bad>1?'s':''} could not be deleted — refresh and try again`);
+  }, ()=>{ DRAFTS=[...gone,...(DRAFTS||[])].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))); renderList(); });
+}
+function cwDeleteDraft(){
+  const d=window.CP_DRAFT; if(!d) return;
+  closeCompose();
+  DRAFTS=(DRAFTS||[]).filter(x=>draftKey(x)!==d.account+':'+d.draft_uid); if(SCOPE.kind==='drafts') renderList();
+  queueUndo('Draft deleted — Gmail Trash', async()=>{
+    try { await post('/draft/discard',{account:d.account,draft_uid:d.draft_uid,gm_msgid:d.gm_msgid}); }
+    catch(e){ toast('Could not delete the draft — '+e.message); }
+  }, ()=>{ DRAFTS=null; if(SCOPE.kind==='drafts') setScope('drafts'); });
+}
+function draftSelAll(on){ DRAFT_SEL.clear();
+  if(on) (DRAFTS||[]).filter(d=>mailAcctInAcct(d.account)).forEach(d=>DRAFT_SEL.add(draftKey(d))); renderList(); }
+function draftSel(k,on){ on?DRAFT_SEL.add(k):DRAFT_SEL.delete(k); renderList(); }
 function renderDrafts(){
   VISIBLE=[];
   const drafts=(DRAFTS||[]).filter(d=>mailAcctInAcct(d.account));
+  const live=new Set(drafts.map(draftKey)); [...DRAFT_SEL].forEach(k=>{ if(!live.has(k)) DRAFT_SEL.delete(k); });
+  const sched={}; (OUTBOX||[]).forEach(o=>{ if(o.draft_uid&&o.status==='pending') sched[o.account+':'+o.draft_uid]=o; });
   // E224 (Dev #19): a draft opens in GC's own composer, not Gmail.
-  const rows=drafts.map(d=>`<div class="row read" onclick='openDraft(${JSON.stringify({account:d.account,uid:d.draft_uid,mid:d.gm_msgid||""}).replace(/'/g,"&#39;")})'>
+  const rows=drafts.map(d=>{ const k=draftKey(d), on=DRAFT_SEL.has(k), sc=sched[k];
+    return `<div class="row read ${on?'sel':''}" onclick='openDraft(${JSON.stringify({account:d.account,uid:d.draft_uid,mid:d.gm_msgid||""}).replace(/'/g,"&#39;")})'>
+      <span class="selbox"><input type="checkbox" ${on?'checked':''} title="Select" onclick="event.stopPropagation()" onchange="draftSel('${esc(k)}',this.checked)"></span>
       <span class="lead" style="background:#8a95a5">✍</span>
       <div class="body">
         <div class="l1"><span class="who">${esc(d.to?('to '+d.to.split(',')[0].split('<')[0].trim()):d.account)}</span>
-          <span class="hl"><span class="chip">${esc(d.account)}</span></span>
-          <span class="meta"><span class="when">${fmtDate(d.date)}</span></span></div>
+          <span class="hl"><span class="chip">${esc(d.account)}</span>${sc?`<span class="chip" title="Scheduled — cancel it from Scheduled">⏰ ${esc(new Date(sc.send_at).toLocaleString([], {weekday:'short',hour:'numeric',minute:'2-digit'}))}</span>`:''}</span>
+          <span class="meta"><span class="when">${fmtDate(d.date)}</span>
+            <span class="acts">${actBtn('trash','Delete draft — Gmail Trash, recoverable 30d',`draftsDelete(['${esc(k)}'])`)}</span></span></div>
         <div class="l2"><span class="subj">${esc(d.subject||'(no subject)')}</span>
           <span class="prev">${esc((d.snippet||'').slice(0,160))}</span></div>
-      </div></div>`).join('');
+      </div></div>`; }).join('');
+  const n=DRAFT_SEL.size, all=drafts.length&&n===drafts.length;
   $('#list').innerHTML = `<div class="ib-wrap">
     <div class="ib-head"><span class="t">Gmail drafts</span><span class="ib-count">${drafts.length}</span>
+      ${drafts.length?`<label class="draft-all" title="Select all"><input type="checkbox" ${all?'checked':''} onchange="draftSelAll(this.checked)"> all</label>`:''}
+      ${n?`<button class="qbtn warn" onclick="draftsDelete([...DRAFT_SEL])">🗑 Delete ${n}</button><button class="qbtn" onclick="DRAFT_SEL.clear();renderList()">Clear</button>`:''}
       <span class="sp"></span><span class="fold" onclick="DRAFTS=null;setScope('drafts')" title="Refresh from Gmail">↻</span></div>
     ${rows?`<div class="ib-card">${rows}</div>`:'<div class="ib-empty">No drafts waiting in Gmail.</div>'}</div>`;
 }
@@ -6081,7 +6465,7 @@ function renderDrafts(){
    the same design as the inbox"): the inbox's three-line row — the first
    recipient's face, everyone it went to, the subject, a line of what Bart
    wrote, and when — newest first, 50 at a time with Load more. */
-let SENT_NEXT=null;
+let SENT_NEXT=null, SENT_AT=0;
 function sentWho(m){
   const ppl=splitRcpts((m.to||'')+(m.cc?', '+m.cc:'')).map(p=>({em:emOf(p), nm:nmOf(p)}))
     .filter(p=>p.em&&!OWN.has(p.em));
@@ -6101,7 +6485,7 @@ function renderSent(){
         <div class="l1"><span class="who ${p0.em?'person':''}" ${p0.em?`data-em="${esc(p0.em)}" data-nm="${esc(nm)}"`:''} title="${esc(all)}">To: ${esc(w.label)}</span>
           <span class="meta"><span class="when" title="${esc(m.date?new Date(m.date).toLocaleString():'')}">${fmtDate(m.date)}</span></span></div>
         <div class="l2"><span class="subj">${esc(m.subject||'(no subject)')}</span></div>
-        <div class="l3"><span class="prev">${esc((m.snippet||'').slice(0,200))}</span></div>
+        <div class="l3"><span class="prev">${esc((m.snippet||'').slice(0,200))}</span>${trkChip(m.account,m.thread_id)}</div>
       </div></div>`;}).join('');
   $('#list').innerHTML = `<div class="ib-wrap">
     <div class="ib-head"><span class="t">Sent</span><span class="ib-count">${shown.length}</span>
@@ -7235,7 +7619,7 @@ const CLS_OPTS={
   type:['Correspondence','Team collaboration','Prospect','Cold pitch','Spam','Update','Newsletter','Receipt','Calendar','Promo','Other'],
   respond:[['yes','Reply needed'],['optional','Reply optional'],['no','No reply needed']],
   priority:[['0','0 · noise'],['1','1 · routine'],['2','2 · someone waiting'],['3','3 · urgent']],
-  waiting_on:[['none','Nobody'],['teammate','A teammate'],['outside','Someone outside']],
+  waiting_on:[['none','Nobody'],['me','Me — my move'],['teammate','A teammate'],['outside','Someone outside']],
   relationship:[['teammate','Teammate'],['company','Company group'],['frequent','Frequent contact'],['known','Known'],['new','New'],['machine','Automated']],
 };
 const clsLbl=(f,v)=>{ const o=(CLS_OPTS[f]||[]).find(x=>Array.isArray(x)?x[0]===String(v):x===v); return o?(Array.isArray(o)?o[1]:o):(v==null?'—':String(v)); };
@@ -7247,8 +7631,10 @@ function clsHtml(i){
   const d=c.data;
   if(!d) return `<span class="cls-sum muted" title="Only mail from the last 30 days is classified">🏷 Not classified — older than 30 days</span>`;
   const bits=[d.type];
+  if(tierOf(i)) bits.unshift(TIER_LABEL[tierOf(i)]);   // Dev #66
   if(d.respond==='yes') bits.push('Reply needed'); else if(d.respond==='optional') bits.push('Reply optional');
-  if(d.waiting_on&&d.waiting_on!=='none') bits.push('Waiting on '+(d.waiting_who||d.waiting_on));
+  if(d.waiting_on==='me') bits.push('Waiting on you');
+  else if(d.waiting_on&&d.waiting_on!=='none') bits.push('Waiting on '+(d.waiting_who||d.waiting_on));
   if(d.follow_up) bits.push('Follow up '+clsDay(d.follow_up));
   if(d.group) bits.push(d.group);
   if(d.value!=null) bits.unshift(`<span class="val val-${valBand(d.value)}">${d.value}</span>`);
@@ -7358,10 +7744,9 @@ function paneShell(i, inner){
     ${i.type==='mail'?tb('back','Previous (k)','paneNav(-1)','hide-sm')+`<button class="tool hide-sm" onclick="paneNav(1)" title="Next (j)" style="transform:scaleX(-1)">${ic('back')}</button>`:''}
     <span class="sp"></span>
     ${i.type==='mail'?tb('reply','Reply / draft',`replyOptions('${k}')`):''}
-    ${i.type==='mail'?tb('archive','Archive',`archiveItem('${k}')`):''}
     ${tb('clock','Snooze',`snoozeDlg('${k}')`)}
     ${tb(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)}
-    ${tb('check','Handled',`handledItem('${k}')`)}
+    ${i.type==='mail'?tb('check','Archive in Gmail (e)',`archiveItem('${k}')`):tb('check','Handled',`handledItem('${k}')`)}
     ${i.type==='mail'?tb('todo','Create or add to account todo',`todoPick(['${k}'])`):''}
     ${tb('folder','Add to project',`projPickKey(event,'${k}')`)}
     ${i.type==='mail'?tb('trash','Trash — recoverable 30 days, with Undo',`trashItem('${k}')`,'warn'):''}
@@ -7563,16 +7948,76 @@ function msgColHtml(m,gi){
     <span class="t">${esc((m.date||'').replace('T',' ').slice(0,16))}</span></div>`;
 }
 let MSG_CTX=null;   // {account, thread_id} of the thread being rendered
+// which attachments the viewer can show (the server re-checks the bytes)
+function attPreviewable(a){
+  const n=String(a.filename||'').toLowerCase(), t=String(a.content_type||a.mime||'').toLowerCase();
+  if(/\.pdf$/.test(n)||t==='application/pdf') return 'pdf';
+  if(/\.(png|jpe?g|gif|webp)$/.test(n)||/^image\/(png|jpe?g|gif|webp)$/.test(t)) return 'img';
+  return null;
+}
+let ATTV=null;
+function attView(list,ix){
+  ATTV={list,ix}; attViewDraw();
+  document.addEventListener('keydown',attViewKey,true);
+}
+function attViewKey(e){
+  if(!ATTV) return;
+  if(e.key==='Escape'){ e.stopPropagation(); e.preventDefault(); attViewClose(); }
+  else if(e.key==='ArrowRight'){ e.preventDefault(); attViewStep(1); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); attViewStep(-1); }
+}
+function attViewStep(d){ if(!ATTV) return; ATTV.ix=(ATTV.ix+d+ATTV.list.length)%ATTV.list.length; attViewDraw(); }
+function attViewClose(){ ATTV=null; $('#attv')?.remove(); document.removeEventListener('keydown',attViewKey,true); }
+function attViewDraw(){
+  const a=ATTV.list[ATTV.ix]; let v=$('#attv');
+  if(!v){ v=document.createElement('div'); v.id='attv'; document.body.appendChild(v);
+    v.addEventListener('click',e=>{ if(e.target===v) attViewClose(); }); }
+  const many=ATTV.list.length>1;
+  v.innerHTML=`<div class="attv-bar">
+      <span class="attv-n">${a.kind==='pdf'?'📄':'🖼'} ${esc(a.name)} <span>${fmtSize(a.size)}${many?` · ${ATTV.ix+1} of ${ATTV.list.length}`:''}</span></span>
+      ${many?`<button class="tool" title="Previous (←)" onclick="attViewStep(-1)">${ic('back')}</button><button class="tool" title="Next (→)" onclick="attViewStep(1)">${ic('right')}</button>`:''}
+      <a class="btn" href="${a.url}" title="Download">⬇ Download</a>
+      <button class="tool" title="Close (Esc)" onclick="attViewClose()">${ic('x')}</button></div>
+    <div class="attv-body">${a.kind==='pdf'
+      ?`<iframe src="${a.url}&view=1" title="${esc(a.name)}"></iframe>`
+      :`<img src="${a.url}&view=1" alt="${esc(a.name)}" onerror="this.outerHTML='<div class=&quot;empty&quot;>Can’t preview this one — use ⬇ Download.</div>'">`}</div>`;
+}
+const attUrl=(m,k)=>`/attachment?account=${encodeURIComponent(MSG_CTX.account)}&thread_id=${encodeURIComponent(MSG_CTX.thread_id)}&uid=${encodeURIComponent(m.uid)}&idx=${k}`;
+// E267 (Bart: "I'm not seeing inline images in my emails render"): an image
+// pasted into an email is a part of the message, referenced as cid:…. Point
+// each reference at that part's read-only /attachment link (Private-guarded,
+// never stored; an <img> ignores its download disposition) and leave the
+// ones shown in place out of the 📎 list.
+function cidInline(m,html){
+  const shown=new Set();
+  if(!html||!m.uid||!MSG_CTX) return {html,shown};
+  const byCid={};
+  (m.attachments||[]).forEach((a,k)=>{ if(a.cid) byCid[a.cid.toLowerCase()]=k; });
+  html=html.replace(/(src\s*=\s*["']?)cid:([^"'\s>]+)/gi,(all,pre,id)=>{
+    let key=id; try{ key=decodeURIComponent(id); }catch(e){}
+    const k=byCid[key.toLowerCase()];
+    if(k==null) return all;
+    shown.add(k); return pre+attUrl(m,k).replace(/&/g,'&amp;');
+  });
+  return {html,shown};
+}
 function msgHtml(m,gi){
   const frm=(m.from||'').split('<')[0].trim()||m.from||'?';
-  const atts=(m.attachments||[]).length&&m.uid&&MSG_CTX
-    ?`<div class="matts">${m.attachments.map((a,k)=>
-        `<a class="att" href="/attachment?account=${encodeURIComponent(MSG_CTX.account)}&thread_id=${encodeURIComponent(MSG_CTX.thread_id)}&uid=${encodeURIComponent(m.uid)}&idx=${k}"
-           title="Download (never stored on the board)">📎 ${esc(a.filename)} <span>${fmtSize(a.size||0)}</span></a>`).join('')}</div>`
+  const ci=cidInline(m,m.body_html);
+  const listed=(m.attachments||[]).map((a,k)=>[a,k]).filter(([a,k])=>!ci.shown.has(k));
+  // 2026-10-07 (Bart: "preview PDFs and image attachments, before
+  // downloading them or with a separate download icon"): a PDF or image opens
+  // in the viewer; ⬇ always downloads; anything else downloads on click.
+  const atts=listed.length&&m.uid&&MSG_CTX
+    ?`<div class="matts">${listed.map(([a,k])=>{ const pv=attPreviewable(a), url=attUrl(m,k);
+        return `<span class="att ${pv?'pv':''}">${pv
+          ?`<a onclick="event.preventDefault();attView(${esc(JSON.stringify(listed.filter(([x])=>attPreviewable(x)).map(([x,j])=>({name:x.filename,size:x.size||0,kind:pv&&attPreviewable(x),url:attUrl(m,j)}))))},${listed.filter(([x])=>attPreviewable(x)).findIndex(([,j])=>j===k)})" href="${url}&view=1" title="Preview">${pv==='pdf'?'📄':'🖼'} ${esc(a.filename)} <span>${fmtSize(a.size||0)}</span></a>`
+          :`<a href="${url}" title="Download (never stored on the board)">📎 ${esc(a.filename)} <span>${fmtSize(a.size||0)}</span></a>`}
+          <a class="att-dl" href="${url}" title="Download" onclick="event.stopPropagation()">⬇</a></span>`; }).join('')}</div>`
     :'';
   let body;
   if(m.body_html){
-    const tq=trimQuoteHtml(m.body_html);   // E107: history behind •••
+    const tq=trimQuoteHtml(ci.html);   // E107: history behind •••
     const native=mailNative(tq.html);
     body=`<iframe class="htmlbody ${native?'native':'paper'}" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         onload="sizeFrame(this)" srcdoc="${esc(htmlWrapFor(tq.html)+linkifyHtml(tq.html))}"></iframe>`
@@ -7612,7 +8057,7 @@ function renderThreadPane(i){
   });
   $('#pane').innerHTML = paneShell(i, `
     <div class="msgs" id="msgs">
-      <div id="rsvp-bar"></div>
+      <div id="rsvp-bar"></div><div id="pj-sug-bar"></div><div id="trk-bar"></div>
       ${older.length?`<div class="fold-msgs" id="fold-older">··· ${older.length} earlier message${older.length>1?'s':''}</div>`:''}
       ${rows.join('')}
     </div>
@@ -7624,10 +8069,11 @@ function renderThreadPane(i){
     <div class="replybar" style="cursor:default">
       <span class="mav" style="width:30px;height:30px;border-radius:9px;background:#7a5c48;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:0 0 auto">B</span>
       <span class="rb-in" onclick="openComposer('${esc(i.key)}','all')" title="Reply to everyone on the thread">Reply all</span>
-      <button class="tool" onclick="replyOptions('${esc(i.key)}',this)" title="Draft reply options with Claude — text only, you edit and send">${ic('sparkle')}</button>
+      <button class="tool" onclick="openComposer('${esc(i.key)}','all');setTimeout(()=>aiOpen('sd'),60)" title="✨ Write the reply with AI — tell it what to say">${ic('sparkle')}</button>
       <button class="tool" onclick="openComposer('${esc(i.key)}','reply')" title="Reply to the sender only">${ic('reply')}</button>
       <button class="tool" onclick="openComposer('${esc(i.key)}','fwd')" title="Forward">${ic('forward')}</button>
     </div>`);
+  pjSugBar(); trkBar();
   const fo=$('#fold-older');
   if(fo) fo.onclick=ev=>{ ev.stopPropagation();
     fo.outerHTML=older.map((m,k)=>msgColHtml(m,k)).join(''); hydrateAvatars($('#pane')); };
@@ -7947,11 +8393,14 @@ function showPersonPop(el){
       <div><b>${esc(nm)}</b><div class="pp-em" title="Click to copy">${esc(em)}</div></div></div>
     ${(()=>{ const rel=personRel(em,st.n);
       return rel?`<div class="pp-meta" style="color:var(--ink)">${rel.ic} <b>${esc(rel.label)}</b> · ${esc(rel.why)}</div>`:''; })()}
+    ${TIERS[em]?`<div class="pp-meta" style="color:var(--ink)"><b>${TIER_LABEL[TIERS[em]]}</b></div>`:''}
     ${st.n?`<div class="pp-meta">${st.n} thread(s) on the board${st.last?' · last '+esc(st.last):''}</div>`:''}
     <div class="pp-acts">
       <button class="qbtn" data-ppcopy="${esc(nm)} <${esc(em)}>">📋 Copy contact</button>
       <button class="qbtn" data-ppmail="${esc(em)}">✉ Their mail</button>
       <button class="qbtn" data-ppcompose="${esc(em)}">✏️ Email them</button>
+      <button class="qbtn" data-ppedit="${esc(em)}" data-ppnm="${esc(nm)}" title="Name, notes, company and teammate">✎ Edit</button>
+      <button class="qbtn" data-ppproj="${esc(em)}" data-ppnm="${esc(nm)}" title="Add to a project">📁</button>
     </div>`;
   const r=el.getBoundingClientRect();
   pop.style.left=Math.min(r.left, innerWidth-330)+'px';
@@ -7973,8 +8422,76 @@ document.addEventListener('click', e=>{
     $('#q').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'})); return; }
   const cp=e.target.closest('[data-ppcompose]'); if(cp){ hidePersonPop(); composeDlg();
     setTimeout(()=>chipAdd('cp-to',cp.dataset.ppcompose),80); return; }
+  const ed=e.target.closest('[data-ppedit]'); if(ed){ hidePersonPop(); contactEditDlg(ed.dataset.ppedit, ed.dataset.ppnm); return; }
+  const pj=e.target.closest('[data-ppproj]'); if(pj){ hidePersonPop(); projPick(null,{kind:'contact',account:null,ref:pj.dataset.ppproj,title:pj.dataset.ppnm||pj.dataset.ppproj}); return; }
   const emEl=e.target.closest('.pp-em'); if(emEl){ copyText(emEl.textContent,'address'); }
 });
+/* Dev #60 (Bart: "I'd like to be able to update a contact, perhaps from their
+   contact card, or when I hover over their name, or from the Contacts
+   view"): one editor, from ✎ on the hover card or a Contacts row. Name and
+   notes are Bart's own (the contacts table, used in every account's
+   suggestions); company groups and teammate are the Classification roster —
+   who someone IS, shared by every account. Nothing here touches Gmail or
+   Google Contacts (syncing those is a later design session). */
+async function contactEditDlg(em, nm){
+  em=String(em||'').toLowerCase();
+  dlg('<div class="empty">Loading…</div>');
+  let ros={people:[],groups:[]}, c=null;
+  try { const [r, list]=await Promise.all([fetch('/classify/settings',{cache:'no-store'}).then(r=>r.json()), CONTACTS[ACCT]?Promise.resolve(CONTACTS[ACCT]):loadContacts(ACCT)]);
+    if(r.ok) ros=r; c=(list||[]).find(x=>x.email===em)||null; } catch(e){}
+  const p=(ros.people||[]).find(x=>x.email===em)||null;
+  const groups=p?((p.groups&&p.groups.length)?p.groups:(p.grp?[p.grp]:[])):[];
+  const dom=em.split('@')[1]||'', viaDom=(ros.groups||[]).filter(g=>g.domain===dom).map(g=>g.grp);
+  const allGroups=[...new Set((ros.groups||[]).map(g=>g.grp).concat((ros.people||[]).flatMap(x=>x.groups||(x.grp?[x.grp]:[]))))].filter(Boolean).sort();
+  window._ce={em, p, groups};
+  const cn=(c&&c.name)||(p&&p.name)||'';   // their mail may live in another account
+  dlg(`<h3>✎ ${esc(cn||nm||em)}</h3>
+    <div class="status" style="text-transform:none;letter-spacing:0">${esc(em)}</div>
+    <label>Name</label><input type="text" id="ce-name" value="${esc(cn)}" placeholder="${esc(nm&&nm!==em?nm:'Your name for them')}">
+    <label>Notes</label><textarea id="ce-notes" rows="3" placeholder="Anything worth remembering">${esc(c&&c.notes||'')}</textarea>
+    <label>Type</label><select id="ce-tier">${[['','Regular contact'],['vip','⭐ VIP — their mail goes to the top of the inbox'],['prospect','🎯 Top prospect — own section; nudge after 5 quiet days']]
+      .map(([v,l])=>`<option value="${v}" ${(TIERS[em]||'')===v?'selected':''}>${l}</option>`).join('')}</select>
+    <label>Company</label>
+    <div class="pj-sug" id="ce-groups">${groups.map(g=>`<span class="chip">${esc(g)} <a title="Take them out of ${esc(g)}" onclick="ceLeave(${esc(JSON.stringify(g))})">✕</a></span>`).join('')}
+      ${viaDom.map(g=>`<span class="chip" title="Everyone @${esc(dom)} is in ${esc(g)}">${esc(g)} · @${esc(dom)}</span>`).join('')}
+      ${groups.length||viaDom.length?'':'<span class="status" style="text-transform:none;letter-spacing:0">Not in a company group</span>'}</div>
+    <div style="display:flex;gap:6px;margin-top:6px"><input type="text" id="ce-grp" list="ce-grp-l" placeholder="Add to a group…" style="flex:1">
+      <datalist id="ce-grp-l">${allGroups.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>
+      <button class="btn sec2" onclick="ceAddGroup()">Add</button></div>
+    <label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;margin-top:10px"><input type="checkbox" id="ce-mate" ${p&&p.teammate?'checked':''}> Teammate — their mail is never a cold pitch; waiting on them follows up in 2 business days</label>
+    <div class="foot"><button class="btn" onclick="ceSave()">Save</button><button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="ce-st"></span></div>`);
+}
+async function ceRoster(body){ const out=await post('/classify',body); return out; }
+async function ceAddGroup(){
+  const g=($('#ce-grp').value||'').trim(), ce=window._ce; if(!g) return;
+  try { await ceRoster({action:'person-add',email:ce.em,name:$('#ce-name').value.trim()||undefined,group:g,
+      teammate:$('#ce-mate').checked, also:ce.groups.length?true:undefined});
+    toast('Added to '+g); contactEditDlg(ce.em); } catch(e){ $('#ce-st').textContent=e.message; }
+}
+async function ceLeave(g){
+  const ce=window._ce;
+  try {
+    if(ce.groups.length>1||(ce.p&&ce.p.teammate)) await ceRoster({action:'person-leave',email:ce.em,group:g});
+    else await ceRoster({action:'person-remove',key:ce.em});   // their only group, not a teammate: off the roster
+    toast('Out of '+g); contactEditDlg(ce.em); } catch(e){ $('#ce-st').textContent=e.message; }
+}
+async function ceSave(){
+  const ce=window._ce, name=$('#ce-name').value.trim(), notes=$('#ce-notes').value, mate=$('#ce-mate').checked;
+  try {
+    await post('/contacts',{email:ce.em,name,notes});
+    const tier=$('#ce-tier')?.value||'';
+    if(tier!==(TIERS[ce.em]||'')){ await post('/contacts',{email:ce.em,tier}); tierSetLocal(ce.em,tier); }
+    const wasMate=!!(ce.p&&ce.p.teammate);
+    if(mate!==wasMate){
+      if(ce.p) await ceRoster({action:'person-mate',email:ce.em,teammate:mate});
+      else if(mate) await ceRoster({action:'person-add',email:ce.em,name:name||undefined,teammate:true});
+      if(!mate&&ce.p&&!ce.groups.length) await ceRoster({action:'person-remove',key:ce.em});
+    }
+    Object.keys(CONTACTS).forEach(a=>delete CONTACTS[a]); const dl=$('#dl-contacts'); if(dl) dl.remove();
+    closeDlg(); toast('Contact saved');
+    if(SCOPE.kind==='contacts') renderContacts();
+  } catch(e){ $('#ce-st').textContent=e.message; }
+}
 // Capture everyone in the thread — one dialog, copy one or all.
 function contactsDlg(key){
   const i=findItem(key); if(!i||i.type!=='mail') return;
@@ -8064,8 +8581,132 @@ async function snipDel(sid,id){
 }
 /* The toolbar under the message — Shortwave's layout: formatting and
    inserts on the left; send later and Send ▾ on the right. */
+/* E269 (BUILD_SPEC §6, 2026-10-06): 👁 Track in the composer. Bart's
+   defaults: on for the sales accounts when anyone outside his companies is
+   on the email, off for teammates and Personal — the server decides
+   (/tracking/decide) as recipients change, and a click here overrides it.
+   Hidden until that account's t.<domain> is live, so nothing pretends. */
+const TRK={};
+function trkArm(kind, account){
+  TRK[kind]={touched:false,on:false,available:false,why:'',account,clicks:false};
+  const go=()=>{ clearTimeout(TRK[kind]._t); TRK[kind]._t=setTimeout(()=>trkRefresh(kind),350); };
+  ['to','cc','bcc'].forEach(f=>{ const el=$('#'+kind+'-'+f); if(el) new MutationObserver(go).observe(el,{childList:true}); });
+  trkRefresh(kind);
+}
+async function trkRefresh(kind){
+  const t=TRK[kind]; if(!t) return;
+  if(kind==='cp'&&$('#cp-acct')) t.account=$('#cp-acct').value;
+  const q=new URLSearchParams({account:t.account||'',to:chipVal(kind+'-to'),cc:chipVal(kind+'-cc'),bcc:chipVal(kind+'-bcc')});
+  try { const d=await fetch('/tracking/decide?'+q,{cache:'no-store'}).then(r=>r.json()); if(!d.ok) throw new Error(d.error);
+    t.available=!!d.available; t.clicks=!!d.clicks; if(!t.touched){ t.on=!!d.on; t.why=d.why||''; } }
+  catch(e){ t.available=false; t.on=false; }
+  trkPaint(kind);
+}
+function trkPaint(kind){
+  const b=$('#'+kind+'-trk'), t=TRK[kind]; if(!b||!t) return;
+  b.hidden=!t.available; b.classList.toggle('on',t.on);
+  b.title=(t.on?'👁 Tracking opens'+(t.clicks?' and link clicks':''):'👁 Not tracked')+(t.why?' — '+t.why:'')+'. Click to turn '+(t.on?'off':'on')+'.';
+}
+function trkToggle(kind){
+  const t=TRK[kind]; if(!t||!t.available) return;
+  t.touched=true; t.on=!t.on; t.why='you turned it '+(t.on?'on':'off'); trkPaint(kind);
+  toast(t.on?'👁 This email will be tracked':'This email won’t be tracked');
+}
+const trkPayload=(kind,p)=>{ const t=TRK[kind]; if(t&&t.touched) p.track=t.on; return p; };
+// opens and clicks for the selected account, keyed by thread
+let TRACK_SUM={};
+async function loadTrackSum(account){
+  account=account||ACCT;
+  try { const r=await fetch('/tracking/summary?account='+encodeURIComponent(account),{cache:'no-store'}).then(r=>r.json());
+    if(r.ok&&account===ACCT){ const changed=JSON.stringify(r.threads)!==JSON.stringify(TRACK_SUM); TRACK_SUM=r.threads||{};
+      if(changed){ renderList(); trkBar(); } } } catch(e){}
+}
+const trkFor = (account,tid) => account===ACCT ? TRACK_SUM[tid] : null;
+function trkChip(account,tid){
+  const t=trkFor(account,tid); if(!t) return '';
+  if(!t.opens) return `<span class="trk-chip" title="Tracked · not opened yet${t.auto?` (${t.auto} automatic fetch${t.auto>1?'es':''} not counted)`:''}">👁 –</span>`;
+  const title=`Opened ${t.opens}× · last ${new Date(t.last_open).toLocaleString()}${t.clicks?` · ${t.clicks} click${t.clicks>1?'s':''}`:''}`;
+  return t.nudge ? `<span class="trk-chip nudge" title="${esc(title)} — no reply yet">👁 opened · no reply</span>`
+    : `<span class="trk-chip on" title="${esc(title)}">👁 ${t.opens}${t.clicks?' · 🔗'+t.clicks:''}</span>`;
+}
+function trkBar(){
+  const bar=$('#trk-bar'); if(!bar||!MSG_CTX) return;
+  const t=trkFor(MSG_CTX.account, MSG_CTX.thread_id);
+  if(!t){ bar.innerHTML=''; return; }
+  const when=x=>x?new Date(x).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+  bar.innerHTML=`<div class="trk-banner">👁 ${t.opens?`<b>Opened ${t.opens}×</b> · first ${esc(when(t.first_open))}${t.opens>1?' · last '+esc(when(t.last_open)):''}`:'<b>Not opened yet</b>'}
+    ${t.clicks?` · clicked ${t.clicked.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\//,'').slice(0,40))}</a>`).join(', ')}`:''}
+    ${t.nudge?' · <b>no reply yet</b> — worth a follow-up':''}
+    ${t.auto?`<span class="muted" title="Apple Mail prefetch and security scanners load images on delivery — not counted"> · ${t.auto} automatic not counted</span>`:''}
+    ${t.sends>1?`<span class="muted"> · across ${t.sends} tracked sends</span>`:''}</div>`;
+}
+/* ✨ in the composer (Bart 2026-10-06: "add a prompt or have it [polish] an
+   email I'm already writing, before drafting the change or update, and if I
+   ask it to, to look at my email history"; interview: in the composer,
+   preview then Replace, history = these recipients). Text only — the AI's
+   version waits in a preview until Bart replaces or inserts it. */
+const AI={};
+function aiCtx(kind){
+  if(kind==='sd'){ const i=MSG_CTX&&findItem(MSG_CTX.key);
+    return {body:'sd-body', account:i?i.account:ACCT, thread_id:i?i.raw.thread_id:null,
+            subject:$('#sd-subject')?.value||'', to:chipVal('sd-to'), cc:chipVal('sd-cc')}; }
+  const d=window.CP_DRAFT, acct=$('#cp-acct')?.value||ACCT;
+  return {body:'cp-body', account:acct, thread_id:d&&d.in_reply_to&&d.thread_id?d.thread_id:null,
+          subject:$('#cp-subject')?.value||'', to:chipVal('cp-to'), cc:chipVal('cp-cc')};
+}
+// Bart's words without his signature block, and the signature to put back
+function aiSplit(kind){
+  const c=aiCtx(kind), text=rbText(c.body), sig=String(SIGS[c.account]||'').trim();
+  const head=sig.split('\n').find(l=>l.trim())||'';
+  const at=head?text.lastIndexOf(head.trim()):-1;
+  return at>=0?{mine:text.slice(0,at).replace(/\s+$/,''), sig:text.slice(at)}:{mine:text.replace(/\s+$/,''), sig:''};
+}
+function aiOpen(kind){
+  const c=aiCtx(kind), body=$('#'+c.body); if(!body) return;
+  let p=$('#'+kind+'-ai');
+  if(p){ p.querySelector('textarea').focus(); return; }
+  const has=!!aiSplit(kind).mine.trim();
+  body.insertAdjacentHTML('beforebegin',`<div class="ai-box" id="${kind}-ai">
+    <div class="ai-top"><b>✨ ${has?'Rewrite what you wrote':'Write it'}</b><span class="sp"></span><a onclick="aiClose('${kind}')" title="Close">✕</a></div>
+    <textarea rows="2" placeholder="${has?'e.g. make it shorter and warmer, add that we can start Monday':'e.g. say yes to Tuesday at 2, ask for the deck first'} (⏎ to go)"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiRun('${kind}')}"></textarea>
+    <div class="ai-row"><label><input type="checkbox" id="${kind}-ai-hist"> Use my email history with these people</label><span class="sp"></span>
+      <button type="button" class="btn" onclick="aiRun('${kind}')">${has?'Rewrite':'Draft'}</button></div>
+    <div class="ai-out" hidden></div></div>`);
+  setTimeout(()=>$('#'+kind+'-ai textarea')?.focus(),30);
+}
+function aiClose(kind){ $('#'+kind+'-ai')?.remove(); }
+async function aiRun(kind){
+  const box=$('#'+kind+'-ai'); if(!box) return;
+  const c=aiCtx(kind), sp=aiSplit(kind), out=box.querySelector('.ai-out');
+  const instruction=box.querySelector('textarea').value.trim(), history=$('#'+kind+'-ai-hist').checked;
+  if(!instruction&&!sp.mine.trim()&&!c.thread_id){ toast('Tell it what to write'); return; }
+  out.hidden=false; out.innerHTML=`<div class="status">✨ ${history?'Reading your history and writing':'Writing'}…</div>`;
+  try {
+    const r=await post('/draft/assist',{account:c.account,instruction,draft:sp.mine,thread_id:c.thread_id,
+      to:c.to,cc:c.cc,subject:c.subject,history});
+    AI[kind]=r.body;
+    out.innerHTML=`<div class="ai-text">${esc(r.body)}</div>
+      <div class="ai-row"><button type="button" class="btn" onclick="aiUse('${kind}','replace')">${sp.mine.trim()?'Replace my text':'Use this'}</button>
+        ${sp.mine.trim()?`<button type="button" class="btn sec2" onclick="aiUse('${kind}','insert')">Insert at cursor</button>`:''}
+        <button type="button" class="btn sec2" onclick="aiRun('${kind}')">Try again</button>
+        <span class="status" style="text-transform:none;letter-spacing:0">${r.used_history?'used your history with them':''}</span></div>`;
+  } catch(e){ out.innerHTML=`<div class="status err">Couldn't write it — ${esc(e.message)}</div>`; }
+}
+function aiUse(kind,how){
+  const text=AI[kind]; if(!text) return;
+  const c=aiCtx(kind), el=$('#'+c.body); if(!el) return;
+  const before=el.innerHTML, sp=aiSplit(kind);
+  if(how==='insert'){ rbInsertText(c.body,text); }
+  else { el.innerText=text+(sp.sig?'\n\n'+sp.sig:''); rbSave(c.body); }
+  aiClose(kind);
+  queueUndo('✨ Your message was updated', ()=>{}, ()=>{ el.innerHTML=before; rbSave(c.body); });
+}
 function composerBar(id,o){
-  const b=(t,fn,label)=>`<button type="button" class="cb" title="${esc(t)}" onmousedown="event.preventDefault()" onclick="${fn}">${label}</button>`;
+  // Dev #56 ("Insert Snippet isn't working"): a real click bubbled on to the
+  // document's close-the-menu handler, which shut { }, emoji, text style and
+  // signatures the instant they opened — so the click stops here.
+  const b=(t,fn,label)=>`<button type="button" class="cb" title="${esc(t)}" onmousedown="event.preventDefault()" onclick="event.stopPropagation();${fn}">${label}</button>`;
   return `<div class="cbar">
     ${b('Text style','rbFmtMenu(event,\''+id+'\')','<span style="font-weight:700">A</span><span style="font-size:10px">▾</span>')}
     ${b('Bulleted list',`rbCmdAt('${id}','insertUnorderedList')`,'•≡')}
@@ -8079,24 +8720,36 @@ function composerBar(id,o){
     ${b('Insert image or GIF — sends inline',`rbImg('${id}')`,'🖼')}
     ${b('Signatures',`sigDlg(${o.key?`'${esc(o.key)}'`:''})`,'✍')}
     ${b('Snippets (⌘;)','snipPick(event,\''+id+'\')','<span style="font-family:ui-monospace,monospace;font-size:12px">{ }</span>')}
+    ${b('✨ Write or rewrite with AI',`aiOpen('${o.kind}')`,'✨')}
+    <button type="button" class="cb trk" id="${o.kind}-trk" hidden onmousedown="event.preventDefault()" onclick="event.stopPropagation();trkToggle('${o.kind}')">👁</button>
     <span class="sp"></span>
-    ${o.when?`<span class="cb-when" id="sd-when-l"></span>${b('Send later',`whenMenu(event,'${esc(o.key)}')`,'⏰')}`:''}
-    <span class="cb-send"><button type="button" class="btn" id="${o.sendId}" onclick="${o.send}">${o.sendLabel}</button><button type="button" class="btn cb-more" title="More" onclick="sendMenu(event,'${o.kind}','${esc(o.key||'')}')">▾</button></span>
+    ${o.when?`<span class="cb-when" id="${o.kind}-when-l"></span>${b('Send later',`whenMenu(event,'${esc(o.key||'')}','${o.kind}')`,'⏰')}`:''}
+    <span class="cb-send"><button type="button" class="btn" id="${o.sendId}" onclick="${o.send}">${o.sendLabel}</button><button type="button" class="btn cb-more" title="More" onclick="event.stopPropagation();sendMenu(event,'${o.kind}','${esc(o.key||'')}')">▾</button></span>
   </div>`;
 }
-function whenMenu(ev,key){ const r=ev.currentTarget.getBoundingClientRect();
-  const set=(v,l)=>`sdWhen('${v}','${l}')`;
+function whenMenu(ev,key,kind='sd'){ const r=ev.currentTarget.getBoundingClientRect();
+  const set=(v,l)=>`sdWhen('${v}','${l}','${kind}')`;
   ctxOpen(r.left-150,r.top-190,[_mi('Send now',set('','')),_mi('In 4 hours',set('4h','in 4 hours')),
     _mi('Tomorrow 8am',set('tomorrow','tomorrow 8am')),_mi('Pick a time…',set('custom','custom'))].join('')); }
-function sdWhen(v,label){
-  const sel=$('#sd-when'); if(sel) sel.value=v;
-  const c=$('#sd-custom'); if(c){ c.style.display=v==='custom'?'inline-block':'none'; if(v==='custom') c.focus(); }
-  const l=$('#sd-when-l'); if(l) l.textContent=v&&v!=='custom'?'⏰ '+label:'';
-  const s=$('#sd-send'); if(s) s.textContent=v?'Schedule':(SD_MODE==='fwd'?'Forward':'Send');
+function sdWhen(v,label,kind='sd'){
+  const sel=$('#'+kind+'-when'); if(sel) sel.value=v;
+  const c=$('#'+kind+'-custom'); if(c){ c.style.display=v==='custom'?'inline-block':'none'; if(v==='custom') c.focus(); }
+  const l=$('#'+kind+'-when-l'); if(l) l.textContent=v&&v!=='custom'?'⏰ '+label:'';
+  const s=$('#'+kind+'-send'); if(s) s.textContent=v?'Schedule':(kind==='sd'&&SD_MODE==='fwd'?'Forward':'Send');
+}
+// when the compose window's ⏰ is set: an ISO time, '' for now, or null if
+// "custom" has no time picked yet
+function cpSendAt(){
+  const w=$('#cp-when')?.value||'';
+  if(w==='4h') return new Date(Date.now()+4*3600e3).toISOString();
+  if(w==='tomorrow') return snoozeWhen('tomorrow');
+  if(w==='custom') return $('#cp-custom').value?new Date($('#cp-custom').value).toISOString():null;
+  return '';
 }
 function sendMenu(ev,kind,key){ const r=ev.currentTarget.getBoundingClientRect(), dummy="document.createElement('button')";
   const items=kind==='cp'
-    ? [_mi('💾 Save to Drafts',`doCompose(${dummy})`), ...(window.CP_DRAFT?[]:[_mi('📎 Big files: save and attach in Gmail ↗','attachViaGmail()')]), '<hr>', _mi('🗑 Discard','closeCompose()','warn')]
+    ? [_mi('💾 Save to Drafts',`doCompose(${dummy})`), ...(window.CP_DRAFT?[]:[_mi('📎 Big files: save and attach in Gmail ↗','attachViaGmail()')]), '<hr>',
+       ...(window.CP_DRAFT?[_mi('🗑 Delete this draft — Gmail Trash','cwDeleteDraft()','warn')]:[]), _mi('✕ Close without saving','closeCompose()','warn')]
     : [_mi('💾 Save to Drafts',`saveDraftBody('${key}',${dummy})`), ...(SD_MODE==='fwd'?[]:[_mi('📎 Big files: save and attach in Gmail ↗',`attachViaGmail('${key}')`)]), '<hr>', _mi('🗑 Discard',`closeComposer('${key}')`,'warn')];
   ctxOpen(r.right-230,r.top-(kind==='cp'?140:140),items.join('')); }
 function rbImg(id){
@@ -8579,6 +9232,7 @@ async function openComposer(key,mode,mi){
       <div id="sd-attlist" class="matts"></div>
     </div>`;
   rbInit('sd-body', sig);
+  trkArm('sd', i.account);
   // E157: a chosen reply option lands in the composer, above the signature
   if(window.SD_PREFILL){
     const el=document.getElementById('sd-body');
@@ -8630,8 +9284,8 @@ async function doSend(key,btn){
   else if(w==='tomorrow') send_at=snoozeWhen('tomorrow');
   else if(w==='custom'){ if(!$('#sd-custom').value){ sdErr('Pick the custom time'); return; } send_at=new Date($('#sd-custom').value).toISOString(); }
   if(ATTS.sd.length&&send_at){ sdErr('Attachments send now only — remove them or send unscheduled'); return; }
-  const payload={confirm:true,account:i.account,to,cc,bcc,
-    subject:$('#sd-subject').value.trim(),body:composedBody(i)};
+  const payload=trkPayload('sd',{confirm:true,account:i.account,to,cc,bcc,
+    subject:$('#sd-subject').value.trim(),body:composedBody(i)});
   const ext=extractInlineImages(composedHtml(i));
   if(send_at&&ext.atts.length){ sdErr('Inline images send now only — remove them or send unscheduled'); return; }
   const allAtts=[...ATTS.sd.map(a=>({name:a.name,mime:a.mime,data:a.data})),...ext.atts];
@@ -8645,6 +9299,7 @@ async function doSend(key,btn){
   const then=$('#sd-then').value;
   const finish=async out=>{
     clearBak('r:'+i.raw.thread_id);   // E155: it landed — drop the snapshot
+    if(!send_at) sentStale();
     toast(send_at?('Scheduled for '+new Date(out.scheduled).toLocaleString()):'Sent ✓');
     if(then==='archive') await doneItem(key);
     else if(then==='dismiss') await dismissItem(key);
@@ -8775,18 +9430,24 @@ function composeDlg(draft){
   ensureContactsDl();
   if(!cwOpen(d)) return;
   ATTS.cp=[];
-  cwFill(d?'Edit draft':'New email', `
+  // E258: an agent (OpenClaw / Claude) wrote this draft — say so before Send,
+  // loudly when it is addressed to someone new to this account.
+  const agentWarn=d&&d.agent?`<div class="status" style="text-transform:none;letter-spacing:0;padding:8px 10px;margin-bottom:8px;border-radius:8px;${(d.agent_new||[]).length?'background:#fde8e8;color:#8a1c1c;font-weight:600':'background:#fff4d6;color:#6b4e00'}">🤖 Written by an agent, not by you.${(d.agent_new||[]).length?` New to this account: ${esc(d.agent_new.join(', '))} — check who this goes to and why before sending.`:' Read it before sending.'}</div>`:'';
+  cwFill(d?'Edit draft':'New email', `${agentWarn}
     <label>From</label><select id="cp-acct" ${d?'disabled':''}>${accts.map(a=>`<option value="${esc(a)}" ${a===from?'selected':''}>${esc(acctLabel(a))}</option>`).join('')}</select>
     ${rcptRows('cp',d?d.to:'',d?d.cc:'',d?d.bcc:'')}
     <label>Subject</label><input type="text" id="cp-subject" value="${d?esc(d.subject||''):''}">
     <label>Message</label>${richBody('cp-body')}
-    ${composerBar('cp-body',{kind:'cp',sendId:'cp-send',send:'doComposeSend(this)',sendLabel:'Send'})}
+    ${composerBar('cp-body',{kind:'cp',when:true,key:'',sendId:'cp-send',send:'doComposeSend(this)',sendLabel:'Send'})}
+    <select id="cp-when" hidden><option value=""></option><option value="4h"></option><option value="tomorrow"></option><option value="custom"></option></select>
+    <input type="datetime-local" id="cp-custom" style="display:none;margin-top:6px">
     <div class="status" id="cp-status" style="margin-top:4px"></div><div id="sd-attlist" class="matts"></div>`);
   ensureContactsDl($('#cp-acct').value);
   const seed=()=>{ const a=$('#cp-acct').value; ensureContactsDl(a);
     if(d) rbInit('cp-body', d.body||'');
     else if(!rbText('cp-body').trim()) rbInit('cp-body', SIGS[a]?'\n\n'+SIGS[a]:''); };
-  $('#cp-acct').onchange=seed; seed();
+  $('#cp-acct').onchange=()=>{ seed(); trkRefresh('cp'); }; seed();
+  trkArm('cp', $('#cp-acct').value);
   const bk=d?'d:'+d.account+':'+d.draft_uid:'new';
   armBak('cp-body',bk); offerBak('cp-body',bk);   // E155
   draftSnapArm('cp');                              // Dev #53
@@ -8804,8 +9465,25 @@ async function doComposeSend(btn){
   const cc=chipVal('cp-cc'), bcc=chipVal('cp-bcc');
   const nRec=(to+','+cc+','+bcc).split(',').filter(s=>s.trim()).length;
   const ext=extractInlineImages(rbHtml('cp-body'));
-  const payload={confirm:true,account:acct,to,cc,bcc,subject,body,body_html:ext.html,
-    attachments:[...ATTS.cp.map(a=>({name:a.name,mime:a.mime,data:a.data})),...ext.atts]};
+  const payload=trkPayload('cp',{confirm:true,account:acct,to,cc,bcc,subject,body,body_html:ext.html,
+    attachments:[...ATTS.cp.map(a=>({name:a.name,mime:a.mime,data:a.data})),...ext.atts]});
+  // Bart 2026-10-06: "a way to schedule a draft email to send it". The
+  // queue holds text + formatting (no files); the Gmail draft stays until it
+  // goes, then mail_sync moves it to Trash. Cancel it from Scheduled.
+  const send_at=cpSendAt();
+  if(send_at===null) return err('Pick the time to send it');
+  if(send_at){
+    if(payload.attachments.length) return err('Attachments and pasted images send now only — remove them or send now');
+    delete payload.attachments;
+    payload.send_at=send_at;
+    if(reply) payload.thread_id=d.thread_id; else payload.new=true;
+    if(d){ payload.draft_uid=d.draft_uid; payload.draft_msgid=d.gm_msgid||''; }
+    try { const out=await post('/send',payload);
+      closeCompose(); toast('⏰ Scheduled for '+new Date(out.scheduled).toLocaleString()+' — cancel it from Scheduled');
+      loadMailTodos(); if(SCOPE.kind==='drafts') renderList();
+    } catch(e){ err(e.message); }
+    return;
+  }
   // E224: a reply draft goes out on its own thread; anything else is new mail.
   if(reply) payload.thread_id=d.thread_id; else payload.new=true;
   // §6 amendment (2026-09-29): held SEND_UNDO_MS behind Undo, then sent.
@@ -8823,6 +9501,7 @@ async function doComposeSend(btn){
     try { await post('/send',payload,null,{keepalive:true}); }
     catch(e){ restore('Not sent — '+e.message); return; }   // restored here, not again by commitPending
     clearBak(d?'d:'+d.account+':'+d.draft_uid:'new');   // E155
+    sentStale();
     if(d){
       DRAFTS=null;
       try { await post('/draft/discard',{account:d.account,draft_uid:d.draft_uid,gm_msgid:d.gm_msgid});
@@ -8832,6 +9511,9 @@ async function doComposeSend(btn){
     } else toast('Sent ✓ — it will appear on the board after the next mail sync');
   }, ()=>restore(), SEND_UNDO_MS);
 }
+// Dev #57: a send makes the Sent list stale; if it's on screen, read it again
+// (Gmail files the copy in Sent as SMTP accepts it)
+function sentStale(){ SENT=null; SENT_NEXT=null; if(SCOPE.kind==='sent') setTimeout(()=>{ if(SCOPE.kind==='sent'&&!SENT) setScope('sent'); },1500); }
 async function doCompose(btn){
   if(ATTS.cp.length) toast("Heads up: attachments aren't saved with drafts");
   btn.disabled=true;
@@ -9297,12 +9979,28 @@ function renderCalPage(){
 
 /* ------- Ask (real /command) ------- */
 let ASK_LOG=[], ASK_CHAT=null, ASK_BUSY=false;
+/* Projects step 5 (§6, 2026-09-30): opened from a project page, Ask is fenced
+   to that project — the server reads only what's filed there and offers only
+   read + draft tools. ASK_PROJ says which; ✕ on the fence leaves it. */
+let ASK_PROJ=null;          // null | {id, name}
+function askLeaveProj(){ ASK_PROJ=null; ASK_LOG=[]; ASK_CHAT=null; renderAsk(); }
+function projAsk(id){
+  const inp=$('#pj-ask-in'), q=(inp&&inp.value||'').trim(); if(!q) return;
+  const p=PROJ_PAGE[id]&&PROJ_PAGE[id].data;
+  if(!ASK_PROJ||ASK_PROJ.id!==id){ ASK_LOG=[]; ASK_CHAT=null; }
+  ASK_PROJ={id, name:(p&&p.name)||(projById(id)||{}).name||'this project'};
+  inp.value='';
+  openDock('ask');
+  const a=$('#ask-in'); if(a){ a.value=q; askSend(); }
+}
 function renderAsk(){
   const d=$('#dock');
-  d.innerHTML=`<h3>${dockX}Ask Grand Central<span class="sp"></span>
+  d.innerHTML=`<h3>${dockX}${ASK_PROJ?'✨ '+esc(ASK_PROJ.name):'Ask Grand Central'}<span class="sp"></span>
       <button class="qbtn" onclick="askHistory()" title="Past conversations">🕘</button>
       <button class="qbtn" onclick="ASK_LOG=[];ASK_CHAT=null;renderAsk()" title="New chat">＋</button></h3>
-    <div class="ask-log" id="ask-log">${ASK_LOG.map(t=>`<div class="ask-turn ${t.role==='user'?'you':''}"><span class="bub">${esc(t.text)}</span></div>`).join('')||'<div class="empty" style="padding:20px 0">Ask about your mail, todos, deals, calendar…</div>'}</div>
+    ${ASK_PROJ?`<div class="ask-fence">📁 Only this project — its emails, todos, notes, meetings, people and context. Reads and drafts; never archives or sends.
+      <a onclick="askLeaveProj()" title="Ask about everything instead">✕ leave</a></div>`:''}
+    <div class="ask-log" id="ask-log">${ASK_LOG.map((t,ti)=>`<div class="ask-turn ${t.role==='user'?'you':''}"><span class="bub">${esc(t.text)}</span>${(t.cards||[]).map((c,ci)=>askCardHtml(c,ti,ci)).join('')}</div>`).join('')||`<div class="empty" style="padding:20px 0">${ASK_PROJ?'Ask about '+esc(ASK_PROJ.name)+' — status, what’s open, a summary, a draft reply…':'Ask about your mail, todos, deals, calendar…'}</div>`}</div>
     <div class="ask-opts">
       <select id="ask-model"><option value="claude-sonnet-5">Sonnet 5</option>
         <option value="claude-opus-5-5">Opus 5.5</option><option value="claude-fable-5-1">Fable 5.1</option></select>
@@ -9327,9 +10025,12 @@ async function askSend(){
   const tick=setInterval(()=>{ const el=$('#ask-busy'); if(el) el.textContent=`thinking… ${Math.round((Date.now()-t0)/1000)}s`; },1000);
   try {
     const out=await post('/command',{text,model,effort:effort||undefined,chat_id:ASK_CHAT,
+      project_id:ASK_PROJ?ASK_PROJ.id:undefined,
+      account:(!ASK_PROJ&&!HOME_ALL)?ACCT:undefined,   // E259: its context documents ground the answer
       history:ASK_LOG.slice(0,-1).map(t=>({role:t.role,text:t.text}))});
     ASK_CHAT=out.chat_id||ASK_CHAT;
-    ASK_LOG.push({role:'assistant',text:out.reply||'(no reply)'});
+    ASK_LOG.push({role:'assistant',text:out.reply||'(no reply)',
+      cards:(out.cards||[]).map(c=>({...c,state:'',msg:''}))});
   } catch(e){
     // E136: through the tunnel, Cloudflare cuts responses at ~100s while the
     // server keeps working and still persists the answer — say so.
@@ -9338,12 +10039,43 @@ async function askSend(){
   }
   clearInterval(tick); ASK_BUSY=false; renderAsk();
 }
+/* E265 (§6, 2026-10-02): Ask proposes, Bart clicks. A card holds the exact
+   request; the click sends it to the same route as the board's own button,
+   from this (paired) browser, so every server check applies. */
+function askCardHtml(c,ti,ci){
+  const st=c.state==='done'?`<span>✓ ${esc(c.msg||'Done')}</span>`
+    :c.state==='busy'?'<span>Working…</span>'
+    :c.state==='skip'?'<span>Skipped</span>'
+    :`<button class="btn" onclick="askCard(${ti},${ci})">${esc(c.button||'Do it')}</button>
+      <button class="qbtn" onclick="askCardSkip(${ti},${ci})">Skip</button>
+      ${c.state==='err'?`<span style="color:var(--bad,#c33)">${esc(c.msg)}</span>`:'<span>Nothing happens until you click.</span>'}`;
+  return `<div class="ask-card"><div class="ac-acct">${esc(c.account||'')} · ${esc(c.kind||'')}</div>
+    ${(c.lines||[]).map((l,i)=>`<div class="ac-line${c.kind==='draft'&&i===2?' body':''}">${esc(l)}</div>`).join('')}
+    <div class="ac-act">${st}</div></div>`;
+}
+function askCardSkip(ti,ci){ const c=((ASK_LOG[ti]||{}).cards||[])[ci]; if(c){ c.state='skip'; renderAsk(); } }
+async function askCard(ti,ci){
+  const c=((ASK_LOG[ti]||{}).cards||[])[ci]; if(!c||c.state==='busy'||c.state==='done') return;
+  c.state='busy'; renderAsk();
+  try{
+    const b=c.body||{};
+    // the board's own Done archives in Gmail too (doneItem); a Done card matches it
+    if(c.kind==='triage'&&b.action==='done')
+      await post('/mail-action',{action:'archive',thread_id:b.thread_id,account:b.account});
+    const out=await post(c.path,b);
+    c.state='done';
+    c.msg=c.kind==='calendar'?(out.invite_draft?'Event added without guests; invites wait in Settings → Agents':'Added to your calendar')
+      :c.kind==='draft'?'Saved to Drafts (not sent)':'Done';
+    if(c.kind==='triage'&&typeof loadMailTodos==='function') loadMailTodos();
+  }catch(e){ c.state='err'; c.msg=e.message; }
+  renderAsk();
+}
 async function askHistory(){
   try {
-    const out=await fetch('/ask').then(r=>r.json());
-    dlg(`<h3>Ask history</h3>`+((out.chats||[]).slice(0,20).map(c=>
+    const out=await fetch('/ask'+(ASK_PROJ?'?project='+ASK_PROJ.id:'')).then(r=>r.json());
+    dlg(`<h3>Ask history${ASK_PROJ?' · '+esc(ASK_PROJ.name):''}</h3>`+((out.chats||[]).slice(0,20).map(c=>
       `<div class="dk-row" style="cursor:pointer" onclick="askOpen(${c.id})"><div class="w">${esc((c.title||'chat').slice(0,70))}</div>
-       <div class="m">${esc((c.created_at||'').slice(0,16))} · ${c.turns||0} turns</div></div>`).join('')||'<div class="empty">No past chats.</div>')+
+       <div class="m">${esc((c.created_at||'').slice(0,16))} · ${c.turns||0} turns${c.project_id&&!ASK_PROJ?' · 📁 '+esc((projById(c.project_id)||{}).name||'project'):''}</div></div>`).join('')||'<div class="empty">No past chats.</div>')+
       `<div class="foot"><button class="btn sec2" onclick="closeDlg()">Close</button></div>`);
   } catch(e){ toast('History failed — '+e.message); }
 }
@@ -9351,6 +10083,9 @@ async function askOpen(id){
   try {
     const out=await fetch('/ask?id='+id).then(r=>r.json());
     ASK_CHAT=id;
+    // a project's chat reopens inside its fence
+    const pj=out.chat&&out.chat.project_id;
+    ASK_PROJ=pj?{id:pj, name:(projById(pj)||{}).name||'project'}:null;
     ASK_LOG=(out.chat?.messages||out.chat||[]).map(m=>({role:m.role,text:m.text||m.content||''})).filter(m=>m.text);
     closeDlg(); DOCK='ask';
     document.querySelectorAll('.dk').forEach(x=>x.classList.toggle('on',DOCK===x.dataset.dock));
@@ -9485,8 +10220,12 @@ const attCtx=el=>el&&el.closest&&el.closest('#cw')?'cp':'sd';
 const attList=ctx=>(ctx==='cp'?$('#cw'):$('#composer'))?.querySelector('#sd-attlist');
 const fmtSize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':n>1024?Math.round(n/1024)+' KB':n+' B';
 async function sdFiles(inp){
-  const ctx=attCtx(inp), A=ATTS[ctx];
-  for(const f of inp.files){
+  await addFiles(attCtx(inp), inp.files);
+  inp.value='';
+}
+async function addFiles(ctx, files){
+  const A=ATTS[ctx];
+  for(const f of files){
     if(A.length>=3){ toast('Up to 3 attachments per send'); break; }
     if(A.reduce((s,a)=>s+a.size,0)+f.size>5*1024*1024){
       toast(f.name+' would push past the 5 MB total — use 📎 via Gmail for big files'); continue; }
@@ -9494,8 +10233,46 @@ async function sdFiles(inp){
       r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(f); });
     A.push({name:f.name,mime:f.type||'application/octet-stream',size:f.size,data});
   }
-  inp.value=''; sdAttRender(ctx);
+  sdAttRender(ctx);
 }
+/* Dev #67 (Bart: "I want to be able to drag images or attachments (files)
+   into the compose pane and have them added to the email"; interview: images
+   inline where dropped, everything else attached, 5 MB as today). Drops feed
+   the same two paths as 🖼 and 📎 — nothing new reaches the send path. */
+async function rbInsertImageFile(id, f, x, y){
+  if(f.size>3.5*1024*1024){ toast(f.name+': keep images under ~3.5 MB (5 MB total per send)'); return; }
+  const url=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
+  const el=$('#'+id); if(!el) return;
+  el.focus();
+  const rng=document.caretRangeFromPoint?document.caretRangeFromPoint(x,y):null;
+  if(rng&&el.contains(rng.startContainer)){ const sel=getSelection(); sel.removeAllRanges(); sel.addRange(rng); }
+  document.execCommand('insertImage', false, url);
+  rbSave(id);
+}
+const dropZone=t=>t&&t.closest&&(t.closest('#cw')||t.closest('#composer'));
+const hasFiles=e=>[...(e.dataTransfer?.types||[])].includes('Files');
+document.addEventListener('dragover', e=>{
+  if(!hasFiles(e)) return;
+  e.preventDefault();                       // never let a stray drop open the file in the tab
+  const z=dropZone(e.target);
+  document.querySelectorAll('.drop-on').forEach(x=>{ if(x!==z) x.classList.remove('drop-on'); });
+  if(z){ z.classList.add('drop-on'); e.dataTransfer.dropEffect='copy'; } else e.dataTransfer.dropEffect='none';
+});
+document.addEventListener('dragleave', e=>{ if(!e.relatedTarget) document.querySelectorAll('.drop-on').forEach(x=>x.classList.remove('drop-on')); });
+document.addEventListener('drop', async e=>{
+  if(!hasFiles(e)) return;
+  e.preventDefault();
+  document.querySelectorAll('.drop-on').forEach(x=>x.classList.remove('drop-on'));
+  const z=dropZone(e.target); if(!z){ toast('Drop files onto an open email you are writing'); return; }
+  const ctx=z.id==='cw'?'cp':'sd', body=e.target.closest('.rb-body');
+  const files=[...e.dataTransfer.files], rest=[];
+  for(const f of files){
+    if(body&&/^image\//.test(f.type)) await rbInsertImageFile(body.id, f, e.clientX, e.clientY);
+    else rest.push(f);
+  }
+  if(rest.length) await addFiles(ctx, rest);
+  if(rest.length) toast(`📎 Attached ${rest.length} file${rest.length>1?'s':''}`);
+});
 function sdAttRender(ctx){
   const d=attList(ctx); if(!d) return;
   d.innerHTML=ATTS[ctx].map((a,k)=>`<span class="att">📎 ${esc(a.name)} <span>${fmtSize(a.size)}</span>
@@ -9855,7 +10632,8 @@ async function pushDlg(){
   const kinds=[['brief','Morning brief','the plan, your top three, today\'s events'],
                ['event','Event reminders','~15 minutes before each meeting'],
                ['wrap','Day\'s end','what got done, what is still owed'],
-               ['alert','Problems','a dead credential, a dropped tunnel, a stuck sweeper']];
+               ['alert','Problems','a dead credential, a dropped tunnel, a stuck sweeper'],
+               ['agent','Agent requests','an agent is waiting for you to approve something']];
   const prefs=(PUSH&&PUSH.prefs)||{};
   const row=([k,name,what])=>{ const p=prefs[k]||{imessage:true,push:true};
     return `<div class="hs-row" style="cursor:default">
@@ -10055,11 +10833,36 @@ $('#q').onkeydown=e=>{
   if(e.key==='Enter'&&Q.trim()) runGmailSearch();
   if(e.key==='Escape'){ e.stopPropagation(); qClear(); }
 };
+/* Dev #61 (Bart: "Tried searching - it just refreshed the home page"):
+   search is one account's, and Home, a Day Home and project pages don't
+   draw search results. Enter there goes to the Inbox of the account you
+   last had open and searches it; the results offer every other account as a
+   one-click re-run (Bart: "Do 1 and 3"). */
+function smWaitMe(){
+  const on=/(^|\s)waiting:me\b/i.test(Q);
+  Q=on?Q.replace(/(^|\s)waiting:me\b/ig,' ').trim():(Q.trim()+' waiting:me').trim();
+  $('#q').value=Q; syncQClr(); renderList();
+}
+function searchNeedsInbox(){ return HOME_ALL || !!PROJ || SCOPE.kind==='home'; }
+function searchToInbox(){
+  const q=Q;
+  if(HOME_ALL) leaveHomeAll();
+  if(PROJ) leaveProj();
+  SMART=false; SPLIT=null; TAB='all';
+  setScope('inbox',null); syncTabs(); renderAcctTabs(); renderRail(); renderCrumbs();
+  Q=q; $('#q').value=q; syncQClr();
+}
+async function searchIn(acct){
+  const q=Q; await setAcct(acct);
+  if(SCOPE.kind!=='inbox') setScope('inbox',null);
+  Q=q; $('#q').value=q; syncQClr(); runGmailSearch();
+}
 async function runGmailSearch(){
-  $('#list').innerHTML='<div class="empty">Searching Gmail…</div>';
+  if(searchNeedsInbox()) searchToInbox();
+  $('#list').innerHTML=`<div class="empty">Searching ${esc(acctLabel(ACCT))} in Gmail…</div>`;
   try {
-    // type:/priority:/needs: are GC's own (Jev) filters — Gmail doesn't know them
-    const gq=Q.replace(/(^|\s)-?(type|priority|needs):("[^"]*"|\S+)/gi,' ').trim();
+    // type:/priority:/needs:/waiting: are GC's own (Jev) filters — Gmail doesn't know them
+    const gq=Q.replace(/(^|\s)-?(type|priority|needs|waiting):("[^"]*"|\S+)/gi,' ').trim();
     if(!gq){ SEARCH_ROWS=null; renderList(); return; }
     const out=await fetch('/mail/search?q='+encodeURIComponent(gq)+'&account='+encodeURIComponent(ACCT)).then(r=>r.json());
     SEARCH_ROWS=(out.results||out.threads||[]).filter(x=>x.account===ACCT).map(x=>({
@@ -10339,8 +11142,10 @@ window.fetch=function(url,opts){
 };
 function netDown(why){
   const first=!NET.down;
-  if(first){ NET.down=true; NET.since=new Date(); sfx('err');
-    if(typeof notify==='function') notify('err','Connection to Grand Central lost at '+NET.since.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+' — the tunnel stopped answering ('+why+')'); }
+  // E266 (Bart, 10-02: "the reconnect and disconnect is very noisy, doesn't
+  // need to be in my notification menu"): the bar below says it while it
+  // matters; the bell no longer keeps a record of every blip.
+  if(first){ NET.down=true; NET.since=new Date(); sfx('err'); }
   let b=document.getElementById('netbar');
   if(!b){ b=document.createElement('div'); b.id='netbar'; document.body.appendChild(b); }
   b.className='';
@@ -10351,21 +11156,21 @@ function netDown(why){
 function netUp(){
   if(!NET.down) return;
   NET.down=false; clearInterval(NET.probe); NET.probe=null;
-  const mins=Math.max(1,Math.round((Date.now()-NET.since)/60000));
   const b=document.getElementById('netbar');
   if(b){ b.className='back'; b.innerHTML='✓ Reconnected — syncing…'; setTimeout(()=>b.remove(),4000); }
-  if(typeof notify==='function') notify('info','Reconnected at '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+' — the connection was down ~'+mins+' min');
   sfx('ack'); loadMailTodos();
 }
 
 /* notifications (E156, dev request #3) ====================================
    A simple bell: alerts accumulate here instead of vanishing with a toast —
-   connection drops/recoveries (E155), a mail account or API key that stopped
+   a mail account or API key that stopped (connection blips left in E266)
    working, a sweeper that missed its slot, a stale tab. Kept in localStorage
    (last 50); opening the panel marks everything seen. An identical text never
    stacks — it just refreshes its timestamp. */
 let NOTIFS=[];
 try{ NOTIFS=JSON.parse(localStorage.getItem('gc2_notifs')||'[]'); }catch(e){}
+// E266: sweep out the connection blips stored before they left the bell
+NOTIFS=NOTIFS.filter(n=>!/^(Connection to Grand Central lost at|Reconnected at) /.test(n.text||''));
 function nfSave(){ try{ localStorage.setItem('gc2_notifs', JSON.stringify(NOTIFS.slice(0,50))); }catch(e){} }
 function notify(kind,text){
   const dup=NOTIFS.find(n=>n.text===text);
@@ -10386,7 +11191,7 @@ function nfRender(){
       `<div class="nf-row${n.seen?'':' new'}"><span>${n.kind==='err'?'⛔':n.kind==='warn'?'⚠️':'ℹ️'}</span>
        <div>${esc(n.text)}<div class="nf-ts">${agoTxt(n.ts)}</div></div></div>`).join('')
       +'<hr><button onclick="NOTIFS=[];nfSave();nfBadge();nfRender()">Clear all</button>'
-     :'<div class="nf-empty">Nothing yet — connection drops, credential problems, and a stuck sweeper will land here.</div>')
+     :'<div class="nf-empty">Nothing yet — credential problems and a stuck sweeper will land here.</div>')
     // E190: this panel only catches alerts while a tab is open. The way to be
     // told when it is not is one click away, and it belongs here.
     + `<hr><button onclick="nfClose();pushDlg()">🔔 ${(window.Notification&&Notification.permission==='granted')?'Notification settings':'Get these on your Mac and phone…'}</button>`;
@@ -10429,7 +11234,9 @@ setTimeout(draftRecoverOffer, 3500);   // Dev #53: an email that a reload interr
     setInterval(loadBoard,BOARD_MS);
     setInterval(loadSteward,BOARD_MS);
     setInterval(loadWizard,BOARD_MS);
+    setInterval(loadApprovals,POLL_MS);
   }
+  loadApprovals();
 })();
 </script>
 </body>

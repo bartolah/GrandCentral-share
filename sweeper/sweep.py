@@ -134,6 +134,10 @@ def main():
         t0 = time.monotonic()
         try:
             recs = read_account(account, env, lookback_days=lookback, log=log)
+            # E258: a Private thread never reaches the assessor or the board
+            import private
+            priv = private.keys()
+            recs = [r for r in recs if (account, str(r.get("thread_id"))) not in priv]
             records.extend(recs)
             sources_swept.append(src)
             log(f"{src}: {len(recs)} threads in {time.monotonic()-t0:.1f}s")
@@ -280,4 +284,6 @@ def main():
 
 
 if __name__ == "__main__":
+    import egress  # E258: outbound hosts allowlisted (log-only until enforced)
+    egress.install("sweep")
     sys.exit(main())

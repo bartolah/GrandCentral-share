@@ -46,6 +46,13 @@ Return ONLY JSON:
 """
 
 
+try:
+    import untrusted  # E258: email text is data, never instructions
+except ImportError:  # pragma: no cover - package-relative fallback
+    from . import untrusted
+PROMPT = PROMPT + "\n\n" + untrusted.RULE
+
+
 def _board() -> dict:
     try:
         with open(BOARD_JSON, encoding="utf-8") as f:
@@ -107,7 +114,7 @@ def generate(conn, env: dict | None = None, log=print) -> dict | None:
             model=MODEL, max_tokens=MAX_TOKENS,
             output_config={"effort": "medium"},
             system=PROMPT,
-            messages=[{"role": "user", "content": json.dumps(signals)}])
+            messages=[{"role": "user", "content": untrusted.fence_json(signals, "day_signals")}])
         raw = "".join(p.text for p in resp.content if p.type == "text")
         m = re.search(r"\{.*\}", raw, re.S)
         plan = json.loads(m.group(0)) if m else None

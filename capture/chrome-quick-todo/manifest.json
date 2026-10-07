@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Grand Central — Quick Todo",
-  "version": "1.0",
-  "description": "Add a todo to the Grand Central board from any tab.",
+  "version": "1.1",
+  "description": "Add a todo to the Grand Central board from any tab, in one account, optionally filed to a project.",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Add a Grand Central todo"
@@ -12,7 +12,10 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "activeTab"],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
   "host_permissions": [
     "https://gc.example.com/*",
     "http://localhost/*",
@@ -21,8 +24,12 @@
   ],
   "commands": {
     "_execute_action": {
-      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Command+Shift+Y" },
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
       "description": "Open Quick Todo"
     }
-  }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1sThdaheB+bJXYoeo0YUKHlX8DTLObTeeSSjfUbjXML9l6q9b4Q/tVjWC3SmS9PhbyiW8FaYssfZeS89pRVmc1d1s8U/xl0iwle0Y+XaoZ4YCgj5fnkQehQAE02krPtI3msx5+JPCUtuzVdDk5b3Zkff8DGdHPv5zAAGP4dqcp87YSc062H5RNFst7wbffdEb5dvbpIqfUc5h/oCFc+BohCMSQxfC4E4SlI5zeSMvq04EFxsaoUeffATe9x9ghh0yQwA2S873bGs8HF9vY0SPBtjcGB4XJJgbZgxt3Jy400EPZe8jvG0Xe16hlACEPZogBK3nq2QcEfSfanZMvX+owIDAQAB"
 }

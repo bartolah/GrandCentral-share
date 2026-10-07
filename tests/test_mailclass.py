@@ -279,6 +279,26 @@ class Pass(unittest.TestCase):
                                  {}, use_jev=True)
         self.assertEqual((eff["type"], eff["jev_overruled"]), ("Prospect", "Cold pitch"))
 
+    def test_waiting_on_me_when_someone_wrote_last_and_expects_a_reply(self):
+        # Dev #59: "the ball's in my court"
+        f = mc.classify(row(last_from_email="pat@else.org",
+                            participants=json.dumps(["Pat <pat@else.org>", ME])), {"teammates": {}, "domains": {}, "hash": "h"},
+                        {}, {ME})
+        self.assertEqual((f["respond"], f["waiting_on"]), ("unsure", "none"))
+        eff = lambda jev, pins={}: db.class_effective(
+            {"rules": json.dumps(f), "model": None, "model_source": None, "jev": json.dumps(jev)}, pins, use_jev=True)
+        yes = {"respond": "yes", "confidence": {"respond": 0.9}}
+        self.assertEqual((eff(yes)["waiting_on"], eff(yes)["source"]["waiting_on"]), ("me", "jev"))
+        self.assertEqual(eff({"respond": "no", "confidence": {"respond": 0.9}})["waiting_on"], "none")
+        self.assertEqual(eff(yes, {"waiting_on": "none"})["waiting_on"], "none")    # Bart's answer stands
+        self.assertEqual(eff(yes, {"respond": "no"})["waiting_on"], "none")
+        # when Bart wrote last it's never his move, whatever a model says
+        out = mc.classify(row(last_direction="outbound", participants=json.dumps(["Pat <pat@else.org>", ME])),
+                          {"teammates": {}, "domains": {}, "hash": "h"}, {}, {ME})
+        e2 = db.class_effective({"rules": json.dumps(out), "model": None, "model_source": None,
+                                 "jev": json.dumps(yes)}, {}, use_jev=True)
+        self.assertNotEqual(e2["waiting_on"], "me")
+
     def test_roster_validation(self):
         with self.assertRaises(ValueError):
             db.class_person_set(self.conn, "x@y.com", "X", grp=None, teammate=False)

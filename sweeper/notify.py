@@ -217,6 +217,20 @@ def run(conn, env: dict, log=print) -> None:
                      log=log, url=f"/?go=dev&account={r['account']}")
             _mark(conn, "devq", ref)
 
+    # ---- an agent is waiting on Bart's click (E266, 2026-10-02) ----
+    # Bart: "When agent requests come in, I need a notification to know to
+    # check." One alert per cycle for whatever is new: a desktop-app request
+    # (E260, expires in 24h), an invite draft, a "remember that…" note.
+    # The text is built only from fixed server wording and counts — never the
+    # agent's own preview, which could carry injected text into iMessage and
+    # from there into OpenClaw. Quiet hours hold it; it still waits in the
+    # morning, and a request that expired overnight is not announced.
+    if not quiet:
+        try:
+            _agent_waiting(conn, target, log)
+        except Exception as e:
+            log(f"notify: agent check failed ({e!r})")
+
     # ---- evening shutdown (E101 #4), once per day ----
     if "17:20" <= hm <= "18:10" and not _sent(conn, "shutdown", today):
         _deliver(conn, "wrap", target, _shutdown_text(conn), log=log, url="/?go=todos")
@@ -248,6 +262,34 @@ def _prep(conn, e) -> str:
         return ("\n" + " · ".join(bits)) if bits else ""
     except Exception:
         return ""
+
+
+def _agent_waiting(conn, target: str, log=print) -> None:
+    import agent_gate
+    import calendar_invite
+    new = []
+    for q in db.proposal_list(conn, "pending", limit=50):
+        if not _sent(conn, "agentq", f"p{q['id']}"):
+            what = agent_gate.AGENT_POST.get(q.get("path"), "an action").split(";")[0]
+            new.append((f"p{q['id']}", f"#{q['id']} {q.get('account', '')}: {what}"))
+    for v in calendar_invite.pending(conn):
+        if not _sent(conn, "agentq", f"i{v['id']}"):
+            new.append((f"i{v['id']}", f"invite draft for {v.get('account', '')}: "
+                                       f"{len(v.get('attendees') or [])} attendee(s) to approve"))
+    for c in conn.execute("SELECT id, scope FROM context_notes "
+                          "WHERE source = 'agent' AND active = 0").fetchall():
+        if not _sent(conn, "agentq", f"c{c['id']}"):
+            new.append((f"c{c['id']}", f"a note to remember ({c['scope']})"))
+    if not new:
+        return
+    lines = [f"✋ An agent is waiting on you ({len(new)})"]
+    lines += ["• " + t for _, t in new[:5]]
+    if len(new) > 5:
+        lines.append(f"(+{len(new) - 5} more)")
+    lines.append("Settings → Agents to approve or decline.")
+    _deliver(conn, "agent", target, "\n".join(lines), log=log, url="/settings.html?tab=agents")
+    for ref, _ in new:
+        _mark(conn, "agentq", ref)
 
 
 def _shutdown_text(conn) -> str:

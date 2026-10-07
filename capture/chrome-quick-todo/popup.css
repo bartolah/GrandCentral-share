@@ -18,7 +18,7 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 #settings .hint { font-size: 11px; color: var(--muted); margin: 6px 0 0; }
 .hidden { display: none; }
 
-textarea, input[type="text"], input[type="date"], select {
+textarea, input[type="text"], input[type="password"], input[type="date"], select {
   width: 100%; border: 1px solid var(--border); border-radius: 8px;
   padding: 7px 9px; font-size: 13px; background: transparent; color: inherit;
   resize: vertical;

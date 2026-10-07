@@ -36,6 +36,13 @@ SYSTEM_PROMPT = (
 )
 
 
+try:
+    import untrusted  # E258: email text is data, never instructions
+except ImportError:  # pragma: no cover - package-relative fallback
+    from . import untrusted
+SYSTEM_PROMPT = SYSTEM_PROMPT + "\n\n" + untrusted.RULE
+
+
 def _thread_for_prompt(n: int, r: dict) -> dict:
     return {
         "n": n,
@@ -48,8 +55,8 @@ def _thread_for_prompt(n: int, r: dict) -> dict:
 
 
 def build_user_prompt(batch: list) -> str:
-    threads_json = json.dumps([_thread_for_prompt(i, r) for i, r in enumerate(batch)],
-                              ensure_ascii=False, indent=2)
+    threads_json = untrusted.fence_json(
+        [_thread_for_prompt(i, r) for i, r in enumerate(batch)], "email_threads")
     return f"""Assess each thread below.
 
 Threads (JSON):

@@ -627,6 +627,130 @@ CREATE TABLE IF NOT EXISTS services (
 -- Notes live in the database (Bart 2026-09-29). A note written in a project
 -- carries its project_id; deleting the project keeps the note, with the
 -- project's name in from_project.
+-- E269 open/click tracking (BUILD_SPEC §6, 2026-10-06; sweeper/tracking.py).
+-- track_sends: one row per tracked send (the random token the Worker sees);
+-- track_events: what the Worker logged, pulled by mail_sync (no IPs, no
+-- content); track_settings: Bart's per-account switches; track_health: which
+-- t.<domain> answered /health (nothing is tracked on a domain that doesn't).
+CREATE TABLE IF NOT EXISTS track_sends (
+  token       TEXT PRIMARY KEY,
+  account     TEXT NOT NULL,
+  thread_id   TEXT NOT NULL DEFAULT '',
+  send_id     INTEGER,
+  subject     TEXT,
+  recipients  TEXT,
+  links       TEXT,
+  message_id  TEXT,
+  clicks      INTEGER NOT NULL DEFAULT 0,
+  sent_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_track_sends_thread ON track_sends (account, thread_id);
+CREATE TABLE IF NOT EXISTS track_events (
+  remote_id   INTEGER PRIMARY KEY,
+  token       TEXT NOT NULL,
+  kind        TEXT NOT NULL,
+  link        INTEGER,
+  src         TEXT,
+  country     TEXT,
+  ts          TEXT NOT NULL,
+  auto        INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_track_events_token ON track_events (token);
+CREATE TABLE IF NOT EXISTS track_settings (
+  account     TEXT PRIMARY KEY,
+  enabled     INTEGER, clicks INTEGER, ping INTEGER, waiting INTEGER,
+  updated_at  TEXT
+);
+CREATE TABLE IF NOT EXISTS track_health (
+  domain      TEXT PRIMARY KEY,
+  ok          INTEGER NOT NULL,
+  checked_at  TEXT NOT NULL
+);
+
+-- Projects step 6 (2026-09-30): Bart's ✕ on an "Add to <project>?" — one
+-- thread (account + thread_id) or a whole person for that project.
+CREATE TABLE IF NOT EXISTS project_declines (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL,
+  account     TEXT,
+  thread_id   TEXT,
+  person      TEXT,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_project_declines ON project_declines (project_id);
+
+-- E258 (BUILD_SPEC §6, 2026-09-30): agent hardening against prompt injection.
+-- Which accounts an agent (the MCP server) may touch. No row = off: a new
+-- mailbox is invisible to agents until Bart switches it on from a paired browser.
+CREATE TABLE IF NOT EXISTS agent_accounts (
+  account    TEXT PRIMARY KEY,
+  enabled    INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
+-- Every agent request, and every mutating request from an unidentified local
+-- caller: the record Bart reviews for calls he didn't intend.
+CREATE TABLE IF NOT EXISTS agent_audit (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts           TEXT NOT NULL,
+  principal    TEXT NOT NULL,          -- agent | local
+  tool         TEXT,                   -- MCP tool name (X-GC-Tool)
+  method       TEXT NOT NULL,
+  route        TEXT NOT NULL,
+  args         TEXT,                   -- full arguments, JSON
+  accounts     TEXT,                   -- JSON array of accounts touched
+  thread_ids   TEXT,                   -- JSON array of "account:thread_id"
+  status       INTEGER,
+  result_bytes INTEGER,
+  refusal      TEXT,                   -- why the gate refused, if it did
+  signals      INTEGER NOT NULL DEFAULT 0  -- injection-shaped text in the result
+);
+CREATE INDEX IF NOT EXISTS idx_agent_audit_ts ON agent_audit (ts);
+-- E260: what the Claude desktop app asked Bart to approve. It can only file
+-- these; one runs only after Bart approves it from a paired browser, as an
+-- ordinary agent call. status: pending | approved | declined | failed |
+-- expired. Rows are never deleted: this is the record of what was asked.
+CREATE TABLE IF NOT EXISTS agent_proposals (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at  TEXT NOT NULL,
+  tool        TEXT NOT NULL,
+  account     TEXT NOT NULL,
+  preview     TEXT NOT NULL,
+  path        TEXT NOT NULL,
+  body        TEXT NOT NULL,             -- the JSON the route will receive
+  status      TEXT NOT NULL DEFAULT 'pending',
+  decided_at  TEXT,
+  result      TEXT                       -- JSON, trimmed
+);
+-- Small key/value state for the gate (the lockout).
+CREATE TABLE IF NOT EXISTS agent_state (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+-- Invite drafts (E258 item 6): attendees an agent proposed for an event it
+-- created. Google emails nobody until Bart clicks Send invites.
+CREATE TABLE IF NOT EXISTS invite_drafts (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  account       TEXT NOT NULL,
+  event_id      TEXT,
+  summary       TEXT,
+  start_at      TEXT,
+  link          TEXT,
+  attendees     TEXT NOT NULL,          -- JSON array
+  new_attendees TEXT,                   -- JSON array: new to this account
+  status        TEXT NOT NULL,          -- pending | sent | dropped
+  created_by    TEXT,
+  created_at    TEXT NOT NULL,
+  sent_at       TEXT
+);
+-- The "Private" label (E258): a thread once seen with it never enters Grand
+-- Central again, even when a later reply arrives without the label. Ids only.
+CREATE TABLE IF NOT EXISTS private_threads (
+  account    TEXT NOT NULL,
+  thread_id  TEXT NOT NULL,
+  marked_at  TEXT NOT NULL,
+  PRIMARY KEY (account, thread_id)
+);
+
 CREATE TABLE IF NOT EXISTS notes (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id    INTEGER,
@@ -636,6 +760,23 @@ CREATE TABLE IF NOT EXISTS notes (
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL
 );
+
+-- E259 (Bart 2026-09-30): "upload additional context (like an MD file) or
+-- just paste in the context associated with any of my accounts or projects".
+-- Long-form standing context, unlike context_notes (one statement, 500
+-- chars). scope is 'account:<slug>' or 'project:<id>'. Read by Ask, project
+-- Ask and reply drafts for that account/project; never by an agent (MCP).
+CREATE TABLE IF NOT EXISTS context_docs (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  scope       TEXT NOT NULL,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL DEFAULT '',
+  filename    TEXT,                    -- set when it came from an uploaded file
+  active      INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_context_docs ON context_docs (scope, id);
 """
 
 # Schema evolution (E4-P1, the repo's first ALTERs): executescript's CREATE
@@ -738,6 +879,20 @@ _MIGRATIONS = [
     # builds). Labels only; the request text is never touched by triage.
     # 2026-09-30: which of Bart's own services sent the thread (services.key)
     ("mail_threads", "service", "ALTER TABLE mail_threads ADD COLUMN service TEXT"),
+    # Projects step 5 (2026-09-30): a chat asked on a project page stays with it
+    ("ask_chats", "project_id", "ALTER TABLE ask_chats ADD COLUMN project_id INTEGER"),
+    # Dev #66 (2026-10-06): VIP / Top prospect, set by Bart (tiers.py); tier_no
+    # remembers a suggestion he waved off
+    ("contacts", "tier", "ALTER TABLE contacts ADD COLUMN tier TEXT"),
+    ("contacts", "tier_no", "ALTER TABLE contacts ADD COLUMN tier_no TEXT"),
+    # Drafts (Bart 2026-10-06: "I also need a way to schedule a draft email"):
+    # a scheduled send keeps its formatting, may be a NEW email (thread_id ''),
+    # and remembers the Gmail draft it came from so that draft goes once sent
+    ("mail_outbox", "body_html", "ALTER TABLE mail_outbox ADD COLUMN body_html TEXT"),
+    ("mail_outbox", "draft_uid", "ALTER TABLE mail_outbox ADD COLUMN draft_uid TEXT"),
+    ("mail_outbox", "draft_msgid", "ALTER TABLE mail_outbox ADD COLUMN draft_msgid TEXT"),
+    # E269: Bart's 👁 Track choice rides with a scheduled send (NULL = the default rule)
+    ("mail_outbox", "track", "ALTER TABLE mail_outbox ADD COLUMN track INTEGER"),
     ("dev_requests", "priority", "ALTER TABLE dev_requests ADD COLUMN priority TEXT"),
     ("dev_requests", "size", "ALTER TABLE dev_requests ADD COLUMN size TEXT"),
     ("dev_requests", "verdict", "ALTER TABLE dev_requests ADD COLUMN verdict TEXT"),
@@ -746,6 +901,9 @@ _MIGRATIONS = [
     ("dev_requests", "triage_hash", "ALTER TABLE dev_requests ADD COLUMN triage_hash TEXT"),
     ("dev_requests", "triaged_at", "ALTER TABLE dev_requests ADD COLUMN triaged_at TEXT"),
     ("dev_requests", "triage_by", "ALTER TABLE dev_requests ADD COLUMN triage_by TEXT"),
+    # E258: who wrote a Context entry. 'agent' rows are saved inactive and only
+    # count once Bart approves them from a paired browser.
+    ("context_notes", "source", "ALTER TABLE context_notes ADD COLUMN source TEXT"),
 ]
 
 
@@ -1073,7 +1231,7 @@ def push_sub_delete(conn: sqlite3.Connection, sub_id: int) -> bool:
     return cur.rowcount > 0
 
 
-NOTIFY_KINDS = ("brief", "event", "wrap", "alert")
+NOTIFY_KINDS = ("brief", "event", "wrap", "alert", "agent")   # E266: agent
 
 
 def notify_prefs(conn: sqlite3.Connection) -> dict:
@@ -1237,7 +1395,11 @@ def list_context(conn: sqlite3.Connection, scope_prefix: str | None = None,
     return [dict(r) for r in conn.execute(sql, params)]
 
 
-def add_context(conn: sqlite3.Connection, scope: str, kind: str, text: str) -> int:
+def add_context(conn: sqlite3.Connection, scope: str, kind: str, text: str,
+                source: str | None = None) -> int:
+    """source='agent' (E258): saved switched off; it counts only once Bart
+    approves it from a paired browser, so an injected "remember that…" can
+    never become a standing rule on its own."""
     if kind not in ("note", "rule", "voice", "automation"):
         raise ValueError(f"bad kind {kind!r}")
     text = " ".join(str(text or "").split())[:500]
@@ -1246,9 +1408,10 @@ def add_context(conn: sqlite3.Connection, scope: str, kind: str, text: str) -> i
     now = _now_iso()
     with conn:
         cur = conn.execute(
-            "INSERT INTO context_notes (scope, kind, text, active, created_at, updated_at) "
-            "VALUES (?, ?, ?, 1, ?, ?)",
-            (" ".join(str(scope or "global").split())[:80] or "global", kind, text, now, now))
+            "INSERT INTO context_notes (scope, kind, text, active, source, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (" ".join(str(scope or "global").split())[:80] or "global", kind, text,
+             0 if source == "agent" else 1, source, now, now))
     return cur.lastrowid
 
 
@@ -1278,6 +1441,104 @@ def delete_context(conn: sqlite3.Connection, note_id: int) -> bool:
     with conn:
         cur = conn.execute("DELETE FROM context_notes WHERE id = ?", (int(note_id),))
     return cur.rowcount > 0
+
+
+# --------------------------------------------------------------------------
+# Context documents (E259) — pasted or uploaded Markdown per account/project
+# --------------------------------------------------------------------------
+CONTEXT_DOC_MAX = 100_000           # characters in one document
+_DOC_SCOPE_RE = re.compile(r"^(account:[a-z0-9_-]{1,40}|project:\d{1,9})$")
+
+
+def _doc_scope(scope) -> str:
+    scope = str(scope or "").strip().lower()
+    if not _DOC_SCOPE_RE.match(scope):
+        raise ValueError("scope must be account:<slug> or project:<id>")
+    return scope
+
+
+def list_context_docs(conn: sqlite3.Connection, scopes=None,
+                      active_only: bool = False, with_body: bool = True) -> list:
+    """Documents for these scopes (all when None), oldest first so a
+    reader's budget goes to the ones Bart added first."""
+    cols = "*" if with_body else ("id, scope, title, filename, active, created_at, "
+                                  "updated_at, length(body) AS chars")
+    sql, where, args = f"SELECT {cols} FROM context_docs", [], []
+    if scopes is not None:
+        scopes = list(scopes)
+        if not scopes:
+            return []
+        where.append(f"scope IN ({', '.join('?' * len(scopes))})")
+        args += scopes
+    if active_only:
+        where.append("active = 1")
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    return [dict(r) for r in conn.execute(sql + " ORDER BY scope, id", args)]
+
+
+def get_context_doc(conn: sqlite3.Connection, doc_id: int) -> dict | None:
+    r = conn.execute("SELECT * FROM context_docs WHERE id = ?", (int(doc_id),)).fetchone()
+    return dict(r) if r else None
+
+
+def add_context_doc(conn: sqlite3.Connection, scope: str, title: str, body: str,
+                    filename: str | None = None) -> int:
+    scope = _doc_scope(scope)
+    title = " ".join(str(title or "").split())[:200]
+    body = str(body or "").replace("\r\n", "\n")[:CONTEXT_DOC_MAX]
+    if not body.strip():
+        raise ValueError("an empty context document")
+    title = title or (" ".join(str(filename or "").split())[:200]) or "Context"
+    now = _now_iso()
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO context_docs (scope, title, body, filename, active, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 1, ?, ?)",
+            (scope, title, body, (str(filename)[:200] if filename else None), now, now))
+    return cur.lastrowid
+
+
+def update_context_doc(conn: sqlite3.Connection, doc_id: int, fields: dict) -> bool:
+    sets = {}
+    if "title" in fields:
+        sets["title"] = " ".join(str(fields["title"] or "").split())[:200] or "Context"
+    if "body" in fields:
+        sets["body"] = str(fields["body"] or "").replace("\r\n", "\n")[:CONTEXT_DOC_MAX]
+        if not sets["body"].strip():
+            raise ValueError("an empty context document")
+    if "scope" in fields:
+        sets["scope"] = _doc_scope(fields["scope"])
+    if "active" in fields:
+        sets["active"] = 1 if fields["active"] in (1, "1", True, "true") else 0
+    if not sets:
+        raise ValueError("no fields to update")
+    sets["updated_at"] = _now_iso()
+    with conn:
+        cur = conn.execute(f"UPDATE context_docs SET {', '.join(k + ' = ?' for k in sets)} WHERE id = ?",
+                           [*sets.values(), int(doc_id)])
+    return cur.rowcount > 0
+
+
+def delete_context_doc(conn: sqlite3.Connection, doc_id: int) -> bool:
+    with conn:
+        return conn.execute("DELETE FROM context_docs WHERE id = ?", (int(doc_id),)).rowcount > 0
+
+
+def context_docs_text(conn: sqlite3.Connection, scopes, budget: int) -> list:
+    """The active documents for these scopes, in the order the scopes are
+    given, trimmed to a shared character budget, for a prompt:
+    [{id, scope, title, text, truncated}]."""
+    scopes = list(scopes)
+    rank = {sc: i for i, sc in enumerate(scopes)}      # in the caller's order
+    out = []
+    for d in sorted(list_context_docs(conn, scopes, active_only=True),
+                    key=lambda d: (rank[d["scope"]], d["id"])):
+        text = d["body"][:max(budget, 0)]
+        budget -= len(text)
+        out.append({"id": d["id"], "scope": d["scope"], "title": d["title"], "text": text,
+                    "truncated": len(text) < len(d["body"])})
+    return out
 
 
 def open_decisions(conn: sqlite3.Connection) -> list:
@@ -1632,14 +1893,15 @@ def sender_priors(conn: sqlite3.Connection) -> dict:
 
 def record_send(conn: sqlite3.Connection, thread_id: str, account: str,
                 to_addrs: str, cc_addrs: str = "", subject: str = "",
-                body_chars: int = 0, bcc_addrs: str = "") -> None:
+                body_chars: int = 0, bcc_addrs: str = "") -> int:
     """Append one row to the send audit log (every SMTP send, no exceptions)."""
     with conn:
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO mail_sends (thread_id, account, to_addrs, cc_addrs, "
             "bcc_addrs, subject, body_chars, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (thread_id, account, to_addrs, cc_addrs, bcc_addrs, subject,
              int(body_chars), _now_iso()))
+    return cur.lastrowid               # E269: a tracked send points at its audit row
 
 
 # --------------------------------------------------------------------------
@@ -1647,14 +1909,17 @@ def record_send(conn: sqlite3.Connection, thread_id: str, account: str,
 # --------------------------------------------------------------------------
 def add_outbox(conn: sqlite3.Connection, thread_id: str, account: str,
                to_addrs: str, body: str, send_at: str,
-               cc_addrs: str = "", bcc_addrs: str = "", subject: str = "") -> int:
+               cc_addrs: str = "", bcc_addrs: str = "", subject: str = "",
+               track: bool | None = None, body_html: str | None = None,
+               draft_uid: str | None = None, draft_msgid: str | None = None) -> int:
     with conn:
         cur = conn.execute(
             "INSERT INTO mail_outbox (thread_id, account, to_addrs, cc_addrs, "
-            "bcc_addrs, subject, body, send_at, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (thread_id, account, to_addrs, cc_addrs, bcc_addrs, subject,
-             body, send_at, _now_iso()))
+            "bcc_addrs, subject, body, send_at, created_at, track, body_html, draft_uid, draft_msgid) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (thread_id or "", account, to_addrs, cc_addrs, bcc_addrs, subject,
+             body, send_at, _now_iso(), None if track is None else int(track),
+             body_html or None, draft_uid or None, draft_msgid or None))
         return cur.lastrowid
 
 
@@ -1667,7 +1932,7 @@ def due_outbox(conn: sqlite3.Connection) -> list:
 def open_outbox(conn: sqlite3.Connection) -> list:
     """Pending + recently-failed/stuck rows for the Mail screen banner."""
     return [dict(r) for r in conn.execute(
-        "SELECT id, thread_id, account, to_addrs, subject, send_at, status, error "
+        "SELECT id, thread_id, account, to_addrs, subject, send_at, status, error, draft_uid "
         "FROM mail_outbox WHERE status IN ('pending', 'sending', 'failed') "
         "ORDER BY send_at")]
 
@@ -1756,14 +2021,15 @@ def mail_view(conn: sqlite3.Connection, include_done: bool = False,
 # --------------------------------------------------------------------------
 # Ask Grand Central conversations (E25)
 # --------------------------------------------------------------------------
-def ask_start_chat(conn: sqlite3.Connection, title: str) -> int:
-    """Open a conversation. `title` is the first question, trimmed."""
+def ask_start_chat(conn: sqlite3.Connection, title: str, project_id: int | None = None) -> int:
+    """Open a conversation. `title` is the first question, trimmed; a chat
+    asked on a project page carries that project (step 5)."""
     now = _now_iso()
     title = " ".join(str(title or "").split())[:120] or "(untitled)"
     with conn:
         cur = conn.execute(
-            "INSERT INTO ask_chats (title, created_at, updated_at) VALUES (?,?,?)",
-            (title, now, now))
+            "INSERT INTO ask_chats (title, created_at, updated_at, project_id) VALUES (?,?,?,?)",
+            (title, now, now, int(project_id) if project_id else None))
     return cur.lastrowid
 
 
@@ -1782,13 +2048,15 @@ def ask_add_message(conn: sqlite3.Connection, chat_id: int, role: str,
     return cur.lastrowid
 
 
-def ask_chats(conn: sqlite3.Connection, limit: int = 40) -> list:
-    """Recent conversations, newest activity first, with turn counts."""
+def ask_chats(conn: sqlite3.Connection, limit: int = 40, project_id: int | None = None) -> list:
+    """Recent conversations, newest activity first, with turn counts —
+    only one project's when `project_id` is given."""
+    where, args = ("WHERE c.project_id = ?", [int(project_id)]) if project_id else ("", [])
     rows = conn.execute(
-        "SELECT c.id, c.title, c.created_at, c.updated_at,"
+        "SELECT c.id, c.title, c.created_at, c.updated_at, c.project_id,"
         "       COUNT(m.id) AS turns"
-        "  FROM ask_chats c LEFT JOIN ask_messages m ON m.chat_id = c.id"
-        " GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ?", (int(limit),))
+        f"  FROM ask_chats c LEFT JOIN ask_messages m ON m.chat_id = c.id {where}"
+        " GROUP BY c.id ORDER BY c.updated_at DESC LIMIT ?", args + [int(limit)])
     return [dict(r) for r in rows]
 
 
@@ -2156,7 +2424,7 @@ _CLASS_VALUES = {
     "relationship": ("teammate", "company", "frequent", "known", "new", "machine"),
     "respond": ("yes", "no", "optional"),
     "priority": ("0", "1", "2", "3"),
-    "waiting_on": ("none", "teammate", "outside"),
+    "waiting_on": ("none", "teammate", "outside", "me"),
 }
 _DOMAIN_RE = re.compile(r"^[a-z0-9-]+(?:\.[a-z0-9-]+)+$")
 
@@ -2301,6 +2569,14 @@ def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
         if f == "follow_up" and not v:
             v = None                      # Bart cleared the follow-up date
         out[f], src[f] = (int(v) if f == "priority" else v), "you"
+    # Dev #59 (Bart: 'Jev should offer a "Waiting on - Me"', agreed as "the
+    # ball's in my court"): a person wrote last (the rules leave only that
+    # case "unsure") and the answer is that a reply is expected. Bart's own
+    # Waiting-on answer always stands.
+    if src.get("waiting_on") != "you" and out.get("waiting_on", "none") == "none" \
+            and rules.get("respond") == "unsure" and out.get("respond") == "yes":
+        out["waiting_on"], out["waiting_who"] = "me", "you"
+        src["waiting_on"] = src.get("respond", "rules")
     # nothing owed and nobody to chase → nothing to follow up
     if out.get("respond") == "no" and out.get("waiting_on", "none") == "none" \
             and src.get("follow_up") != "you":
@@ -2552,6 +2828,7 @@ def contacts_for(conn, account: str, own: set, limit: int = 3000) -> list:
         c["group"] = ro["grp"] if ro else None
         c["auto"] = bool(_AUTO_ADDR.search(em)) and not (ro or (o and o["name"]))
         c["teammate"] = bool(ro and ro["teammate"])
+        c["tier"] = (o["tier"] if o and "tier" in o.keys() else None)   # Dev #66
         out.append(c)
     out.sort(key=lambda c: (-c["threads"], c["name"].lower() or c["email"]))
     return out[:limit]
@@ -2577,3 +2854,67 @@ def contact_set(conn, email: str, name: str | None = None, notes: str | None = N
                      "hidden=excluded.hidden, updated_at=excluded.updated_at",
                      (email, vals["name"], vals["notes"], vals["hidden"], _now_iso()))
     return email
+
+
+# --------------------------------------------------------------------------
+# E260: the desktop app's proposals (approve-all; BUILD_SPEC §6, 2026-09-30)
+# --------------------------------------------------------------------------
+PROPOSAL_TTL_H = 24
+
+
+def proposal_add(conn, tool: str, account: str, preview: str, path: str, body: dict) -> int:
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO agent_proposals (created_at, tool, account, preview, path, body) "
+            "VALUES (?,?,?,?,?,?)",
+            (_now_iso(), str(tool)[:60], clean_account(account), str(preview)[:600],
+             str(path)[:60], json.dumps(body, ensure_ascii=False)[:30000]))
+    return cur.lastrowid
+
+
+def _proposal_row(r) -> dict:
+    d = dict(r)
+    for k in ("body", "result"):
+        try:
+            d[k] = json.loads(d[k]) if d.get(k) else ({} if k == "body" else None)
+        except ValueError:
+            pass
+    return d
+
+
+def proposal_expire(conn) -> int:
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=PROPOSAL_TTL_H)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with conn:
+        cur = conn.execute("UPDATE agent_proposals SET status='expired', decided_at=? "
+                           "WHERE status='pending' AND created_at < ?", (_now_iso(), cutoff))
+    return cur.rowcount
+
+
+def proposal_get(conn, pid: int) -> dict | None:
+    proposal_expire(conn)
+    r = conn.execute("SELECT * FROM agent_proposals WHERE id=?", (int(pid),)).fetchone()
+    return _proposal_row(r) if r else None
+
+
+def proposal_list(conn, status: str = "pending", limit: int = 50) -> list:
+    proposal_expire(conn)
+    return [_proposal_row(r) for r in conn.execute(
+        "SELECT * FROM agent_proposals WHERE status=? ORDER BY id DESC LIMIT ?",
+        (status, int(limit)))]
+
+
+def proposal_claim(conn, pid: int, status: str) -> bool:
+    """pending -> approved | declined, once. False if it was not pending."""
+    if status not in ("approved", "declined"):
+        raise ValueError("bad status")
+    with conn:
+        cur = conn.execute("UPDATE agent_proposals SET status=?, decided_at=? "
+                           "WHERE id=? AND status='pending'", (status, _now_iso(), int(pid)))
+    return cur.rowcount > 0
+
+
+def proposal_result(conn, pid: int, ok: bool, result) -> None:
+    with conn:
+        conn.execute("UPDATE agent_proposals SET status=?, result=? WHERE id=?",
+                     ("approved" if ok else "failed",
+                      json.dumps(result, ensure_ascii=False, default=str)[:8000], int(pid)))

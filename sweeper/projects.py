@@ -26,6 +26,7 @@ import db
 
 KINDS = ("thread", "todo", "event", "contact")
 MAX_PINS = 3                       # Bart: "Up to 3"
+BACKLOG_DAYS = 30                  # step 6: a new person's recent mail, suggested once
 _THREAD_RE = re.compile(r"^\d{1,25}$")
 _EMAIL_RE = re.compile(r"^[^@\s]{1,120}@[^@\s]{1,200}\.[^@\s]{1,40}$")
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -144,7 +145,18 @@ def delete(conn, pid: int) -> dict:
     with conn:
         kept = conn.execute("UPDATE notes SET project_id = NULL, from_project = ?, updated_at = ? "
                             "WHERE project_id = ?", (p["name"], db._now_iso(), int(pid))).rowcount
+        # E259: its context documents are Bart's writing too — kept as Notes
+        now = db._now_iso()
+        for d in conn.execute("SELECT title, body FROM context_docs WHERE scope = ?",
+                              (f"project:{int(pid)}",)).fetchall():
+            conn.execute("INSERT INTO notes (project_id, title, body, from_project, created_at, updated_at) "
+                         "VALUES (NULL, ?, ?, ?, ?, ?)", (d["title"], d["body"], p["name"], now, now))
+            kept += 1
+        conn.execute("DELETE FROM context_docs WHERE scope = ?", (f"project:{int(pid)}",))
         links = conn.execute("DELETE FROM project_items WHERE project_id = ?", (int(pid),)).rowcount
+        conn.execute("DELETE FROM project_declines WHERE project_id = ?", (int(pid),))
+        # its Ask chats stay in history as ordinary chats (step 5)
+        conn.execute("UPDATE ask_chats SET project_id = NULL WHERE project_id = ?", (int(pid),))
         conn.execute("DELETE FROM projects WHERE id = ?", (int(pid),))
         if p["pin_rank"] is not None:
             rows = conn.execute("SELECT id FROM projects WHERE pin_rank IS NOT NULL ORDER BY pin_rank").fetchall()
@@ -226,6 +238,92 @@ def projects_for_item(conn, kind: str, account: str | None, ref) -> list:
         "SELECT p.id, p.name, p.color FROM project_items i JOIN projects p ON p.id = i.project_id "
         "WHERE i.kind = ? AND i.account IS ? AND i.ref = ? ORDER BY p.name",
         (kind, account, str(ref)))]
+
+
+# ------------------------------------------------------------------ suggestions
+def suggestions(conn, pid: int | None = None, account: str | None = None,
+                include_backlog: bool = False) -> list:
+    """Step 6 (Bart 2026-09-30): "Add to <project>?" — a thread whose latest
+    message is FROM someone on an open project's People list, still in an
+    inbox, person-to-person, not already in the project (on its own or inside
+    one of its todos), and not declined. "New" means it arrived after the
+    person was added; with include_backlog, their threads from the 30 days
+    before that count too (the project page's one-time Suggested strip).
+    Computed on read; nothing is filed here."""
+    from datetime import datetime, timedelta
+    sql = ("SELECT p.id AS project_id, p.name, p.color, i.ref AS person, i.added_at AS person_added, "
+           "COALESCE((SELECT c.name FROM contacts c WHERE c.email = i.ref AND c.name != ''), "
+           "NULLIF(i.title, i.ref)) AS person_name, "
+           "m.account, m.thread_id, m.subject, m.last_from, m.last_date, m.unread "
+           "FROM project_items i JOIN projects p ON p.id = i.project_id AND p.status = 'open' "
+           "JOIN mail_threads m ON lower(m.last_from_email) = i.ref AND m.last_direction = 'inbound' "
+           "AND m.in_inbox = 1 AND COALESCE(m.category, 'people') IN ('people', 'other') "
+           "WHERE i.kind = 'contact'")
+    args: list = []
+    if pid is not None:
+        sql += " AND p.id = ?"; args.append(int(pid))
+    if account:
+        sql += " AND m.account = ?"; args.append(db.clean_account(account))
+    out, seen = [], set()
+    for r in conn.execute(sql + " ORDER BY m.last_date DESC", args):
+        r = dict(r)
+        added = r["person_added"] or ""
+        new = (r["last_date"] or "") >= added
+        if not new:
+            if not include_backlog:
+                continue
+            try:
+                floor = (datetime.fromisoformat(added.replace("Z", "+00:00"))
+                         - timedelta(days=BACKLOG_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
+                continue
+            if (r["last_date"] or "") < floor:
+                continue
+        key = (r["project_id"], r["account"], r["thread_id"])
+        if key in seen or _in_project(conn, r["project_id"], r["account"], r["thread_id"]) \
+                or _declined(conn, r["project_id"], r["account"], r["thread_id"], r["person"]):
+            continue
+        seen.add(key)
+        r["new"] = new
+        out.append(r)
+    return out
+
+
+def _in_project(conn, pid, account, thread_id) -> bool:
+    if conn.execute("SELECT 1 FROM project_items WHERE project_id = ? AND kind = 'thread' "
+                    "AND account = ? AND ref = ?", (pid, account, thread_id)).fetchone():
+        return True
+    return conn.execute(
+        "SELECT 1 FROM project_items i JOIN engagement_threads et ON et.engagement_id = CAST(i.ref AS INTEGER) "
+        "WHERE i.project_id = ? AND i.kind = 'todo' AND et.account = ? AND et.thread_id = ?",
+        (pid, account, thread_id)).fetchone() is not None
+
+
+def _declined(conn, pid, account, thread_id, person) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM project_declines WHERE project_id = ? AND "
+        "((account = ? AND thread_id = ?) OR person = ?)", (pid, account, thread_id, person)).fetchone() is not None
+
+
+def decline(conn, pid: int, account: str | None = None, thread_id: str | None = None,
+            person: str | None = None) -> dict:
+    """Bart's ✕: "not this one" (a thread) or "stop suggesting <person> for
+    <project>". Only this project forgets; the person stays on it."""
+    _get(conn, pid)
+    if person:
+        person = str(person).strip().lower()
+        if not _EMAIL_RE.match(person):
+            raise ValueError("bad email address")
+        account = thread_id = None
+    else:
+        account = db.clean_account(account)
+        thread_id = str(thread_id or "").strip()
+        if not _THREAD_RE.match(thread_id):
+            raise ValueError("bad thread id")
+    with conn:
+        conn.execute("INSERT INTO project_declines (project_id, account, thread_id, person, created_at) "
+                     "VALUES (?, ?, ?, ?, ?)", (int(pid), account, thread_id, person, db._now_iso()))
+    return {"declined": True}
 
 
 # ------------------------------------------------------------------ notes
@@ -331,7 +429,7 @@ def _granola_for(conn, date: str, time: str, title: str) -> dict | None:
     — the notes themselves stay in Granola."""
     want = title.lower().strip()
     best = None
-    for r in conn.execute("SELECT title, link, last_activity FROM elements "
+    for r in conn.execute("SELECT source_ref, title, link, last_activity FROM elements "
                           "WHERE source = 'granola' AND last_activity >= ? AND last_activity < ?",
                           (_utc_bound(date, -1), _utc_bound(date, 2))):
         from datetime import datetime
@@ -347,7 +445,7 @@ def _granola_for(conn, date: str, time: str, title: str) -> dict | None:
         gap = 0 if time == "all-day" else abs(local.hour * 60 + local.minute
                                               - int(time[:2]) * 60 - int(time[3:]))
         if gap <= 180 and (best is None or gap < best[0]):
-            best = (gap, {"title": r["title"], "link": r["link"]})
+            best = (gap, {"id": r["source_ref"], "title": r["title"], "link": r["link"]})
     return best[1] if best else None
 
 
@@ -433,10 +531,13 @@ def project_view(conn, pid: int, mine=frozenset()) -> dict:
                 it["granola"] = _granola_for(conn, m.group(1), m.group(2), m.group(3))
     p["items"] = items
     p["suggest_people"] = _suggest_people(conn, items, mine)
+    p["suggested"] = suggestions(conn, pid, include_backlog=True)
+    p["chats"] = db.ask_chats(conn, 3, project_id=pid)        # step 5: its recent Ask chats
     p["notes"] = [dict(r) for r in conn.execute(
         "SELECT * FROM notes WHERE project_id = ? ORDER BY updated_at DESC", (int(pid),))]
     p["accounts"] = sorted({i["account"] for i in items if i["account"]})
     p["open_todos"] = open_todos(conn, pid)
+    p["context_docs"] = db.list_context_docs(conn, [f"project:{int(pid)}"], with_body=False)
     return p
 
 

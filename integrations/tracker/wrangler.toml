@@ -1,0 +1,25 @@
+# E269 — Grand Central's open/click tracker (BUILD_SPEC §6, 2026-10-06).
+# Deploy (once wrangler is logged in):
+#   wrangler d1 create gc-tracker            # paste the id below
+#   wrangler d1 execute gc-tracker --remote --file schema.sql
+#   wrangler secret put SECRET               # the same value as TRACK_SECRET in config/.env
+#   wrangler deploy
+name = "gc-tracker"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# One custom domain per account domain; add a line when an account is added.
+# Only zones in this Cloudflare account can have a custom domain. As of
+# 2026-10-06 that's connectblue.org; capitolinfluence.ai and crowdblue.com
+# are hosted elsewhere, so those accounts stay untracked (Grand Central only
+# tracks a domain whose /health answers) until their DNS moves to Cloudflare.
+routes = [
+  { pattern = "t.connectblue.org", custom_domain = true },
+  # { pattern = "t.capitolinfluence.ai", custom_domain = true },
+  # { pattern = "t.crowdblue.com", custom_domain = true },
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gc-tracker"
+database_id = "7e0a02ba-aaf2-4cfe-8753-c05617415422"

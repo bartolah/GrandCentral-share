@@ -98,3 +98,89 @@ rest.
 Note for anything calling these endpoints from a script: requests with no
 `Origin` and no `Referer` are allowed through the CSRF check, which is why the
 MCP server keeps working unchanged.
+
+## The Claude desktop app: `--profile desktop` (E260, 2026-09-30)
+
+Bart: "Option A first, one account per read, approve all actions." The desktop
+app starts this same server over stdio, with `--profile desktop`: directly when
+the app runs on the Mini, over SSH across Tailscale from any other Mac. Nothing
+is exposed to the internet. The reasoning is in `REMOTE_PLAN.md`; the tools are
+in `gc_remote.py`; the rules live in the board (`sweeper/agent_gate.py`), not
+here.
+
+The desktop profile has its own key (`data/agent_key_desktop.json`). The board
+gives that key every E258 agent rule (account switches, Private, limits,
+lockout, audit, wrapped results) and three more:
+
+- **Read, one account per call.** `gc_get_brief`, `gc_list_todos`,
+  `gc_read_thread`, `gc_search_mail`, `gc_list_inbox`, `gc_list_context`,
+  `gc_list_labels`, `gc_approval_status`. A read without an account, or with
+  `all`, is refused; a read returns only the named account's rows. The
+  cross-account calendar, day note and board-wide counts are left out.
+- **Ask, never act.** `gc_generate_reply_draft`, `gc_save_reply_draft`,
+  `gc_save_new_draft`, `gc_add_calendar_event`, `gc_add_todo`,
+  `gc_update_todo`, `gc_set_todo_state`, `gc_snooze_todo`,
+  `gc_triage_thread`, `gc_mail_action`, `gc_dismiss_thread` each file one
+  request (`POST /agent/propose`). It shows as ✋ in the board's top bar and
+  under Settings → Agents with a preview and the exact payload. Only Approve
+  there, from a paired browser, runs it: once, as an ordinary agent call, so
+  every check applies again at that moment. Requests expire after 24 hours; at
+  most 20 wait at once.
+- **Never** send, trash, forward, attach, RSVP, write Context, start a sweep,
+  or touch projects, Home or the dev queue.
+
+Approved requests run as the agent, so `data/agent_key.json` must exist too
+(`agent_gate.py --new-key`), and the account must still be switched on.
+
+Every tool call is a line in `logs/mcp_audit.jsonl`; every request the board
+sees is a row in `agent_audit` (principal `desktop`, or `agent` with tool
+`approved:<tool>` for an approved one), listed in Settings → Agents.
+
+### Setup on the Mini itself
+
+1. Mint the key: `.venv/bin/python sweeper/agent_gate.py --new-desktop-key`
+   (and `--new-key` if there is no agent key yet; `--status` shows both).
+2. Add to `~/Library/Application Support/Claude/claude_desktop_config.json`
+   (merge into an existing `mcpServers`), then quit and reopen the app:
+
+       {
+         "mcpServers": {
+           "grand-central": {
+             "command": "/Users/you/Code/GrandCentral/.venv/bin/python",
+             "args": ["/Users/you/Code/GrandCentral/integrations/mcp/gc_mcp.py",
+                      "--profile", "desktop"]
+           }
+         }
+       }
+
+3. Check: `.venv/bin/python integrations/mcp/gc_mcp.py --profile desktop --list`
+   prints 8 read and 11 request tools.
+
+### Setup from another Mac (SSH over Tailscale)
+
+1. On the laptop, a key used only for this:
+
+       ssh-keygen -t ed25519 -f ~/.ssh/gc_mcp_ed25519 -C gc-mcp -N ''
+
+2. On the Mini, pin that key to the one command. Append one line to
+   `~/.ssh/authorized_keys` (paste the laptop's `~/.ssh/gc_mcp_ed25519.pub`
+   after the options). Remote Login must be on (System Settings → General →
+   Sharing).
+
+       command="cd /Users/you/Code/GrandCentral && exec .venv/bin/python integrations/mcp/gc_mcp.py --profile desktop",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA... gc-mcp
+
+3. On the laptop, in `claude_desktop_config.json`:
+
+       {
+         "mcpServers": {
+           "grand-central": {
+             "command": "/usr/bin/ssh",
+             "args": ["-T", "-i", "/Users/you/.ssh/gc_mcp_ed25519",
+                      "-o", "BatchMode=yes", "bart@gc-host"]
+           }
+         }
+       }
+
+   `gc-host` is the Mini's Tailscale name; use the Mini's short user name if it
+   is not `bart`. The forced command decides what runs, so this key cannot open
+   a shell. The desktop key never leaves the Mini.

@@ -61,6 +61,8 @@ def fetch_thread(thread_id: str, account: str, env: dict | None = None,
     thread's Gmail label union from the same IMAP session (E5-P4, powers
     the thread view's label chips)."""
     thread_id = mc.validate_thread_id(thread_id)
+    import private
+    private.guard(account, thread_id)  # E258: a Private thread does not exist here
     env = env or load_env()
     imap, _user = mc.connect(account, env)
     try:
@@ -68,12 +70,28 @@ def fetch_thread(thread_id: str, account: str, env: dict | None = None,
         uids = mc.search_thread_uids(imap, all_mail, thread_id, readonly=True)
         if not uids:
             raise RuntimeError("thread not found in All Mail")
+        if _thread_is_labelled_private(imap, uids):
+            import db
+            c = db.connect()
+            try:
+                private.mark(c, account, thread_id)
+            finally:
+                c.close()
+            raise ValueError("thread not found")
         messages = mc.fetch_messages(imap, uids, cap=6000, keep_newlines=True,
                                      want_html=True)
+        # E269: Bart reading his own tracked mail here must never count as
+        # an open or a click — drop the image, unwrap the links
+        try:
+            import tracking
+            _tdoms = tracking.own_tracking_domains(env)
+        except Exception:
+            tracking, _tdoms = None, []
+        _untrack = (lambda h: tracking.strip(h, _tdoms)) if _tdoms else (lambda h: h)
         out = [{
             "from": m["from"], "to": m["to"], "cc": m["cc"], "bcc": m["bcc"],
             "subject": m["subject"], "date": m["dt"].isoformat() if m["dt"] else None,
-            "body": m["body"], "body_html": m["body_html"],
+            "body": m["body"], "body_html": _untrack(m["body_html"]),
             "attachments": m["attachments"], "inline_images": m["inline_images"],
             "uid": m.get("uid"),
         } for m in messages]
@@ -96,6 +114,19 @@ def fetch_thread(thread_id: str, account: str, env: dict | None = None,
             pass
 
 
+def _thread_is_labelled_private(imap, uids) -> bool:
+    """E258: the label on ANY message makes the whole thread Private."""
+    import private
+    for uid in uids:
+        typ, data = imap.uid("FETCH", uid, "(X-GM-LABELS)")
+        for part in data or []:
+            raw = part[0] if isinstance(part, tuple) else part
+            if isinstance(raw, bytes) and private.has_label(
+                    _parse_labels(raw.decode("utf-8", "replace"))):
+                return True
+    return False
+
+
 def fetch_attachment(thread_id: str, account: str, uid: str, idx: int,
                      env: dict | None = None):
     """E82: decode ONE attachment part on demand — read-only, never stored.
@@ -103,6 +134,8 @@ def fetch_attachment(thread_id: str, account: str, uid: str, idx: int,
     set) and idx follows parse_msg's attachment ordering exactly, so the
     chips the pane shows address the right part. Returns
     (filename, content_type, bytes)."""
+    import private
+    private.guard(account, thread_id)  # E258
     thread_id = mc.validate_thread_id(thread_id)
     idx = int(idx)
     if idx < 0 or idx > 19:
@@ -122,18 +155,15 @@ def fetch_attachment(thread_id: str, account: str, uid: str, idx: int,
         msg = email.message_from_bytes(fetched[0][1])
         k = -1
         for part in msg.walk():
-            if part.get_content_maintype() == "multipart":
+            if not mc.is_attachment_part(part):   # same rule as parse_msg (E267)
                 continue
-            disp = part.get_content_disposition()
-            fname = part.get_filename()
-            if disp == "attachment" or (fname and not part.get_content_type().startswith("text/")):
-                k += 1
-                if k == idx:
-                    data = part.get_payload(decode=True) or b""
-                    if len(data) > 25 * 1024 * 1024:
-                        raise ValueError("attachment over 25MB — open it in Gmail")
-                    name = re.sub(r"\s+", " ", str(fname or "attachment"))
-                    return name, part.get_content_type(), data
+            k += 1
+            if k == idx:
+                data = part.get_payload(decode=True) or b""
+                if len(data) > 25 * 1024 * 1024:
+                    raise ValueError("attachment over 25MB — open it in Gmail")
+                name = re.sub(r"\s+", " ", str(part.get_filename() or "attachment"))
+                return name, part.get_content_type(), data
         raise ValueError("attachment not found")
     finally:
         try:
@@ -272,6 +302,8 @@ def search_threads(query: str, account: str, env: dict | None = None,
         # X-GM-RAW takes one quoted string; non-ASCII is dropped rather than
         # fighting IMAP literals (Gmail search is forgiving about the rest)
         safe = query.encode("ascii", "ignore").decode()
+        # E258: Private threads never come back from a search, whoever asks
+        safe = f"({safe}) -label:private"
         typ, data = imap.uid("SEARCH", "X-GM-RAW", _quote(safe))
         uids = data[0].split() if typ == "OK" and data and data[0] else []
         headers = _fetch_headers(imap, uids[-300:])
@@ -285,7 +317,10 @@ def search_threads(query: str, account: str, env: dict | None = None,
                                   "count": (t["count"] + 1) if t else 1}
             else:
                 t["count"] += 1
-        rows = sorted(threads.items(), key=lambda kv: kv[1]["dt"], reverse=True)[:limit]
+        import private
+        priv = private.keys()
+        rows = sorted(((k, v) for k, v in threads.items() if (account, str(k)) not in priv),
+                      key=lambda kv: kv[1]["dt"], reverse=True)[:limit]
         out = []
         for thrid, t in rows:
             m = t["meta"]
@@ -618,6 +653,10 @@ def get_draft(account: str, uid: str, gm_msgid: str,
             "in_reply_to": (msg.get("In-Reply-To") or "").strip(),
             "references": " ".join((msg.get("References") or "").split()),
             "body": (_payload_text(msg) or "").rstrip(),
+            # E258: an agent wrote this; the composer warns before Send
+            "agent": (msg.get("X-GC-Agent-Draft") or "").strip() == "1",
+            "agent_new": [a.strip() for a in (msg.get("X-GC-New-Recipients") or "").split(",")
+                          if a.strip()],
         }
     finally:
         try:

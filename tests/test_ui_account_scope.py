@@ -88,10 +88,11 @@ class UiAccountScope(unittest.TestCase):
         html = open(os.path.join(ROOT, "dashboard", "index.html"), encoding="utf-8").read()
         start = html.index("// Bounded account triage: six fast verbs")
         block = html[start:html.index("const when =", start)]
+        # Dev #62 (2026-10-01): one ✓ that archives in Gmail, no separate GC-only Handled.
         for action in ("replyOptions", "archiveItem", "snoozeDlg", "starItem",
-                       "handledItem", "todoPick", "trashItem", "rowMore"):
+                       "todoPick", "trashItem", "rowMore"):
             self.assertIn(action, block)
-        for retired in ("labelDlg", "refileDlg", "tagGoal", "dismissItem"):
+        for retired in ("labelDlg", "refileDlg", "tagGoal", "dismissItem", "handledItem"):
             self.assertNotIn(retired, block)
 
 
