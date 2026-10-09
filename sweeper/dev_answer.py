@@ -7,7 +7,7 @@ only set status + note — never request text, which needs the pairing code.
 
 STATUS is building | question | shipped | declined | open. Use `question`
 with the question as the note when a request is unclear: the card shows it
-to Bart with an answer box, the worker skips it until he answers, and his
+to Casey with an answer box, the worker skips it until he answers, and his
 answer comes back appended to the request text. (`open` still hands a
 request back without a question.)
 """

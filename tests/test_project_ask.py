@@ -1,6 +1,6 @@
 """Projects step 5: Ask on a project page (BUILD_SPEC §6, 2026-09-30).
 
-Bart's interview answers: fenced to the project — its emails in any account,
+Casey's interview answers: fenced to the project — its emails in any account,
 its todos and their emails, notes, meetings (with Granola notes) and people,
 nothing else — and read + draft only. These tests pin the fence in code, not
 in the prompt: the context carries only the project, every tool refuses a

@@ -1,7 +1,7 @@
 """E210 — Jev (TypeSafe) classification, phase 2.
 
 Offline: a fake `post` stands in for api.typesafe.ai and records every request
-body, so the tests can assert exactly what would have left the Mini. Scratch
+body, so the tests can assert exactly what would have left the host. Scratch
 SQLite, fake account slugs, no network.
 
     .venv/bin/python -m unittest tests.test_jev -v

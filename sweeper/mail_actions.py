@@ -1,5 +1,5 @@
 """Gmail thread actions beyond drafting: read the full thread, archive, star,
-and label. Approved by Bart 2026-07-04 alongside the light-email-client work
+and label. Approved by Casey 2026-07-04 alongside the light-email-client work
 (BUILD_SPEC.md records the decision) — these are new mailbox writes beyond
 the existing Drafts-only APPEND, but still narrowly scoped: no delete, no
 send, and every action takes an explicit thread_id (no bulk/unscoped verbs).
@@ -7,7 +7,7 @@ send, and every action takes an explicit thread_id (no bulk/unscoped verbs).
     fetch_thread()      read-only, powers "expand" in the dashboard
     archive_thread()    removes the \\Inbox label (Gmail's real Archive verb)
     unarchive_thread()  re-adds \\Inbox — the snooze wake pass (E5-P1,
-                        §6 amendment approved by Bart 2026-07-15)
+                        §6 amendment approved by Casey 2026-07-15)
     star_thread()       sets/clears the \\Flagged flag
     label_thread()      adds/removes an arbitrary user label
     thread_labels()     read-only: the thread's Gmail label set
@@ -80,7 +80,7 @@ def fetch_thread(thread_id: str, account: str, env: dict | None = None,
             raise ValueError("thread not found")
         messages = mc.fetch_messages(imap, uids, cap=6000, keep_newlines=True,
                                      want_html=True)
-        # E269: Bart reading his own tracked mail here must never count as
+        # E269: Casey reading his own tracked mail here must never count as
         # an open or a click — drop the image, unwrap the links
         try:
             import tracking
@@ -343,7 +343,7 @@ def search_threads(query: str, account: str, env: dict | None = None,
 
 def trash_thread(thread_id: str, account: str, env: dict | None = None,
                  log=print, dry_run: bool = False) -> dict:
-    """Move the whole thread to Gmail's Trash (E7-P3, §6 amended by Bart
+    """Move the whole thread to Gmail's Trash (E7-P3, §6 amended by Casey
     2026-07-17). UID COPY to the \\Trash folder — Gmail's label model makes
     that a MOVE (the messages leave All Mail/INBOX). Recoverable from Trash
     for 30 days; there is deliberately NO purge/empty-trash verb anywhere in
@@ -400,7 +400,7 @@ def unarchive_thread(thread_id: str, account: str, env: dict | None = None,
 
 
 # Mirror labels live under one Gmail prefix so re-filing can swap the old
-# one out without touching Bart's own labels (E5-P2).
+# one out without touching Casey's own labels (E5-P2).
 GC_LABEL_PREFIX = "GC/"
 
 # One X-GM-LABELS list item: a quoted string (backslash escapes) or an atom.
@@ -550,7 +550,7 @@ def list_drafts(account: str, env: dict | None = None,
     Read-only (BODY.PEEK, readonly SELECT). Drafts are the system's default
     outbound path — draft_reply.save_draft / compose_draft and the Ask
     assistant all APPEND here — but until now nothing in Grand Central could
-    SEE them, so a drafted reply effectively vanished until Bart went
+    SEE them, so a drafted reply effectively vanished until Casey went
     looking in Gmail.
 
     Returns newest-first rows: {draft_uid, thread_id, account, to, subject,
@@ -609,7 +609,7 @@ _UID_RE = re.compile(r"^\d{1,12}$")
 
 
 def _draft_msg(imap, drafts: str, uid: str, gm_msgid: str):
-    """Fetch one draft by UID and confirm it is still the draft Bart opened.
+    """Fetch one draft by UID and confirm it is still the draft Casey opened.
     UIDs can be reused after a mailbox rebuild, so Gmail's own message id
     (X-GM-MSGID — unique and fixed; IMAP-saved drafts have no Message-ID)
     must match before anything reads or removes it."""
@@ -667,7 +667,7 @@ def get_draft(account: str, uid: str, gm_msgid: str,
 
 def trash_draft(account: str, uid: str, gm_msgid: str,
                 env: dict | None = None, log=print) -> dict:
-    """Move ONE superseded draft to Gmail Trash (E224, Bart 2026-09-27: "it's
+    """Move ONE superseded draft to Gmail Trash (E224, Casey 2026-09-27: "it's
     ok to delete and resave"). Only ever called after its replacement was
     saved, or after it was sent. Works only inside Drafts, only on the draft
     whose Gmail message id matches, and only by COPY to Trash — recoverable 30 days,
@@ -699,7 +699,7 @@ _QUOTE_START = re.compile(r"^(On .{4,200}wrote:|-{2,} ?Original Message|From: .+
 
 
 def _sent_preview(msg) -> str:
-    """What Bart wrote, one line: the body up to the quoted history."""
+    """What Casey wrote, one line: the body up to the quoted history."""
     text = mc.body_text(msg, cap=4000, keep_newlines=True)
     keep = []
     for line in text.splitlines():
@@ -717,7 +717,7 @@ def list_sent(account: str, env: dict | None = None,
     Read-only (readonly SELECT, BODY.PEEK). Each row: thread_id, uid, to,
     cc, subject, date (ISO UTC, from the Date header — the old rows asked
     for a `date` key the header fetch never had, so nothing was dated and
-    the newest-first sort did nothing), a one-line preview of what Bart
+    the newest-first sort did nothing), a one-line preview of what Casey
     wrote (quoted history cut), and a link. `before_uid` pages further back.
     Returns {"rows": [...], "next_before": uid or None}.
     """

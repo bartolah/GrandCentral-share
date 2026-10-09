@@ -4,7 +4,7 @@ categorize() decides which bundle every incoming email lands in, and until now
 it had no tests at all. The bug it grew: List-Unsubscribe was tested before
 every more specific rule, and since Gmail and Yahoo have required that header
 on bulk mail since 2024, it swallowed the inbox — 11,601 of ~19,000 threads
-(61%) were filed 'newsletter', including Bart's own product's no-reply alerts
+(61%) were filed 'newsletter', including Casey's own product's no-reply alerts
 and every store's sale blast.
 
 The fix makes List-Unsubscribe the weakest signal instead of the strongest.
@@ -38,7 +38,7 @@ class ListUnsubscribeIsTheWeakestSignal(unittest.TestCase):
     """The regression that started E205: specific rules get first refusal."""
 
     def test_app_noreply_sender_beats_list_unsubscribe(self):
-        # Bart's own product mail: 265 threads that matched the no-reply rule
+        # Casey's own product mail: 265 threads that matched the no-reply rule
         # perfectly but were filed 'newsletter' because the header won first.
         self.assertEqual(
             categorize(meta("no-reply@notice.example-app.com",
@@ -156,44 +156,44 @@ class FundraisingBlastsArePromos(unittest.TestCase):
             self.assertEqual(categorize(m), "newsletter", frm)
 
     def test_a_person_at_a_campaign_is_still_a_person(self):
-        # Not bulk: a staffer writing to Bart is never a fundraising blast.
+        # Not bulk: a staffer writing to Casey is never a fundraising blast.
         m = meta("Jane <jane@victorypac.org>", "Coffee Tuesday?")
         self.assertEqual(categorize(m), "people")
 
 
 class OwnDomainsAreNeverPromos(unittest.TestCase):
     """Dev #55: "Any email from my official domain shouldn't be a promotion."
-    ConnectBlue's sales@ is a Google Group, so its RFPs arrive bulk-flagged."""
-    OWN = {"connectblue.org", "crowdblue.com"}
+    Brightline's sales@ is a Google Group, so its RFPs arrive bulk-flagged."""
+    OWN = {"brightline.example", "fieldhouse.example"}
 
     def test_a_google_group_post_on_the_own_domain_is_people(self):
-        m = meta("'Dev Banerjee' via Sales <sales@crowdblue.com>", "New RFP: Kimmies",
+        m = meta("'Dev Banerjee' via Sales <sales@fieldhouse.example>", "New RFP: Kimmies",
                  list_unsub=True, bulk=True,
                  list_unsub_url="<mailto:googlegroups-manage+1+unsubscribe@googlegroups.com>")
         self.assertEqual(categorize(m, own=self.OWN), "people")
-        self.assertEqual(categorize(m), "promo")      # without the rule, what Bart saw
+        self.assertEqual(categorize(m), "promo")      # without the rule, what Casey saw
 
     def test_a_no_reply_on_the_own_domain_is_an_update(self):
-        m = meta("no-reply@crowdblue.com", "Your weekly stats", list_unsub=True, bulk=True)
+        m = meta("no-reply@fieldhouse.example", "Your weekly stats", list_unsub=True, bulk=True)
         self.assertEqual(categorize(m, own=self.OWN), "notification")
 
     def test_a_subdomain_is_an_update_at_most(self):
-        m = meta("offers@news.connectblue.org", "50% off sale", list_unsub=True, bulk=True)
+        m = meta("offers@news.brightline.example", "50% off sale", list_unsub=True, bulk=True)
         self.assertEqual(categorize(m, own=self.OWN), "notification")
 
-    def test_bart_s_own_override_still_wins(self):
-        m = meta("contact@connectblue.org", "Form", list_unsub=True)
-        self.assertEqual(categorize(m, {"contact@connectblue.org": "newsletter"}, own=self.OWN), "newsletter")
+    def test_casey_s_own_override_still_wins(self):
+        m = meta("contact@brightline.example", "Form", list_unsub=True)
+        self.assertEqual(categorize(m, {"contact@brightline.example": "newsletter"}, own=self.OWN), "newsletter")
 
     def test_a_lookalike_domain_is_not_own(self):
-        m = meta("sales@notconnectblue.org", "Sale on now", list_unsub=True)
+        m = meta("sales@notbrightline.example", "Sale on now", list_unsub=True)
         self.assertEqual(categorize(m, own=self.OWN), "promo")
 
     def test_public_mailboxes_are_never_own(self):
         import mail_sync
-        env = {"GMAIL_PERSONAL_USER": "bart@gmail.com", "GMAIL_CB_USER": "bart@ConnectBlue.org",
+        env = {"GMAIL_PERSONAL_USER": "casey@gmail.com", "GMAIL_CB_USER": "casey@brightline.example",
                "GMAIL_CB_APP_PASSWORD": "x"}
-        self.assertEqual(mail_sync.own_domains(env), {"connectblue.org"})
+        self.assertEqual(mail_sync.own_domains(env), {"brightline.example"})
 
 
 class PlainMailIsUntouched(unittest.TestCase):

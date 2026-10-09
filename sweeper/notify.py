@@ -1,4 +1,4 @@
-"""E99 — iMessage alerts via OpenClaw (Bart: "use OpenClaw's imessage
+"""E99 — iMessage alerts via OpenClaw (Casey: "use OpenClaw's imessage
 integration as a communication and alert system? Similar to an app?").
 
 Runs inside every mail_sync cycle (~3 min, 24/7), wrapped so failures
@@ -14,7 +14,7 @@ Alerts (v1, deterministic, deliberately quiet):
 Dedup via the `notifications` table (kind+ref primary key). Quiet hours
 22:00–07:30 suppress event pings (the brief window sits just outside).
 
-§6 note: messages go ONLY to Bart's own handle (NOTIFY_IMESSAGE_TARGET,
+§6 note: messages go ONLY to Casey's own handle (NOTIFY_IMESSAGE_TARGET,
 default you@example.com) — this is the system talking to its owner,
 never outbound to third parties. Replies land in OpenClaw (gc-host),
 which already carries the Grand Central skill — so texting back
@@ -61,7 +61,7 @@ def _send(target: str, text: str, log=print) -> None:
     try:
         with open(NOTIFY_LOG, "a") as lf:
             lf.write(f"{datetime.now().isoformat()} SEND {text[:120]!r}\n")
-            # E99.2 (Bart: "OpenClaw has another way that IS working"):
+            # E99.2 (Casey: "OpenClaw has another way that IS working"):
             # route through the RUNNING gateway via an agent turn — the
             # same machinery behind gc-host's daily 07:02 texts. The
             # standalone `message send` CLI spawns a fresh node whose TCC
@@ -168,7 +168,7 @@ def run(conn, env: dict, log=print) -> None:
         needs = conn.execute(
             "SELECT COUNT(*) AS n FROM mail_threads WHERE in_inbox=1 AND unread=1 "
             "AND category='people'").fetchone()["n"]
-        lines = [f"🚂 Morning, Bart — {now.strftime('%A %b %-d')}."]
+        lines = [f"🚂 Morning, Casey — {now.strftime('%A %b %-d')}."]
         try:
             import planner
             p = planner.get(conn)
@@ -186,6 +186,15 @@ def run(conn, env: dict, log=print) -> None:
         if todos:
             lines.append("✓ due: " + " · ".join(t["text"][:30] for t in todos[:3])
                          + (f" (+{len(todos)-3})" if len(todos) > 3 else ""))
+        try:
+            # E276: follow-ups Casey chose that are due today (no model call)
+            import watch
+            due = [w for w in watch.listing(conn) if w["due_now"]]
+            if due:
+                lines.append(f"👀 {len(due)} follow-up{'s' if len(due) != 1 else ''} due: "
+                             + " · ".join(watch.label(w)[:40] for w in due[:3]))
+        except Exception:
+            pass
         lines.append(f"✉ {needs} unread from people. Reply here to ask anything.")
         _deliver(conn, "brief", target, "\n".join(lines), log=log, url="/")
         _mark(conn, "brief", today)
@@ -205,7 +214,7 @@ def run(conn, env: dict, log=print) -> None:
                      f"📅 {t}: {e.get('title','')[:60]}{loc}{_prep(conn, e)}", log=log, url="/?go=today")
             _mark(conn, "event", ref)
 
-    # ---- a dev request needs Bart's answer (2026-09-26), once per question ----
+    # ---- a dev request needs Casey's answer (2026-09-26), once per question ----
     if not quiet:
         for r in conn.execute("SELECT id, account, note, updated_at FROM dev_requests "
                               "WHERE status = 'question'").fetchall():
@@ -217,8 +226,8 @@ def run(conn, env: dict, log=print) -> None:
                      log=log, url=f"/?go=dev&account={r['account']}")
             _mark(conn, "devq", ref)
 
-    # ---- an agent is waiting on Bart's click (E266, 2026-10-02) ----
-    # Bart: "When agent requests come in, I need a notification to know to
+    # ---- an agent is waiting on Casey's click (E266, 2026-10-02) ----
+    # Casey: "When agent requests come in, I need a notification to know to
     # check." One alert per cycle for whatever is new: a desktop-app request
     # (E260, expires in 24h), an invite draft, a "remember that…" note.
     # The text is built only from fixed server wording and counts — never the
@@ -309,7 +318,7 @@ def _shutdown_text(conn) -> str:
         tomorrow = next((d for d in cal if d.get("date") == tom), {}).get("events") or []
     except Exception:
         tomorrow = []
-    lines = [f"🌇 Day's end, Bart."]
+    lines = [f"🌇 Day's end, Casey."]
     lines.append(f"✓ {len(done)} done" + (": " + " · ".join(t["text"][:26] for t in done[:3]) if done else ""))
     if still:
         lines.append(f"⚠ still due: " + " · ".join(t["text"][:26] for t in still[:3])

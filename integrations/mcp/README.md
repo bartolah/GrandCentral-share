@@ -88,10 +88,10 @@ two network holes next to it: the board now refuses any peer that is not
 loopback or tailnet, and rejects mutating POSTs carrying a foreign origin,
 which killed a live CSRF vector.
 
-What remains unsolvable is a process already running as Bart's uid on the Mini
+What remains unsolvable is a process already running as Casey's uid on the host
 — including a shell tool in whatever agent is running. It can reach
 `POST /send` on loopback directly. No token fixes this, because that process
-can read any file Bart can read. What MCP changes is that the agent's
+can read any file Casey can read. What MCP changes is that the agent's
 *sanctioned* path cannot do it, and the prose rules in `SKILL.md` govern the
 rest.
 
@@ -101,9 +101,9 @@ MCP server keeps working unchanged.
 
 ## The Claude desktop app: `--profile desktop` (E260, 2026-09-30)
 
-Bart: "Option A first, one account per read, approve all actions." The desktop
+Casey: "Option A first, one account per read, approve all actions." The desktop
 app starts this same server over stdio, with `--profile desktop`: directly when
-the app runs on the Mini, over SSH across Tailscale from any other Mac. Nothing
+the app runs on the host, over SSH across Tailscale from any other Mac. Nothing
 is exposed to the internet. The reasoning is in `REMOTE_PLAN.md`; the tools are
 in `gc_remote.py`; the rules live in the board (`sweeper/agent_gate.py`), not
 here.
@@ -136,7 +136,7 @@ Every tool call is a line in `logs/mcp_audit.jsonl`; every request the board
 sees is a row in `agent_audit` (principal `desktop`, or `agent` with tool
 `approved:<tool>` for an approved one), listed in Settings → Agents.
 
-### Setup on the Mini itself
+### Setup on the host itself
 
 1. Mint the key: `.venv/bin/python sweeper/agent_gate.py --new-desktop-key`
    (and `--new-key` if there is no agent key yet; `--status` shows both).
@@ -162,25 +162,32 @@ sees is a row in `agent_audit` (principal `desktop`, or `agent` with tool
 
        ssh-keygen -t ed25519 -f ~/.ssh/gc_mcp_ed25519 -C gc-mcp -N ''
 
-2. On the Mini, pin that key to the one command. Append one line to
+2. On the host, pin that key to the one command. Append one line to
    `~/.ssh/authorized_keys` (paste the laptop's `~/.ssh/gc_mcp_ed25519.pub`
    after the options). Remote Login must be on (System Settings → General →
    Sharing).
 
        command="cd /Users/you/Code/GrandCentral && exec .venv/bin/python integrations/mcp/gc_mcp.py --profile desktop",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAA... gc-mcp
 
-3. On the laptop, in `claude_desktop_config.json`:
+3. On the laptop, copy `gc_ssh_proxy.py` to `~/.gc/` (E275: it keeps the
+   app connected when the laptop sleeps; without it ssh exits and the app
+   shows "Server disconnected" until restarted). Then, in
+   `claude_desktop_config.json` (top level, not inside `preferences`), with the
+   laptop's own user name in both paths:
 
        {
          "mcpServers": {
            "grand-central": {
-             "command": "/usr/bin/ssh",
-             "args": ["-T", "-i", "/Users/you/.ssh/gc_mcp_ed25519",
-                      "-o", "BatchMode=yes", "bart@gc-host"]
+             "command": "/usr/bin/python3",
+             "args": ["/Users/LAPTOP_USER/.gc/gc_ssh_proxy.py", "--",
+                      "/usr/bin/ssh", "-T", "-i", "/Users/LAPTOP_USER/.ssh/gc_mcp_ed25519",
+                      "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+                      "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=2",
+                      "casey@gc-host"]
            }
          }
        }
 
-   `gc-host` is the Mini's Tailscale name; use the Mini's short user name if it
-   is not `bart`. The forced command decides what runs, so this key cannot open
-   a shell. The desktop key never leaves the Mini.
+   `gc-host` is the host's Tailscale name; use the host's short user name if it
+   is not `casey`. The forced command decides what runs, so this key cannot open
+   a shell. The desktop key never leaves the host.

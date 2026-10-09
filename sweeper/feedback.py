@@ -1,6 +1,6 @@
 """Local-only dismissals written from the dashboard. Both `dashboard/serve.py`'s
 /dismiss handler and `command.py`'s tool-calling loop call this one function —
-one persistence path whether Bart clicked a button or typed a request into the
+one persistence path whether Casey clicked a button or typed a request into the
 command bar.
 
 Project re-file corrections (record_feedback) were retired with projects/goals;

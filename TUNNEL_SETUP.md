@@ -5,7 +5,7 @@ from any network that allows normal HTTPS (cruise ship Wi-Fi included),
 protected by a Cloudflare Access email-OTP login for you@example.com.
 
 Already done (by Claude, 2026-07-13):
-- cloudflared installed (brew), logged in to the connectblue.org zone
+- cloudflared installed (brew), logged in to the brightline.example zone
 - Tunnel `grand-central` created (id <tunnel-uuid>)
 - DNS: gc.example.com → CNAME to the tunnel
 - Ingress config: ~/.cloudflared/config.yml → http://localhost:8080 (validated)
@@ -24,10 +24,10 @@ public internet — Access is the only lock on the door.
 4. Fill in:
    - Application name: `gc-host`
    - Session Duration: **1 week** (so the ship doesn't make you re-login daily)
-   - Public hostname: subdomain `gc-host`, domain `connectblue.org`
+   - Public hostname: subdomain `gc-host`, domain `brightline.example`
      (leave path blank)
 5. Next → **Add a policy**:
-   - Policy name: `Bart only`
+   - Policy name: `Casey only`
    - Action: **Allow**
    - Include → selector **Emails** → value `you@example.com`
 6. Next through the remaining screens (defaults are fine) → **Add application**.
@@ -83,6 +83,6 @@ From ANY device/network (phone on cellular is a good test):
   (Tailscale access is unaffected. Plain-LAN access is closed as of E161 —
   see BUILD_SPEC §6; `GC_ALLOW_LAN=1` reopens it.)
 
-Spec note: this amends BUILD_SPEC §6 "local network only" — approved by Bart
+Spec note: this amends BUILD_SPEC §6 "local network only" — approved by Casey
 2026-07-13, on the condition that Cloudflare Access (email OTP, you@example.com
 only) fronts the hostname at all times.

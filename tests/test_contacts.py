@@ -1,7 +1,7 @@
 """Contacts / address book and recipient typeahead (dev #32 #33 #34, 2026-09-26).
 
 Scratch SQLite, fake accounts. The address book is per account (built from
-that account's own mail) with Bart's edits applied everywhere.
+that account's own mail) with Casey's edits applied everywhere.
 
     .venv/bin/python -m unittest tests.test_contacts -v
 """
@@ -37,7 +37,7 @@ class AddressBook(unittest.TestCase):
         self.conn = db.connect(os.path.join(self._dir.name, "t.db"))
         seed(self.conn, A, "t1", ["Pat Lee <pat@out.org>", ME])
         seed(self.conn, A, "t2", ["pat@out.org", "Ann <ann@out.org>", ME])
-        seed(self.conn, A, "t3", ["NewsBot <no-reply@news.org>"])
+        seed(self.conn, A, "t3", ["NewsDesk <no-reply@news.org>"])
         seed(self.conn, B, "t9", ["Zed <zed@else.org>", ME])
 
     def tearDown(self):
@@ -59,7 +59,7 @@ class AddressBook(unittest.TestCase):
         self.assertTrue(a["no-reply@news.org"]["auto"])
         self.assertFalse(a["pat@out.org"]["auto"])
 
-    def test_bart_edits_win_and_hidden_ones_leave(self):
+    def test_casey_edits_win_and_hidden_ones_leave(self):
         db.contact_set(self.conn, "pat@out.org", name="Patricia Lee", notes="met at the summit")
         db.contact_set(self.conn, "ann@out.org", hidden=True)
         a = self.book()

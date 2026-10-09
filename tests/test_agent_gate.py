@@ -287,7 +287,7 @@ class AgentGate(unittest.TestCase):
         self.assertEqual(code, 429)
         self.assertIn("40 thread reads an hour", out["error"])
 
-    def test_three_refusals_lock_the_agent_until_bart_resets(self):
+    def test_three_refusals_lock_the_agent_until_casey_resets(self):
         for _ in range(3):
             self.agent("POST", "/send", {"confirm": True})
         code, _ = self.agent("GET", "/todos")
@@ -313,7 +313,7 @@ class AgentDraftFlags(unittest.TestCase):
                     "INSERT INTO mail_threads (thread_id, account, subject, participants, "
                     "last_from, last_from_email, last_direction, snippet, last_date, in_inbox, "
                     "synced_at) VALUES ('1', ?, 's', ?, 'x', 'x', 'inbound', '', '', 1, '')",
-                    (A, json.dumps(["Jane <jane@acme.com>", "bart@example.com"])))
+                    (A, json.dumps(["Jane <jane@acme.com>", "casey@example.com"])))
                 conn.commit()
                 self.assertEqual(agent_gate.new_recipients(conn, A, "Jane <JANE@acme.com>"), [])
                 self.assertEqual(agent_gate.new_recipients(conn, A, "jane@acme.com",
@@ -356,7 +356,7 @@ class AgentDraftFlags(unittest.TestCase):
 
 
 class InviteDrafts(unittest.TestCase):
-    """§6 E258 item 6: attendees are a proposal until Bart clicks."""
+    """§6 E258 item 6: attendees are a proposal until Casey clicks."""
 
     def setUp(self):
         import calendar_invite
@@ -392,7 +392,7 @@ class InviteDrafts(unittest.TestCase):
             calls.append(cmd)
             return Done()
 
-        out = self.ci.send(self.conn, iid, env={"GMAIL_PERSONAL_USER": "bart@example.com"},
+        out = self.ci.send(self.conn, iid, env={"GMAIL_PERSONAL_USER": "casey@example.com"},
                            log=lambda *a: None, runner=runner)
         self.assertEqual(out["sent_to"], ["jane@acme.com"])
         cmd = calls[0]
@@ -411,7 +411,7 @@ class InviteDrafts(unittest.TestCase):
     def test_failed_send_can_be_retried_but_a_crash_cannot_resend(self):
         iid = self.ci.propose(self.conn, "personal", {"event_id": "ev1"}, ["jane@acme.com"], [],
                               "agent")
-        env = {"GMAIL_PERSONAL_USER": "bart@example.com"}
+        env = {"GMAIL_PERSONAL_USER": "casey@example.com"}
 
         class Fail:
             returncode, stdout, stderr = 1, "", "quota"
@@ -480,7 +480,7 @@ class Neutralize(unittest.TestCase):
         self.assertEqual(signals, 1)
 
     def test_ordinary_mail_is_untouched(self):
-        mail = "Hi Bart,\n\nCan we move Thursday to 3pm? <b>Thanks</b>\n\n— Jane"
+        mail = "Hi Casey,\n\nCan we move Thursday to 3pm? <b>Thanks</b>\n\n— Jane"
         self.assertEqual(untrusted.neutralize(mail), (mail, 0))
 
 

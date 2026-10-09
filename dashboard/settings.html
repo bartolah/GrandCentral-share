@@ -195,7 +195,7 @@
     await connPost({ action: 'clear_single', name }, btn.parentNode.querySelector('.cfg-status'));
   }
 
-  // ---------- E19: Context tab — Bart's rules/notes corpus ----------
+  // ---------- E19: Context tab — Casey's rules/notes corpus ----------
   // The beginning of durable context: label meanings, people notes, voice
   // preferences, automation ideas. Stored in the DB; nothing consumes an
   // entry automatically — future automations / prompt grounding / reply
@@ -270,7 +270,7 @@
         Agents (OpenClaw) never see them.</div>
       <div class="cfg-add" id="doc-form">
         <select class="cfg-in md" id="doc-scope">${DOC_SCOPES.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('')}</select>
-        <input class="cfg-in lg" id="doc-title" placeholder="Title — e.g. ConnectBlue context (Sep 30)">
+        <input class="cfg-in lg" id="doc-title" placeholder="Title — e.g. Brightline context (Sep 30)">
         <input type="file" id="doc-file" accept=".md,.markdown,.txt,text/markdown,text/plain" onchange="docFile(this)">
       </div>
       <textarea class="cfg-in" id="doc-body" rows="8" style="width:100%" placeholder="Paste the context here, or load a file above"></textarea>
@@ -405,7 +405,7 @@
     const groups = {};
     const g = n => (groups[n] = groups[n] || { domains: [], people: [] });
     d.groups.forEach(x => g(x.grp).domains.push(x.domain));
-    // 2026-09-30 (Bart: "several people who are part of multiple accounts -
+    // 2026-09-30 (Casey: "several people who are part of multiple accounts -
     // companies"): a person can be in several groups and is listed under each.
     const groupsOf = x => (x.groups && x.groups.length) ? x.groups : (x.grp ? [x.grp] : []);
     d.people.forEach(x => groupsOf(x).forEach(n => g(n).people.push(x)));
@@ -428,7 +428,7 @@
       <div class="cfg-group"><h3>${esc(name)}</h3>
         <div class="cfg-row">${gr.domains.map(dm => `<span class="idtag">${esc(dm)}</span><button class="btn del-btn" onclick="clsDel('group','${esc(dm)}')" title="Remove ${esc(dm)}">✕</button>`).join(' ') || '<span class="empty">No domains — only the people below.</span>'}</div>
         ${gr.people.map(x => personRow(x, name)).join('')}
-      </div>`).join('') || '<div class="cfg-group"><h3>Company groups</h3><div class="empty">No groups yet. Add a domain or a person below, e.g. ConnectBlue, Capitol Influence and Northwind Media in one group.</div></div>'}
+      </div>`).join('') || '<div class="cfg-group"><h3>Company groups</h3><div class="empty">No groups yet. Add a domain or a person below, e.g. Brightline, Consulting and Northwind Media in one group.</div></div>'}
       <div class="cfg-group"><h3>Add to a group</h3>
         <div class="cfg-note">Everyone at a domain, or one person by address, counts as your company. Teammates' threads you're waiting on follow up after 2 business days.</div>
         <div class="cfg-add" id="cls-grp">${inp('group', Object.keys(groups)[0] || '', 'md', 'Group name').replace('<input', '<input list="cls-grps"')}${inp('domain', '', 'md', 'domain.com')}
@@ -472,10 +472,10 @@
     if (!group) { btn.textContent = 'Type a group'; setTimeout(() => { btn.textContent = 'Move'; }, 2000); return; }
     clsPost({ action: 'person-add', email, group, teammate, from: from || undefined, also: !from || undefined }, null);
   }
-  // E253: mail your own sites and tools send (Bart: "ConnectBlue
-  // Notifications should be a bundle, ConnectBlue Sales inquiries (RFPs) from
-  // sales@connectblue") is found automatically, one bundle per service. Here
-  // Bart renames, merges or switches one off; nothing touches Gmail.
+  // E253: mail your own sites and tools send (Casey: "Brightline
+  // Notifications should be a bundle, Brightline Sales inquiries (RFPs) from
+  // sales@brightline") is found automatically, one bundle per service. Here
+  // Casey renames, merges or switches one off; nothing touches Gmail.
   function svcHtml(byAcct) {
     const accts = Object.keys(byAcct);
     if (!accts.length) return '';
@@ -532,7 +532,7 @@
         <span>${when(a.lock.at)} — ${esc(a.lock.reason)}. Review the calls below first.</span>
         <button class="btn" onclick="agentReset(this)">Lift lockout</button><span class="cfg-status"></span></div></div>` : ''}
       <div class="cfg-group"><h3>Accounts agents may use</h3>
-        ${a.key_set ? '' : '<div class="cfg-row"><span>No agent key yet — run <code>sweeper/agent_gate.py --new-key</code> on the Mini.</span></div>'}
+        ${a.key_set ? '' : '<div class="cfg-row"><span>No agent key yet — run <code>sweeper/agent_gate.py --new-key</code> on the host.</span></div>'}
         ${a.accounts.map(r => `<div class="cfg-row"><span class="idtag">${esc(r.account)}</span>
           <span>${r.enabled ? 'on' : 'off'}</span>
           <button class="btn" onclick="agentAcct('${esc(r.account)}', ${!r.enabled}, this)">${r.enabled ? 'Switch off' : 'Switch on'}</button>
@@ -541,7 +541,7 @@
       <div class="cfg-group" id="desktop-requests"><h3>✋ Claude desktop app is asking (${(a.pending_proposals || []).length})</h3>
         <div class="cfg-note" style="padding:0 0 6px">Nothing here has happened. Approve runs exactly the request shown, once,
           as an agent call checked again now. Requests expire after 24 hours.
-          ${a.desktop_key_set ? '' : '<br>No desktop key yet — run <code>sweeper/agent_gate.py --new-desktop-key</code> on the Mini.'}</div>
+          ${a.desktop_key_set ? '' : '<br>No desktop key yet — run <code>sweeper/agent_gate.py --new-desktop-key</code> on the host.'}</div>
         ${(a.pending_proposals || []).length ? a.pending_proposals.map(q => `<div class="cfg-row" style="align-items:flex-start">
           <span class="idtag">#${q.id} ${esc(q.account)}</span>
           <span><b>${esc(q.preview)}</b><br><span style="font-size:12px">${esc(q.tool)} · ${when(q.created_at)}</span>
@@ -597,7 +597,7 @@
       renderAgentsTab(document.getElementById('pane'));
     } catch (e) { btn.parentElement.querySelector('.cfg-status').textContent = e.message; }
   }
-  // E260: Bart's click on a desktop-app request (human-only on the server).
+  // E260: Casey's click on a desktop-app request (human-only on the server).
   async function agentDecide(id, decision, btn) {
     const st = btn.parentElement.querySelector('.cfg-status');
     btn.parentElement.querySelectorAll('button').forEach(b => { b.disabled = true; });
@@ -626,7 +626,7 @@
   }
 
   // ---------- E269: Tracking — opens and clicks on Grand Central sends ----------
-  // BUILD_SPEC §6, 2026-10-06. Bart: "make them configure-able for each email
+  // BUILD_SPEC §6, 2026-10-06. Casey: "make them configure-able for each email
   // account". Each signal switches per account; nothing here touches mail.
   const TRK_SIG = [['enabled', 'Track by default', 'On when anyone outside your companies is on the email. The 👁 in the composer overrides it either way.'],
                    ['clicks', 'Link clicks', 'Links pass through t.<domain> so a click is seen.'],

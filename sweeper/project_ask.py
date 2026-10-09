@@ -1,6 +1,6 @@
 """Ask on a project page — Projects step 5 (BUILD_SPEC §6, 2026-09-30).
 
-Bart, 2026-09-30 interview: a box on the project page opens Ask fenced to
+Casey, 2026-09-30 interview: a box on the project page opens Ask fenced to
 that project. It reads everything filed there — emails in any account (full
 threads), todos and the emails folded inside them, notes, meetings with their
 Granola notes, people — and nothing outside it. Read and draft only: it may
@@ -28,7 +28,7 @@ NOTE_CAP, NOTES_TOTAL_CAP = 4000, 20000     # characters of note text in the con
 DOCS_CAP = 60000       # E259: the project's context documents, then its accounts'
 
 SYSTEM_PROMPT = (
-    "You are Grand Central's Ask, opened on one of Bart Olah's projects. You "
+    "You are Grand Central's Ask, opened on one of Casey Doe's projects. You "
     "see only what is filed in this project: its emails (from any of his "
     "accounts), its todos and the emails inside them, its notes, its meetings "
     "and its people. You cannot see anything else in his mail, todos or "
@@ -40,10 +40,10 @@ SYSTEM_PROMPT = (
     "meeting_notes reads the Granola notes of one of its meetings; "
     "draft_preview and draft_save write a reply draft into that account's Gmail "
     "Drafts for one of its threads. That is all you can do: you cannot send, "
-    "archive, snooze, change todos, or write notes — if Bart asks for one of "
+    "archive, snooze, change todos, or write notes — if Casey asks for one of "
     "those, tell him which button does it. Only save a draft when he asks for "
     "one.\n\n"
-    "Bart's context documents (E259) come with the project: the project's own "
+    "Casey's context documents (E259) come with the project: the project's own "
     "first, then those of the accounts its items live in. They are his "
     "standing brief — facts, people, rules and voice. Follow their rules, "
     "especially in drafts, and say so when one looks stale or conflicts with "
@@ -125,7 +125,7 @@ def context(conn, pid: int) -> dict:
         budget -= len(body)
         notes.append({"title": n["title"], "updated": n["updated_at"], "text": body,
                       "truncated": len(body) < len(n["body"] or "")})
-    # E259: Bart's standing context — the project's documents first, then
+    # E259: Casey's standing context — the project's documents first, then
     # those of every account the project's items live in
     docs = db.context_docs_text(conn, [f"project:{int(pid)}"] +
                                 [f"account:{a}" for a in v["accounts"]], DOCS_CAP)
@@ -146,7 +146,7 @@ def allowed_threads(ctx: dict) -> set:
 def _fence(ctx: dict, tool_input: dict) -> tuple[str, str]:
     key = (str(tool_input.get("account") or ""), str(tool_input.get("thread_id") or ""))
     if key not in allowed_threads(ctx):
-        raise ValueError("that thread isn't filed in this project — Bart can add it with 📁")
+        raise ValueError("that thread isn't filed in this project — Casey can add it with 📁")
     return key
 
 

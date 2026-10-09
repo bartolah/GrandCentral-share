@@ -31,9 +31,9 @@ TOUCH_MIN = 44
 
 # Every skin, because the status-bar collision was never a layout bug — it was
 # a skin writing `.top { padding: 8px 16px }` after the media block and
-# resetting the inset. Bart runs "inbox"; the fixes all went into "2049".
-SKINS = ["2049", "classic", "daylight", "inbox", "lcars", "matrix",
-         "mission", "shortwave", "starwars", "tron", "wargames"]
+# resetting the inset. Casey runs "inbox"; the fixes all went into "2049".
+SKINS = ["neon", "mono", "daylight", "paper", "console", "rain",
+         "mission", "compact", "vector", "grid", "phosphor"]
 
 # An iPhone with a notch and a home indicator, in CSS pixels.
 FAKE_TOP, FAKE_BOT = 44, 34
@@ -164,7 +164,7 @@ def test_insets(b, fails: list[str]) -> int:
     # put the board back the way it was found
     b.js("""document.documentElement.style.removeProperty('--safe-top');
             document.documentElement.style.removeProperty('--safe-bot');
-            document.documentElement.dataset.skin = '2049'; return 1;""", wait=0.4)
+            document.documentElement.dataset.skin = 'neon'; return 1;""", wait=0.4)
     return checks
 
 
@@ -201,7 +201,7 @@ def test_overlays_opaque(b, fails: list[str]) -> int:
         for m in bad:
             print(f"            {m}")
             fails.append(f"{skin}: {m}")
-    b.js("document.documentElement.dataset.skin = '2049'; return 1;".replace("'", '"'), wait=0.3)
+    b.js("document.documentElement.dataset.skin = 'neon'; return 1;".replace("'", '"'), wait=0.3)
     return checks
 
 

@@ -68,7 +68,7 @@ self.addEventListener('fetch', (e) => {
 });
 
 /* ---------------------------------------------------------------------------
-   E188 — Web Push. The Mini signs a payload with its VAPID key and hands it
+   E188 — Web Push. The host signs a payload with its VAPID key and hands it
    to the browser vendor's push service; this runs when it arrives, whether
    or not the board is open. Clicking focuses an open window if there is one.
    --------------------------------------------------------------------------- */

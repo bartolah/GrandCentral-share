@@ -1,6 +1,6 @@
 # Account-first simplification
 
-Direction (Bart, 2026-09-24): accounts are the primary navigation and the
+Direction (Casey, 2026-09-24): accounts are the primary navigation and the
 ownership boundary. Emails are only ever seen through their own account. Todos
 belong to exactly one account and show in that account's view. Projects, goals,
 automatic classification, Attio, and the old dashboard go. Cross-account global
@@ -195,7 +195,7 @@ Only after a `data/grand_central.db` backup and explicit sign-off:
 ## E207: trash comes back to the row menu (2026-09-25)
 
 The bounded-triage pass above took trash off *every* mail-row surface at once,
-and Bart lost the ability to delete from the email view. The six-button hover
+and Casey lost the ability to delete from the email view. The six-button hover
 strip stays as it is — that strip is for verbs fired without thinking, and a
 destructive one does not belong there. Trash returns to the row's right-click
 and long-press menu (`mailCtxHtml`), where it lived before and where the act is
@@ -270,16 +270,16 @@ Blocker
 
 ## Jev-led Smart grouping (E226, 2026-09-28)
 
-Bart: "switch our sorting logic to use the Jev context. Jev should help us with filtering, grouping, etc." Start with ConnectBlue, add the others once he likes it.
+Casey: "switch our sorting logic to use the Jev context. Jev should help us with filtering, grouping, etc." Start with Brightline, add the others once he likes it.
 
 - Per account, following the existing Jev switch (`class_accounts.jev`); `/mail` returns `jev` so the page knows. Accounts without it keep E204's date-banded Smart grouping exactly.
-- A thread's type is the classifier's effective answer (Bart's correction > Jev when confident > rules). Only a type decided by Jev or Bart moves a thread; rule-only types keep today's placement.
+- A thread's type is the classifier's effective answer (Casey's correction > Jev when confident > rules). Only a type decided by Jev or Casey moves a thread; rule-only types keep today's placement.
 - Bulk mail never reaches Jev (§6 2026-09-26), so newsletter/promo/receipt/calendar/update bundles still come from `categorize()`. Jev adds two bundles for person-looking mail: Cold pitches and Spam (and can send misfiled machine mail to Updates/Newsletters). Those two offer Archive all, not Delete all.
 - Sections: Needs you (respond = yes, or priority 3) → Team → Prospects → Correspondence, each by priority, then value, then newest; then one "Bundled" section.
 - Filters `type:` `priority:` `needs:` are GC-only and stripped before a Gmail search.
 - Nothing here writes to Gmail; classification stays advisory.
 
-## Projects — spec (interview with Bart, 2026-09-29)
+## Projects — spec (interview with Casey, 2026-09-29)
 
 Mockups: Grand Central Design canvas, artboards "Project page" and "Projects page + Add to project" (`design/Project.dc.html`, `design/Projects.dc.html`). Not built yet.
 
@@ -287,13 +287,13 @@ Mockups: Grand Central Design canvas, artboards "Project page" and "Projects pag
 
 **Ownership (BUILD_SPEC §6, 2026-09-29).** Emails, todos and events stay in their own accounts, and acting on them happens there. A project, and a note written inside it, belong to no account. Each item on the page shows its account chip.
 
-| Question | Bart's answer |
+| Question | Casey's answer |
 |---|---|
 | An email added to a project | Stays in its inbox; the project is a second view onto it |
 | A todo's emails on the project page | Folded inside the todo row, shown once |
 | Dates | Optional target date, plus completed-on recorded when marked complete |
 | Completing with open todos | Ask: "3 todos are still open — complete them too?" |
-| Contacts | A People list; a new email from one of them prompts "add to <project>?" and Bart decides (no auto-filing) |
+| Contacts | A People list; a new email from one of them prompts "add to <project>?" and Casey decides (no auto-filing) |
 | Ask Grand Central on a project page | Reads everything filed in that project, across its accounts, and nothing outside it |
 | Gmail labels for projects | Not now (would be a live write in every account involved) |
 | Pinned projects | Up to 3, as tabs after the account tabs behind a divider (phone: in the ☰ drawer, assumed) |
@@ -301,13 +301,13 @@ Mockups: Grand Central Design canvas, artboards "Project page" and "Projects pag
 | A new todo created inside a project | Account picker, defaulting to the last account used in that project |
 | Calendar events | Any event, past or upcoming |
 
-**Also from Bart's brief:** projects can be completed and reopened; created from a Projects page, the sidebar or a Projects section in the right-hand panel; administered (rename, colour, target, pin, complete, delete) on the Projects page.
+**Also from Casey's brief:** projects can be completed and reopened; created from a Projects page, the sidebar or a Projects section in the right-hand panel; administered (rename, colour, target, pin, complete, delete) on the Projects page.
 
 **Build order (proposed):** (1) tables + API: projects, project_items (kind, account, ref), project notes; (2) Projects page, project page and pins; (3) 📁 Add to project on emails and todos; (4) notes, events and contacts; (5) project-scoped Ask; (6) the People suggestion on new mail. Each item is keyed by (account, id), never by id alone.
 
-**Steps 5 and 6 — agreed with Bart 2026-09-30 (interview; BUILD_SPEC §6 entry of the same date).**
+**Steps 5 and 6 — agreed with Casey 2026-09-30 (interview; BUILD_SPEC §6 entry of the same date).**
 
-| Question | Bart's answer |
+| Question | Casey's answer |
 |---|---|
 | Where project Ask lives | A box at the top of the project page; it opens the ✨ panel fenced to the project, and those chats are kept with the project |
 | What it may do | Read and draft only: answers, summaries, reply drafts saved to Gmail Drafts for threads in the project. No archive/snooze/todo changes, no writing notes |
@@ -324,17 +324,17 @@ Build notes: suggestions are computed, not stored, from project contacts × mail
 
 **Step 4 as built (E254, 2026-09-30).**
 - **Events.** The ICS feeds carry no stable event id, so an event is keyed by calendar_reader's own dedupe key, `date|time|title`. It's filed under the account its calendar maps to (`home_view.CAL_ACCOUNT`, sent with `/calendar`); a calendar with no account leaves the event without one. A rescheduled or renamed event therefore reads as a different event. Its Granola notes are matched from `elements` (same local day, matching title, within 3 hours), and only the link and title are shown.
-- **People** are shared across accounts. The project page suggests up to 8 people from the participants of the project's own emails, never Bart's addresses and never no-reply senders. A contact can't be added twice: `add_item` checks first, because the UNIQUE index treats NULL accounts as distinct.
+- **People** are shared across accounts. The project page suggests up to 8 people from the participants of the project's own emails, never Casey's addresses and never no-reply senders. A contact can't be added twice: `add_item` checks first, because the UNIQUE index treats NULL accounts as distinct.
 - **Notes.** A note sits in at most one project (`note_move`). The Notes page is outside the accounts, like Projects (`GET /notes`, `POST /projects` `note-move`). Neither route is in `gc_client.ALLOWED`.
 
 ## E259: context documents, and an Ask that knows Projects and Notes (2026-09-30)
 
-Bart: "The Grand Central AI that's built in isn't aware of the changes that we've made to projects and notes … I would like to be able to upload additional context (like an MD file) or just paste in the context associated with any of my accounts or projects." And: reorganize the pending ConnectBlue todos under no more than 10 ConnectBlue projects.
+Casey: "The Grand Central AI that's built in isn't aware of the changes that we've made to projects and notes … I would like to be able to upload additional context (like an MD file) or just paste in the context associated with any of my accounts or projects." And: reorganize the pending Brightline todos under no more than 10 Brightline projects.
 
 - **Context documents** (`context_docs`: scope `account:<slug>` or `project:<id>`, title, body up to 100k characters, filename, on/off). Unlike `context_notes` (one statement, 500 characters), these are whole briefs. Pasted, or a .md/.txt file read in the browser (only its text is stored). Added from the project page (＋ Context) and from Settings → Context. `GET/POST /context/docs`; the POST body cap is 640 KB for this route only.
 - **Who reads them.** The main Ask: the documents of the account on screen (the client sends `account`; not on ⌂ Home), plus a catalog of the rest and `read_context_doc`. Project Ask: the project's documents, then those of the accounts its items live in (60k characters). Reply drafts and reply options: the thread's account's documents (20k). Agents never: `/context/docs` is in `gc_client.DENIED` and outside the E258 agent gate's lists, because a brief can hold internal-only material. Writing one is human-only (`agent_gate.HUMAN_ONLY_POST`, a paired browser), since a document grounds every Ask and draft for its account. Deleting a project turns its documents into Notes marked with its name, like its notes.
 - **The main Ask and Projects/Notes.** Its snapshot lists the open projects; `query_projects` (list, or one project resolved through `project_ask.context`), `query_notes` (search, or one whole note) and `read_context_doc` are read-only. Filing, creating projects and writing notes stay board clicks (§6 2026-09-29/30); the prompt says so. No §6 entry: nothing it may do was widened, only what it can read, and it could already read every account's mail.
-- **ConnectBlue set-up** (`config/seeds/connectblue/`, `sweeper/project_seed.py`). A plan of 10 projects (Amendment, Causes Amplify, Northstar Labs, Capitol Influence, Grand Central, ConnectBlue Partner Platform, NewsBot, SalesDB, ConnectBlue Marketing, Sales & Proposals), each with a short brief, plus two account documents: the Sep 30 ConnectBlue context as given, and the older memory export with its internal rate card removed (the Sep 30 doc says pricing belongs in its own internal-only file) and em-dashes made plain dashes. Keywords sort the account's open todos that are in no project yet; a tie between two projects files into both, a tie of three or more is left out, and the two broad projects (Marketing, Sales) lose a tie to a specific one. Dry run by default, `--move ID="Project"` and `--skip ID` to correct a line, `--apply` to write. This is a one-off, reviewed filing on Bart's request, not a return of automatic classification. `config/seeds/` stays out of the shareable copy.
+- **Brightline set-up** (`config/seeds/brightline/`, `sweeper/project_seed.py`). A plan of 10 projects (Amendment, Signal Boost, Northstar Labs, Consulting, Grand Central, Brightline Partner Platform, NewsDesk, SalesBase, Brightline Marketing, Sales & Proposals), each with a short brief, plus two account documents: the Sep 30 Brightline context as given, and the older memory export with its internal rate card removed (the Sep 30 doc says pricing belongs in its own internal-only file) and em-dashes made plain dashes. Keywords sort the account's open todos that are in no project yet; a tie between two projects files into both, a tie of three or more is left out, and the two broad projects (Marketing, Sales) lose a tie to a specific one. Dry run by default, `--move ID="Project"` and `--skip ID` to correct a line, `--apply` to write. This is a one-off, reviewed filing on Casey's request, not a return of automatic classification. `config/seeds/` stays out of the shareable copy.
 
 ## E249: the ◫ Day Home and the ⌂ Home tab (2026-09-30)
 
@@ -354,29 +354,29 @@ Built under the 2026-09-29 §6 exception. What keeps it a view, not an owner:
 
 ## Teammates are never cold outreach; people in several companies (E252, 2026-09-30)
 
-Bart: "Alex Rivera … is my boss and the owner of CrowdBlue, ConnectBlue and CapitolInfluence … He's technically part of all three teams. We should add him to all teams as a teammate. His emails are never cold outreach. We have several people who are part of multiple accounts - companies."
+Casey: "Alex Rivera … is my boss and the owner of Fieldhouse, Brightline and CapitolInfluence … He's technically part of all three teams. We should add him to all teams as a teammate. His emails are never cold outreach. We have several people who are part of multiple accounts - companies."
 
-- **The guard.** Who sent a message is a fact from the roster; what kind of message it is is Jev's judgement. Jev read what teammates forwarded and called 51 of Chris's 67 threads (and 139 of Jaime's) a cold pitch. `db.class_effective` now refuses Jev's `Cold pitch` and `Spam` when the rules say the sender is a teammate or in a company group (`JEV_NEVER_FROM_TEAM`); the rules' type stands, `jev_overruled` records what Jev said, and a reason line says so. Bart's correction still beats it. Jev's other answers (Prospect, Correspondence, respond, priority) are untouched. The criteria text in `jev.py` now says the same, without a `QVERSION` bump.
+- **The guard.** Who sent a message is a fact from the roster; what kind of message it is is Jev's judgement. Jev read what teammates forwarded and called 51 of Chris's 67 threads (and 139 of Jaime's) a cold pitch. `db.class_effective` now refuses Jev's `Cold pitch` and `Spam` when the rules say the sender is a teammate or in a company group (`JEV_NEVER_FROM_TEAM`); the rules' type stands, `jev_overruled` records what Jev said, and a reason line says so. Casey's correction still beats it. Jev's other answers (Prospect, Correspondence, respond, priority) are untouched. The criteria text in `jev.py` now says the same, without a `QVERSION` bump.
 - **Several groups per person.** `class_memberships (email, grp)` holds any number of groups; `class_people.grp` mirrors the first for rollback. `mailclass.group_of(email, ros, prefer)` names the group of the account being read (`account_group`: the group of the account's own address's domain) when the person is in it. `/classify` gains `also` and `from` on `person-add`, plus `person-leave` and `person-mate`. Nothing about this sends Jev anything new.
 
 ## Your own services and website RFPs (E253, 2026-09-30)
 
-Bart: "Let's make Jev smarter about email notifications from our own services and properties and websites … ConnectBlue Notifications should be a bundle, ConnectBlue Sales inquiries (RFPs) from sales@connectblue." Interview answers: RFPs get their own bundle, kept prominent; services are found automatically and editable; one bundle per service (subdomain).
+Casey: "Let's make Jev smarter about email notifications from our own services and properties and websites … Brightline Notifications should be a bundle, Brightline Sales inquiries (RFPs) from sales@brightline." Interview answers: RFPs get their own bundle, kept prominent; services are found automatically and editable; one bundle per service (subdomain).
 
-- **Detection** (`sweeper/services.py`, called from `mail_sync.py`). "Own domains" are every account's domains plus the class_groups domains. An automated sender on one of them becomes a service: on a subdomain it's keyed by host (`newsbot.connectblue.org`), on the bare domain by address (`no-reply@connectblue.org`). A sender counts as automated if it writes from a subdomain, from a role address, or sends bulk mail. Roster people, Bart's own addresses and threads he replied to are never services. A Google Group relay carrying a tool ("'No Reply - Mailchimp' via Admin") becomes a service named after the group; one carrying a person stays people mail. Bart's own bulk sends become one "<Company> mailings" service per domain.
-- **Sales inquiries.** Website forms relayed through sales@ ("'ConnectBlue Site' via Sales", or a "New RFP" subject) are kind `sales`. They stay `people` mail, so Jev still reads them. The rules type them as Prospect, and `class_effective` refuses Jev's Cold pitch or Spam for them, the same guard as for teammates. In the classic Inbox their bundle sorts first while any is unread or last-inbound, and it has no Delete all. In Smart Inbox they're listed under Prospects.
+- **Detection** (`sweeper/services.py`, called from `mail_sync.py`). "Own domains" are every account's domains plus the class_groups domains. An automated sender on one of them becomes a service: on a subdomain it's keyed by host (`newsdesk.brightline.example`), on the bare domain by address (`no-reply@brightline.example`). A sender counts as automated if it writes from a subdomain, from a role address, or sends bulk mail. Roster people, Casey's own addresses and threads he replied to are never services. A Google Group relay carrying a tool ("'No Reply - Mailchimp' via Admin") becomes a service named after the group; one carrying a person stays people mail. Casey's own bulk sends become one "<Company> mailings" service per domain.
+- **Sales inquiries.** Website forms relayed through sales@ ("'Brightline Site' via Sales", or a "New RFP" subject) are kind `sales`. They stay `people` mail, so Jev still reads them. The rules type them as Prospect, and `class_effective` refuses Jev's Cold pitch or Spam for them, the same guard as for teammates. In the classic Inbox their bundle sorts first while any is unread or last-inbound, and it has no Delete all. In Smart Inbox they're listed under Prospects.
 - **Jev and §6.** Any other service's people/other mail becomes `notification`, so it stops reaching Jev. Nothing is widened.
-- **Storage.** A nullable `mail_threads.service` column (the detected key, kept even when switched off so Settings can count it) and a `services` table (auto_name, Bart's name, merged_into, off). Bart's edits survive re-detection. `/mail` returns each thread's resolved `svc` plus a `services` map; a switched-off service keeps its old category at the next sync.
+- **Storage.** A nullable `mail_threads.service` column (the detected key, kept even when switched off so Settings can count it) and a `services` table (auto_name, Casey's name, merged_into, off). Casey's edits survive re-detection. `/mail` returns each thread's resolved `svc` plus a `services` map; a switched-off service keeps its old category at the next sync.
 - **Settings → Classification → Your services** lists each account's services with thread counts. Rename (blank restores the found name), Merge into, and Switch off go through `POST /classify` actions `service-rename`, `service-merge` and `service-off`. The route isn't in `gc_client.ALLOWED`, and none of these actions touches Gmail.
 
 
 ## Open and click tracking (E269, agreed 2026-10-06)
 
-Bart: "What's involved in order to have Grand Central track when my emails are opened?" → "Let's do it. Yes, this is through our Google Workspace for sales and campaign emails." BUILD_SPEC §6 entry of the same date.
+Casey: "What's involved in order to have Grand Central track when my emails are opened?" → "Let's do it. Yes, this is through our Google Workspace for sales and campaign emails." BUILD_SPEC §6 entry of the same date.
 
-| Question | Bart's answer |
+| Question | Casey's answer |
 |---|---|
-| Where the image and links load from | Each account's own domain: `t.<account domain>` (keeps ConnectBlue and Capitol Influence separate) |
+| Where the image and links load from | Each account's own domain: `t.<account domain>` (keeps Brightline and Consulting separate) |
 | When tracking is on | On for work accounts when a recipient is outside the company groups; off for teammates and Personal; 👁 Track toggle per send |
 | What it does with the signal | All four: opens on the thread, link clicks, a ping on the first real open, and feeding Waiting on. **Each switchable per account** |
 | Campaigns | Composer mail only; bulk campaigns keep their sender's own stats |
@@ -400,9 +400,31 @@ Bart: "What's involved in order to have Grand Central track when my emails are o
   - With several recipients, an open is the email's, not a person's.
   - Gmail's proxy caches images, so repeat opens undercount.
   - Opening your own Sent copy in Gmail can count; Grand Central's own pane never does.
-- **Deploy needs Bart:**
+- **Deploy needs Casey:**
   - `wrangler login` (or a Cloudflare API token)
   - a DNS route `t.<domain>` per account domain
   - the shared secret, stored in `config/.env` as `TRACK_SECRET` via Connections
 
   Until `/health` answers on a domain, sends from that account aren't tracked.
+
+
+## Follow-ups: "Keep an eye on this" (E276, 2026-10-07)
+
+Casey: "help me keep track of and follow up on emails 'of note' … I don't want it to be too heavy handed, or crazy from a processing and token standpoint. perhaps after I send an email, part of the after send menu can ask me for context?" He approved the plan ("Love this. Go for it"), and the recommended defaults were used: 3 business days for the team, 5 days for deals; Remind me = a todo; ask when a teammate or someone outside is on the email; due items on both Home views.
+
+- **Model (`sweeper/watch.py`, table `watches`).** There are three kinds: `assigned` (a teammate owes Casey), `deal` (a prospect or partner owes a reply), and `remind`. A `remind` row exists only until a new email's Gmail thread is known, so its todo can hold the email. Casey creates every watch; nothing is watched automatically.
+- **Capture.**
+  - A "Keep an eye on this?" row in the Sent menu (replies), and a small Sent ✓ prompt after compose-window sends.
+  - ⋯ → 👀 on any email.
+  - One tap saves with the default date; a note and date can follow (`edit`).
+  - `suggest()` pre-picks by rules: teammates only → assigned; a VIP/Top prospect or a Prospect classification → deal.
+  - Per-account ask mode (smart/always/never), set in 👀 Following up.
+- **Closing.** `check()` runs every mail_sync with no model call.
+  - An assignment closes when that teammate's reply arrives after the send. A deal closes when anyone but Casey replies. Both are read from `mail_threads`, or from cached bodies for earlier replies in the thread.
+  - New emails now always carry a Message-ID Grand Central set (`send_new`), which `resolve()` uses to find their thread.
+- **Surfacing.**
+  - 👀 Following up in the rail: Due, Team owes me, Waiting on prospects & partners, plus closed this week.
+  - Due items go first in Home's follow-ups (`home_view.section`, so on the all-accounts Home too) and get a line in the morning brief (`notify.py`).
+  - The hover card shows "N open assignments from you".
+- **AI.** Only ✨ Nudge, on click: the composer's ✨ box pre-filled with a follow-up prompt that Casey reviews.
+- **Not built:** letting OpenClaw read the list. That needs its own §6 decision.

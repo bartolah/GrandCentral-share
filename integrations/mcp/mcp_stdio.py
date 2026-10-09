@@ -46,7 +46,7 @@ class Tool:
         self.read_only = read_only
 
     def spec(self) -> dict:
-        # `annotations` lets a client show which tools only read. Bart's board
+        # `annotations` lets a client show which tools only read. Casey's board
         # is a live mailbox; knowing read from write matters.
         return {
             "name": self.name,

@@ -19,33 +19,33 @@ const localStorage = {getItem: () => null, setItem() {}};
 let MAIL = [], TODOS = [];
 %BLOCK%
 const assert = require('assert');
-ACCOUNTS = ['personal', 'connectblue', 'crl'];
-assert.deepStrictEqual(acctIds(), ['personal', 'connectblue', 'crl']);
+ACCOUNTS = ['personal', 'brightline', 'civic'];
+assert.deepStrictEqual(acctIds(), ['personal', 'brightline', 'civic']);
 const mk = a => ({account: a, project: a});
-const items = [mk('personal'), mk('connectblue'), mk('crl'), mk(null)];
+const items = [mk('personal'), mk('brightline'), mk('civic'), mk(null)];
 const at = id => { ACCT = id; return items.filter(inAcct).map(i => i.account); };
 assert.deepStrictEqual(at('personal'), ['personal']);
-assert.deepStrictEqual(at('connectblue'), ['connectblue']);
-assert.deepStrictEqual(at('crl'), ['crl']);
+assert.deepStrictEqual(at('brightline'), ['brightline']);
+assert.deepStrictEqual(at('civic'), ['civic']);
 assert.deepStrictEqual(at('__all'), []);
 ACCT = 'personal';
-assert(mailAcctInAcct('personal') && !mailAcctInAcct('connectblue'));
-assert(!sentInAcct({account: 'crl'}) && sentInAcct({account: 'personal'}));
-assert(inAcctId('personal') && !inAcctId('connectblue') && !inAcctId(null));
+assert(mailAcctInAcct('personal') && !mailAcctInAcct('brightline'));
+assert(!sentInAcct({account: 'civic'}) && sentInAcct({account: 'personal'}));
+assert(inAcctId('personal') && !inAcctId('brightline') && !inAcctId(null));
 assert.strictEqual(curAcct(), 'personal');
-assert.strictEqual(acctLabel('capitol_influence'), 'Capitol Influence');
+assert.strictEqual(acctLabel('consulting'), 'Consulting');
 // todos may only join a todo of their own account (or an unassigned legacy one)
-assert(todoFits({account: null}, 'crl') && todoFits({account: 'crl'}, 'crl'));
-assert(!todoFits({account: 'personal'}, 'crl'));
+assert(todoFits({account: null}, 'civic') && todoFits({account: 'civic'}, 'civic'));
+assert(!todoFits({account: 'personal'}, 'civic'));
 """
 
 
 @unittest.skipUnless(shutil.which("node"), "node not installed")
 class UiAccountScope(unittest.TestCase):
-    def test_shortwave_skin_has_square_corners(self):
+    def test_compact_skin_has_square_corners(self):
         html = open(os.path.join(ROOT, "dashboard", "index.html"), encoding="utf-8").read()
         self.assertIn(
-            'html[data-skin="shortwave"] * { border-radius: 0 !important; }',
+            'html[data-skin="compact"] * { border-radius: 0 !important; }',
             html,
         )
 
@@ -71,7 +71,7 @@ class UiAccountScope(unittest.TestCase):
         self.assertIn("post('/dev',{action:'update',id,status:'archived',account:ACCT}", html)
 
     def test_an_open_email_keeps_trash_and_more(self):
-        # Bart, 2026-09-26: "Why do I keep losing the trash icon and more
+        # Casey, 2026-09-26: "Why do I keep losing the trash icon and more
         # menu on individual emails?" E205-E206 dropped the reading pane's ⋯
         # (paneMore stayed, orphaned) and nothing noticed. Pin both here.
         html = open(os.path.join(ROOT, "dashboard", "index.html"), encoding="utf-8").read()
@@ -83,7 +83,7 @@ class UiAccountScope(unittest.TestCase):
         self.assertGreater(html.count("paneMore("), 1)
 
     def test_active_mail_rows_expose_the_triage_strip(self):
-        # Six fast verbs + trash and "…" (Bart, dev #27, 2026-09-26).
+        # Six fast verbs + trash and "…" (Casey, dev #27, 2026-09-26).
         # Star replaced pin (2026-09-26). Label lives behind "…"; retired project/goal verbs never come back.
         html = open(os.path.join(ROOT, "dashboard", "index.html"), encoding="utf-8").read()
         start = html.index("// Bounded account triage: six fast verbs")

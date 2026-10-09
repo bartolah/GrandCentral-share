@@ -1,6 +1,6 @@
 """Dev #66: VIPs and Top Prospects (2026-10-06 interview).
 
-Bart tags; Grand Central only suggests. A tag holds in every account. These
+Casey tags; Grand Central only suggests. A tag holds in every account. These
 pin: tagging and clearing, suggestions that skip his team, his own addresses,
 automated senders and anyone he waved off, and the 5-quiet-days nudge.
 Scratch SQLite, fake accounts.
@@ -24,7 +24,7 @@ import db  # noqa: E402
 import tiers as T  # noqa: E402
 
 A, B = "acctone", "accttwo"
-ME = {"bart@bluenet.org"}
+ME = {"casey@bluenet.org"}
 
 
 def iso(dt):
@@ -49,7 +49,7 @@ class Tiers(unittest.TestCase):
         self.conn.execute(
             "INSERT INTO mail_threads (thread_id, account, subject, participants, last_from, last_from_email, "
             "last_date, in_inbox, category, last_direction) VALUES (?,?,?,?,?,?,?,1,'people',?)",
-            (str(1000 + self.n), acct, "Hi", json.dumps([f"{who.split('@')[0].title()} <{who}>", "bart@bluenet.org"]),
+            (str(1000 + self.n), acct, "Hi", json.dumps([f"{who.split('@')[0].title()} <{who}>", "casey@bluenet.org"]),
              f"{who.split('@')[0].title()} <{who}>", who, iso(datetime.now(timezone.utc) - timedelta(days=days_ago)),
              direction))
         self.conn.commit()

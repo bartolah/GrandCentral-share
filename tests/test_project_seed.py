@@ -1,6 +1,6 @@
-"""E259: setting up ConnectBlue's projects from a plan (sweeper/project_seed.py).
+"""E259: setting up Brightline's projects from a plan (sweeper/project_seed.py).
 
-Bart asked to reorganize the pending ConnectBlue todos under no more than 10
+Casey asked to reorganize the pending Brightline todos under no more than 10
 projects. Automatic classification stays retired, so this is a reviewed,
 one-off filing: a dry run writes nothing, --apply files only that account's
 open todos that are in no project yet, a todo never leaves its account, and
@@ -37,9 +37,9 @@ def _plan(dirname: str, **over) -> str:
             "docs": [{"scope": "account", "title": "Brief", "file": "acct.md"}],
             "projects": [
                 {"name": "Amendment", "keywords": ["amendment", "ios"], "exclude": ["farm bill"]},
-                {"name": "Causes Amplify", "brief": "projects/amp.md",
-                 "keywords": ["causes amplify", "amplify", "Robin"]},
-                {"name": "Newsbot", "keywords": ["news ?bot"]},
+                {"name": "Signal Boost", "brief": "projects/amp.md",
+                 "keywords": ["signal boost", "amplify", "Robin"]},
+                {"name": "Newsdesk", "keywords": ["news ?desk"]},
                 {"name": "Marketing", "broad": True, "keywords": ["newsletter", "post"]},
                 {"name": "Sales", "broad": True, "keywords": ["proposal", "deck"]},
             ]}
@@ -58,17 +58,17 @@ class Seed(unittest.TestCase):
         add = lambda text, acct=A: db.add_engagement(self.conn, text, account=acct)
         self.t = {
             "ios": add("Check the Amendment iOS rollout"),
-            "Robin": add("Send Robin the Causes Amplify numbers"),
-            "both": add("Newsbot post for Amendment"),          # 1 hit each: tie, both files
+            "Robin": add("Send Robin the Signal Boost numbers"),
+            "both": add("Newsdesk post for Amendment"),          # 1 hit each: tie, both files
             "broad": add("Amplify newsletter"),                # specific beats broad on a tie
             "farm": add("Farm Bill amendment recap deck"),     # excluded from Amendment -> Sales
             "none": add("Call the dentist"),
             "other": add("Amendment call", B),                 # another account: never touched
             "done": add("Amendment wrap-up"),
-            "filed": add("Newsbot scoring"),
+            "filed": add("Newsdesk scoring"),
         }
         db.set_engagement_state(self.conn, self.t["done"], "done")
-        self.keep = P.create(self.conn, "Bart's own")
+        self.keep = P.create(self.conn, "Casey's own")
         P.add_item(self.conn, self.keep, "todo", None, str(self.t["filed"]))
         self.lines = []
 
@@ -84,8 +84,8 @@ class Seed(unittest.TestCase):
         out = self.run_seed(False)
         self.assertEqual(self.conn.total_changes, before)
         self.assertEqual(out["filed"]["Amendment"], [self.t["ios"], self.t["both"]])
-        self.assertEqual(out["filed"]["Causes Amplify"], [self.t["Robin"], self.t["broad"]])
-        self.assertEqual(out["filed"]["Newsbot"], [self.t["both"]])
+        self.assertEqual(out["filed"]["Signal Boost"], [self.t["Robin"], self.t["broad"]])
+        self.assertEqual(out["filed"]["Newsdesk"], [self.t["both"]])
         self.assertEqual(out["filed"]["Sales"], [self.t["farm"]])
         self.assertEqual(out["filed"]["Marketing"], [])
         self.assertEqual(out["left"], [self.t["none"]])
@@ -98,9 +98,9 @@ class Seed(unittest.TestCase):
         self.assertEqual(sorted(i["todo"]["id"] for i in view["items"]), sorted([self.t["ios"], self.t["both"]]))
         self.assertTrue(all(i["account"] == A for i in view["items"]))
         self.assertEqual(db.list_context_docs(self.conn, [f"account:{A}"])[0]["title"], "Brief")
-        self.assertEqual(db.list_context_docs(self.conn, [f"project:{ids['Causes Amplify']}"])[0]["body"],
+        self.assertEqual(db.list_context_docs(self.conn, [f"project:{ids['Signal Boost']}"])[0]["body"],
                          "Robin clears figures.")
-        # Bart's own filing stands, and the other account is untouched
+        # Casey's own filing stands, and the other account is untouched
         self.assertEqual([p["id"] for p in P.projects_for_item(self.conn, "todo", A, self.t["filed"])], [self.keep])
         self.assertEqual(P.projects_for_item(self.conn, "todo", B, self.t["other"]), [])
         before = self.conn.total_changes
@@ -110,8 +110,8 @@ class Seed(unittest.TestCase):
         self.assertTrue(all(v == [] for v in again["filed"].values()))
 
     def test_move_and_skip_correct_a_line(self):
-        out = self.run_seed(False, moves={self.t["none"]: "newsbot"}, skips={self.t["ios"]})
-        self.assertEqual(out["filed"]["Newsbot"], [self.t["both"], self.t["none"]])
+        out = self.run_seed(False, moves={self.t["none"]: "newsdesk"}, skips={self.t["ios"]})
+        self.assertEqual(out["filed"]["Newsdesk"], [self.t["both"], self.t["none"]])
         self.assertNotIn(self.t["ios"], out["filed"]["Amendment"])
         with self.assertRaises(ValueError):
             self.run_seed(False, moves={self.t["none"]: "No such project"})
@@ -122,25 +122,25 @@ class Seed(unittest.TestCase):
             S.load_plan(_plan(self._dir.name, projects=many))
 
 
-PLAN = os.path.join(ROOT, "config", "seeds", "connectblue", "plan.json")
+PLAN = os.path.join(ROOT, "config", "seeds", "brightline", "plan.json")
 
 
-# config/seeds/ holds Bart's business briefs and stays out of the shareable
+# config/seeds/ holds Casey's business briefs and stays out of the shareable
 # copy (tools/make_shareable.py DROP_DIRS), so this check runs only at home.
-@unittest.skipUnless(os.path.exists(PLAN), "no ConnectBlue seed plan in this copy")
-class TheConnectBluePlan(unittest.TestCase):
+@unittest.skipUnless(os.path.exists(PLAN), "no Brightline seed plan in this copy")
+class TheBrightlinePlan(unittest.TestCase):
     def test_it_loads_within_the_limit_and_keeps_pricing_out(self):
-        plan = S.load_plan(os.path.join(ROOT, "config", "seeds", "connectblue", "plan.json"))
-        self.assertEqual(plan["account"], "connectblue")
+        plan = S.load_plan(os.path.join(ROOT, "config", "seeds", "brightline", "plan.json"))
+        self.assertEqual(plan["account"], "brightline")
         self.assertLessEqual(len(plan["projects"]), 10)
-        for name in ("Amendment", "Causes Amplify", "Northstar Labs", "Capitol Influence",
-                     "Grand Central", "ConnectBlue Partner Platform", "NewsBot", "SalesDB"):
+        for name in ("Amendment", "Signal Boost", "Northstar Labs", "Consulting",
+                     "Grand Central", "Brightline Partner Platform", "NewsDesk", "SalesBase"):
             self.assertIn(name, [p["name"] for p in plan["projects"]])
         texts = [d["body"] for d in plan["docs"]] + [p["brief_body"] for p in plan["projects"]]
         for t in texts:
             self.assertNotRegex(t, r"\$\d[^\n]{0,12}CPM")    # the internal rate card stays out
-            self.assertNotIn("—", t)                # Bart: no em-dashes
-        self.assertEqual(S.score(plan, "Send Robin the Causes Amplify deck")[0][0], "Causes Amplify")
+            self.assertNotIn("—", t)                # Casey: no em-dashes
+        self.assertEqual(S.score(plan, "Send Robin the Signal Boost deck")[0][0], "Signal Boost")
         self.assertEqual(S.score(plan, "Farm Bill amendment recap for a client")[0][0], "Sales & Proposals")
 
 

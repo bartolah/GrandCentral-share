@@ -1,6 +1,6 @@
-"""E204 — todos live in Gmail's label system (Bart, 2026-09-23).
+"""E204 — todos live in Gmail's label system (Casey, 2026-09-23).
 
-Shortwave's one flaw, in Bart's words: "the to-dos don't live within the Gmail
+Shortwave's one flaw, in Casey's words: "the to-dos don't live within the Gmail
 labeling system, and I think they should." Here every todo that groups email
 owns ONE Gmail label, ``GC/Todo/<name>``, applied to its member threads in
 each thread's own account. The link runs both ways:
@@ -21,7 +21,7 @@ thread linked here whose label write failed must be retried, not dropped.
 
 Scope (§6): label writes on single explicit threads under the GC/ prefix, the
 same class as the E5-P2 project mirror. Linking from Gmail does NOT archive —
-Bart may label a thread and keep it in his inbox on purpose.
+Casey may label a thread and keep it in his inbox on purpose.
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ def clean_name(text: str) -> str:
 
 
 def decode_mutf7(name: str) -> str:
-    """IMAP modified UTF-7 (RFC 3501 §5.1.3) -> text, for label names Bart
+    """IMAP modified UTF-7 (RFC 3501 §5.1.3) -> text, for label names Casey
     typed in Gmail with non-ASCII characters. The raw form stays the key."""
     def dec(m):
         b = m.group(1)
@@ -328,7 +328,7 @@ def _reconcile_account(conn, imap, account: str, stats: dict, log) -> None:
             if have.get(tid) != 1:
                 _mark(conn, eid, account, tid, 1)
             have[tid] = 1
-        # confirmed members whose label Bart removed in Gmail
+        # confirmed members whose label Casey removed in Gmail
         for tid, synced in list(have.items()):
             if synced == 1 and tid not in thr:
                 db.link_thread(conn, eid, account, tid, add=False)

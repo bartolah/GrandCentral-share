@@ -1,6 +1,6 @@
 """Open and click tracking on Grand Central's own sends — E269.
 
-Bart, 2026-10-06: "What's involved in order to have GrandCentral track when
+Casey, 2026-10-06: "What's involved in order to have GrandCentral track when
 my emails are opened?" → "Let's do it." BUILD_SPEC §6 entry of that date;
 design in ACCOUNT_FIRST.md "Open and click tracking".
 
@@ -14,7 +14,7 @@ mail_sync pulls its events every run (pull()); this module turns them into
 
 Nothing is tracked unless the account's domain answered /health recently
 and TRACK_SECRET is set, so a send never carries a broken image or link.
-Bart's own view of his mail in Grand Central strips both (strip()).
+Casey's own view of his mail in Grand Central strips both (strip()).
 
     .venv/bin/python sweeper/tracking.py              # settings, health, recent sends
     .venv/bin/python sweeper/tracking.py --check      # re-run the health checks now
@@ -35,9 +35,9 @@ from datetime import datetime, timedelta, timezone
 
 import db
 
-# Bart: on by default for the sales accounts, off for Personal (and anything
+# Casey: on by default for the sales accounts, off for Personal (and anything
 # not listed until he switches it on in Settings → Tracking).
-DEFAULT_ON = {"connectblue", "capitol_influence", "crowdblue"}
+DEFAULT_ON = {"brightline", "consulting", "fieldhouse"}
 SIGNALS = ("enabled", "clicks", "ping", "waiting")
 AUTO_SRC = {"apple-prefetch", "scanner"}
 AUTO_SECONDS = 30            # an open this soon after sending is a scanner or prefetch
@@ -138,10 +138,13 @@ def check_health(conn, env: dict, force: bool = False, log=print) -> dict:
 # ------------------------------------------------------------------ the decision
 def _company(conn, env: dict) -> tuple[set, set]:
     """Addresses and domains that are 'inside' — teammates, company groups
-    and Bart's own domains. Mail only to them is never tracked by default."""
+    and Casey's own domains. Mail only to them is never tracked by default."""
     import mailclass
     people = {r["email"].lower() for r in conn.execute("SELECT email FROM class_people")}
     doms = {r["domain"].lower() for r in conn.execute("SELECT domain FROM class_groups")}
+    # a teammate's own company domain is inside too (Chris and Brett write
+    # from northwindmedia.com, which isn't a company-group domain)
+    doms |= {e.rpartition("@")[2] for e in people if e.rpartition("@")[2] not in _FREEMAIL}
     try:
         from mail_sync import own_domains
         doms |= {d.lower() for d in own_domains(env)}
@@ -158,7 +161,7 @@ def _addrs(*fields) -> list:
 def decide(conn, account: str, env: dict, to: str, cc: str = "", bcc: str = "",
            override: bool | None = None) -> dict:
     """Whether this send is tracked, and why — the composer shows `why` next
-    to the 👁 toggle. Bart's toggle (override) wins over the default, but
+    to the 👁 toggle. Casey's toggle (override) wins over the default, but
     nothing is tracked while the domain is down or the secret is missing."""
     st = settings(conn, account)
     dom = domain_for(account, env)
@@ -193,9 +196,12 @@ _HREF_RE = re.compile(r'(<a\b[^>]*?\bhref\s*=\s*)(["\'])(.*?)\2', re.I | re.S)
 
 def html_from_plain(body: str) -> str:
     """A scheduled or plain send gets a simple HTML twin to carry the image."""
+    # 2026-10-08: real <br>s, not white-space:pre-wrap — Outlook ignores that
+    # CSS and ran every line of Casey's email into one paragraph
     esc = htmlmod.escape(body or "")
     esc = re.sub(r"(https?://[^\s<]+)", r'<a href="\1">\1</a>', esc)
-    return f'<div style="white-space:pre-wrap">{esc}</div>'
+    esc = re.sub(r"\r?\n", "<br>\n", esc)
+    return f"<div>{esc}</div>"
 
 
 def prepare(body_html: str | None, body_plain: str, token: str, domain: str, secret: str,
@@ -235,13 +241,13 @@ def record(conn, token: str, account: str, thread_id: str, send_id: int | None, 
                       json.dumps(links), message_id, int(clicks), _iso(_now())))
 
 
-# ------------------------------------------------------------------ Bart's own view
+# ------------------------------------------------------------------ Casey's own view
 _STRIP_IMG = r'<img\b[^>]*\bsrc\s*=\s*["\']https?://t\.(?:{doms})/o/[^"\']+["\'][^>]*>'
 _STRIP_A = r'https?://t\.(?:{doms})/c/[A-Za-z0-9_-]+/\d+/[A-Za-z0-9_-]+\?u=([^"\'\s>]+)'
 
 
 def strip(html: str | None, domains) -> str | None:
-    """Grand Central showing Bart his own sent mail must never count as an
+    """Grand Central showing Casey his own sent mail must never count as an
     open or a click: drop the image, unwrap the links."""
     if not html or not domains:
         return html

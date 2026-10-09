@@ -1,6 +1,6 @@
 # E258 item 10 (BUILD_SPEC §6, 2026-09-30): the hosts Grand Central's own
 # Python processes may connect to. Deny by default once enforcing; until
-# GC_EGRESS=enforce (after Bart confirms this list) unknown hosts are only
+# GC_EGRESS=enforce (after Casey confirms this list) unknown hosts are only
 # logged to logs/egress.jsonl as "would block".
 #
 # One host per line; "*." matches any subdomain. Optional process tag after a
@@ -8,7 +8,7 @@
 # every Grand Central process except mcp, which may reach the board only.
 # Loopback (the board itself) is always allowed.
 
-# Gmail: IMAP read/labels/drafts, SMTP for Bart's confirmed sends
+# Gmail: IMAP read/labels/drafts, SMTP for Casey's confirmed sends
 imap.gmail.com
 smtp.gmail.com
 # Claude (assessor, drafts, Ask, day note, planner, commitments, steward)
@@ -27,7 +27,7 @@ fcm.googleapis.com
 updates.push.services.mozilla.com
 *.notify.windows.com
 # E269 open/click tracker (§6 2026-10-06): health checks + event pull
-t.connectblue.org mail_sync
+t.brightline.example mail_sync
 t.capitolinfluence.ai mail_sync
-t.crowdblue.com mail_sync
-t.thecrl.org mail_sync
+t.fieldhouse.example mail_sync
+t.civic.example mail_sync

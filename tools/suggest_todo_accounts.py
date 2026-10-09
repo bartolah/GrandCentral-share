@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Suggest an account for each legacy todo that has none (2026-09-26).
 
-Bart: "I have a lot of todos that used to exist unassigned to a project ...
+Casey: "I have a lot of todos that used to exist unassigned to a project ...
 How do I bring them back in each of the right accounts with their mapped
 emails?" sweeper/backfill_todo_accounts.py placed every todo the email
 evidence proves. This covers the rest with hints, never assignments:
 
   1. the old project the todo was filed under, when that project was named
-     for one of the accounts ("ConnectBlue" → connectblue)
+     for one of the accounts ("Brightline" → brightline)
   2. otherwise, an account named in the todo's own text
 
 Hints go to todo_account_hints; the Unassigned todos view pre-selects them
-and Bart confirms. This is a one-off tool, not runtime code: it is the only
+and Casey confirms. This is a one-off tool, not runtime code: it is the only
 place allowed to read the retired project tables, and only reads them.
 
     .venv/bin/python tools/suggest_todo_accounts.py            # dry run

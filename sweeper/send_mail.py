@@ -1,7 +1,7 @@
 """Send a single human-confirmed email over SMTP — the system's ONE send path.
 
-Approved by Bart 2026-07-10 (E3-P4), amending BUILD_SPEC §6's drafts-only
-rule. Extended to NEW emails (not just replies) by Bart's explicit decision
+Approved by Casey 2026-07-10 (E3-P4), amending BUILD_SPEC §6's drafts-only
+rule. Extended to NEW emails (not just replies) by Casey's explicit decision
 2026-07-29 (E53): "New email and emails should be able to be sent entirely
 from within Grand Central." Same guardrails, same audit, same single path.
 The guardrails are non-negotiable:
@@ -155,8 +155,10 @@ def send_reply(thread_id: str, account: str, body: str, to: str,  # noqa: E501
     to_pairs = _parse_addrs(to)
     cc_pairs = _parse_addrs(cc or "")
     bcc_pairs = _parse_addrs(bcc or "")
-    if not to_pairs:
-        raise ValueError("no valid To recipient")
+    # dev #73 (2026-10-08): "To shouldn't be required, if a CC or BCC is in
+    # place" — at least one explicit recipient, in any of the three fields
+    if not (to_pairs or cc_pairs or bcc_pairs):
+        raise ValueError("no valid recipient — add someone to To, Cc or Bcc")
     if len(to_pairs) + len(cc_pairs) + len(bcc_pairs) > MAX_RECIPIENTS:
         raise ValueError(f"more than {MAX_RECIPIENTS} recipients")
 
@@ -174,8 +176,9 @@ def send_reply(thread_id: str, account: str, body: str, to: str,  # noqa: E501
     subject = " ".join(subject.split())
 
     msg = EmailMessage()
-    msg["From"] = user
-    msg["To"] = ", ".join(f"{n} <{a}>" if n else a for n, a in to_pairs)
+    msg["From"] = mc.from_header(account, user, env)
+    if to_pairs:
+        msg["To"] = ", ".join(f"{n} <{a}>" if n else a for n, a in to_pairs)
     if cc_pairs:
         msg["Cc"] = ", ".join(f"{n} <{a}>" if n else a for n, a in cc_pairs)
     if bcc_pairs:
@@ -184,19 +187,19 @@ def send_reply(thread_id: str, account: str, body: str, to: str,  # noqa: E501
     if headers["in_reply_to"]:
         msg["In-Reply-To"] = headers["in_reply_to"]
         msg["References"] = headers["references"]
-    trk = _tracking(account, env, msg["To"], msg.get("Cc", ""), msg.get("Bcc", ""), body, body_html, track, log)
+    trk = _tracking(account, env, msg.get("To", ""), msg.get("Cc", ""), msg.get("Bcc", ""), body, body_html, track, log)
     if trk:
         body_html = trk["html"]
         msg["Message-ID"] = trk["message_id"]
     msg.set_content(body)
-    # E65: Bart-authored rich text rides as the HTML alternative; the plain
+    # E65: Casey-authored rich text rides as the HTML alternative; the plain
     # part above stays authoritative (and is what the audit measures).
     if body_html and body_html.strip():
         msg.add_alternative(body_html[:60000], subtype="html")
     _apply_attachments(msg, attachments)
 
     # audit values captured BEFORE send_message strips Bcc from its copy
-    to_log, cc_log, bcc_log = msg["To"], msg.get("Cc", ""), msg.get("Bcc", "")
+    to_log, cc_log, bcc_log = msg.get("To", ""), msg.get("Cc", ""), msg.get("Bcc", "")
 
     _user_key, pass_key = ACCOUNTS[account]
     password = require_env(env, pass_key)
@@ -222,7 +225,7 @@ def send_new(account: str, body: str, to: str, subject: str,
              body_html: str | None = None, attachments: list | None = None,
              track: bool | None = None,
              env: dict | None = None, log=print) -> dict:
-    """Send one NEW email (no thread) — E53, Bart's explicit §6 widening
+    """Send one NEW email (no thread) — E53, Casey's explicit §6 widening
     2026-07-29. Identical guardrails to send_reply: explicit human-confirmed
     recipients, MAX_RECIPIENTS cap, body cap, audited in mail_sends
     (thread_id='' marks a fresh send; Gmail assigns the real thread id and
@@ -240,8 +243,10 @@ def send_new(account: str, body: str, to: str, subject: str,
     to_pairs = _parse_addrs(to)
     cc_pairs = _parse_addrs(cc or "")
     bcc_pairs = _parse_addrs(bcc or "")
-    if not to_pairs:
-        raise ValueError("no valid To recipient")
+    # dev #73 (2026-10-08): "To shouldn't be required, if a CC or BCC is in
+    # place" — at least one explicit recipient, in any of the three fields
+    if not (to_pairs or cc_pairs or bcc_pairs):
+        raise ValueError("no valid recipient — add someone to To, Cc or Bcc")
     if len(to_pairs) + len(cc_pairs) + len(bcc_pairs) > MAX_RECIPIENTS:
         raise ValueError(f"more than {MAX_RECIPIENTS} recipients")
 
@@ -253,23 +258,29 @@ def send_new(account: str, body: str, to: str, subject: str,
     password = require_env(env, pass_key)
 
     msg = EmailMessage()
-    msg["From"] = user
-    msg["To"] = ", ".join(f"{n} <{a}>" if n else a for n, a in to_pairs)
+    msg["From"] = mc.from_header(account, user, env)
+    if to_pairs:
+        msg["To"] = ", ".join(f"{n} <{a}>" if n else a for n, a in to_pairs)
     if cc_pairs:
         msg["Cc"] = ", ".join(f"{n} <{a}>" if n else a for n, a in cc_pairs)
     if bcc_pairs:
         msg["Bcc"] = ", ".join(f"{n} <{a}>" if n else a for n, a in bcc_pairs)
     msg["Subject"] = subject
-    trk = _tracking(account, env, msg["To"], msg.get("Cc", ""), msg.get("Bcc", ""), body, body_html, track, log)
+    trk = _tracking(account, env, msg.get("To", ""), msg.get("Cc", ""), msg.get("Bcc", ""), body, body_html, track, log)
     if trk:
         body_html = trk["html"]
         msg["Message-ID"] = trk["message_id"]
+    else:
+        # E276: a new email gets a Message-ID we know, so a follow-up Casey
+        # attaches to it can find its Gmail thread later
+        from email.utils import make_msgid
+        msg["Message-ID"] = make_msgid(domain=user.rpartition("@")[2] or None)
     msg.set_content(body)
     if body_html and body_html.strip():
         msg.add_alternative(body_html[:60000], subtype="html")
     _apply_attachments(msg, attachments)
 
-    to_log, cc_log, bcc_log = msg["To"], msg.get("Cc", ""), msg.get("Bcc", "")
+    to_log, cc_log, bcc_log = msg.get("To", ""), msg.get("Cc", ""), msg.get("Bcc", "")
 
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
         smtp.login(user, password)
@@ -285,4 +296,5 @@ def send_new(account: str, body: str, to: str, subject: str,
     _track_record(trk, account, "", send_id, subject, to_log, cc_log, log)
 
     log(f"send_mail: sent NEW '{subject}' to {to_log} on {account} ({len(body)} chars)")
-    return {"to": to_log, "cc": cc_log, "subject": subject, "sent": True, "tracked": bool(trk)}
+    return {"to": to_log, "cc": cc_log, "subject": subject, "sent": True, "tracked": bool(trk),
+            "message_id": msg["Message-ID"]}

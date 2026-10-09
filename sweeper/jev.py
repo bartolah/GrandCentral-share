@@ -5,7 +5,7 @@ a `state` and a map of typed questions (choice / score / noul); answers come
 back typed, with probabilities and a confidence. Priced per input token;
 Jev is not trained on customer requests (docs.typesafe.ai/models#data-handling).
 
-What leaves the Mini (§6, Bart 2026-09-26 — "I'm ok with the limited
+What leaves the host (§6, Casey 2026-09-26 — "I'm ok with the limited
 sharing ... toggle it on for each account and try it"):
   * only accounts whose Jev switch is on, and only with a key set
     (mailclass.jev_allowed is the single gate, checked per account per run)
@@ -40,7 +40,7 @@ WINDOW_DAYS = 14
 TIMEOUT = 15
 CONF_FLOOR = db.JEV_CONF_FLOOR   # below this, keep the rules / Haiku answer
 
-# E217 — Bart: "a delineation between an outbound sales prospect, versus
+# E217 — Casey: "a delineation between an outbound sales prospect, versus
 # someone spamming me", and Spam. Jev reads criteria literally (its docs), so
 # each option says exactly which side of the line it covers.
 QVERSION = 2      # bump when the questions change: every answered thread is re-asked
@@ -49,7 +49,7 @@ _TYPE_CRITERIA = {
     "Team collaboration": "Colleagues coordinating work: the sender is a teammate or at the owner's company (see `sender_relationship`), or the thread is about shared internal work.",
     "Prospect": "The OWNER is selling or partnering: a lead, customer, advertiser or partner the owner is pursuing or pitched — the owner started or keeps the thread going, or the other side is answering the owner's pitch.",
     # 2026-09-30: Jev judged what a teammate FORWARDED and called 51 of 67
-    # threads from Bart's boss a cold pitch. db.class_effective now refuses
+    # threads from Casey's boss a cold pitch. db.class_effective now refuses
     # that outright; saying so here keeps new answers from needing it. Not a
     # QVERSION bump: old answers are already corrected by the guard.
     "Cold pitch": "Someone is selling TO the owner without being asked: an unsolicited vendor, agency, SEO, lead-generation, recruiting or partnership pitch, or a follow-up bump to one, from someone the owner has not worked with. Never when `sender_relationship` says the sender is a teammate or at the owner's company, even if they are forwarding someone else's pitch or a newsletter: that is Team collaboration.",

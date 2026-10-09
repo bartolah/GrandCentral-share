@@ -1,6 +1,6 @@
-"""E266: an agent waiting on Bart's click raises one alert, once per item.
+"""E266: an agent waiting on Casey's click raises one alert, once per item.
 
-Bart, 2026-10-02: "When agent requests come in, I need a notification to know
+Casey, 2026-10-02: "When agent requests come in, I need a notification to know
 to check." Offline: scratch SQLite, _deliver captured instead of sent.
 """
 

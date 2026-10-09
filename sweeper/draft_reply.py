@@ -2,7 +2,7 @@
 
 This is the ONLY mailbox write in the system that existed before 2026-07-04,
 and it is IMAP APPEND to the Drafts folder with the \\Draft flag — there is
-no code path that sends (spec §6; Bart explicitly approved pulling this
+no code path that sends (spec §6; Casey explicitly approved pulling this
 Phase 3 element forward on 2026-07-04). `mail_actions.py` adds a few more
 narrowly-scoped writes (archive/star/label) alongside this one, approved the
 same way.
@@ -44,13 +44,13 @@ DRAFT_MODEL = "claude-sonnet-5"
 CONTEXT_MSGS = 4        # newest N messages given to the model
 
 SYSTEM_PROMPT = (
-    "You draft email replies on behalf of Bart Olah, writing as Bart in the "
+    "You draft email replies on behalf of Casey Doe, writing as Casey in the "
     "first person. Concise, direct, warm; no corporate filler, no apologies "
     "for delay unless the thread clearly calls for one. Match the thread's "
     "language and formality. Only commit to facts, dates, or promises that "
-    "the thread itself supports — where Bart must decide something, either "
+    "the thread itself supports — where Casey must decide something, either "
     "propose the decision plainly or ask the single question that unblocks "
-    "it. Sign off simply as 'Bart'. Return ONLY the reply body text: no "
+    "it. Sign off simply as 'Casey'. Return ONLY the reply body text: no "
     "subject line, no quoted thread, no preamble or commentary."
 )
 
@@ -66,7 +66,7 @@ DOCS_CAP = 20000        # E259: characters of the account's context documents
 
 
 def _account_brief(account: str) -> str:
-    """E259: the account's context documents (Bart's voice and naming rules
+    """E259: the account's context documents (Casey's voice and naming rules
     live there), for the system prompt. Best-effort: a draft never fails for
     want of its brief."""
     try:
@@ -101,7 +101,7 @@ def _draft_body(messages: list, subject: str, env: dict, model: str,
     prompt = (
         "The thread, oldest to newest:\n\n"
         + untrusted.wrap(f"Subject: {subject}\n\n" + "\n\n---\n\n".join(transcript), "thread")
-        + "\n\nDraft Bart's reply to the latest message."
+        + "\n\nDraft Casey's reply to the latest message."
     )
     client = anthropic.Anthropic(api_key=require_env(env, "ANTHROPIC_API_KEY"))
     resp = client.messages.create(
@@ -116,13 +116,13 @@ def _draft_body(messages: list, subject: str, env: dict, model: str,
 
 
 OPTIONS_SYSTEM = (
-    "You draft email reply OPTIONS on behalf of Bart Olah, writing as Bart "
+    "You draft email reply OPTIONS on behalf of Casey Doe, writing as Casey "
     "in the first person. Concise, direct, warm; no corporate filler. Match "
     "the thread's language and formality. Produce 2-3 GENUINELY DIFFERENT "
     "responses — different moves, not rephrasings: e.g. commit/agree with a "
     "concrete next step; redirect or delegate; decline or defer gracefully; "
-    "or ask the single question that unblocks Bart. Only commit to facts "
-    "the thread supports. Sign off simply as 'Bart'. Return ONLY JSON: "
+    "or ask the single question that unblocks Casey. Only commit to facts "
+    "the thread supports. Sign off simply as 'Casey'. Return ONLY JSON: "
     '{"options":[{"label":"<1-3 words>","body":"<the full reply text>"}]}'
 )
 
@@ -133,7 +133,7 @@ OPTIONS_SYSTEM = OPTIONS_SYSTEM + "\n\n" + untrusted.RULE
 def generate_options(thread_id: str, account: str, env: dict | None = None,
                      model: str = DRAFT_MODEL) -> dict:
     """E157: 2-3 distinct reply options for one thread — text only, nothing
-    written anywhere. On-demand from the ✍️ button; Bart is testing the
+    written anywhere. On-demand from the ✍️ button; Casey is testing the
     feel before any automation is considered."""
     import private
     private.guard(account, thread_id)  # E259: a Private thread does not exist here
@@ -156,7 +156,7 @@ def generate_options(thread_id: str, account: str, env: dict | None = None,
     prompt = ("The thread, oldest to newest:\n\n"
               + untrusted.wrap(f"Subject: {headers['subject']}\n\n"
                                + "\n\n---\n\n".join(transcript), "thread")
-              + "\n\nDraft Bart's reply OPTIONS to the latest message.")
+              + "\n\nDraft Casey's reply OPTIONS to the latest message.")
     client = anthropic.Anthropic(api_key=require_env(env, "ANTHROPIC_API_KEY"))
     resp = client.messages.create(
         model=model, max_tokens=2000, system=OPTIONS_SYSTEM + _account_brief(account),
@@ -175,21 +175,21 @@ def generate_options(thread_id: str, account: str, env: dict | None = None,
 
 
 ASSIST_SYSTEM = (
-    "You write and rewrite emails on behalf of Bart Olah, as Bart, in the first "
-    "person. Concise, direct, warm; no corporate filler. Follow Bart's instruction "
+    "You write and rewrite emails on behalf of Casey Doe, as Casey, in the first "
+    "person. Concise, direct, warm; no corporate filler. Follow Casey's instruction "
     "exactly. If he gave you his own draft, keep his meaning, facts and any names, "
     "numbers and dates he wrote unless he asks you to change them; improve it as he "
     "asks. Only commit to facts the thread, his draft or his history supports. Do "
-    "not add a signature block (his is added separately); sign off simply as 'Bart' "
+    "not add a signature block (his is added separately); sign off simply as 'Casey' "
     "only if his draft does or there is no draft. Return ONLY the email body text: "
     "no subject line, no quoted thread, no commentary."
 ) + "\n\n" + untrusted.RULE
-HISTORY_THREADS = 10    # recent threads with these recipients, when Bart asks
+HISTORY_THREADS = 10    # recent threads with these recipients, when Casey asks
 HISTORY_SENT = 3        # and up to this many of his own messages to them, for tone
 
 
 def _history(account: str, recipients: list, env: dict, log=print) -> str:
-    """Bart ticked "Use my email history" (2026-10-06 interview: "with these
+    """Casey ticked "Use my email history" (2026-10-06 interview: "with these
     recipients"): his recent threads with them in THIS account, and a few of
     his own messages to them for tone. Private threads never appear
     (search_threads excludes them)."""
@@ -222,16 +222,16 @@ def _history(account: str, recipients: list, env: dict, log=print) -> str:
     if lines:
         out += "Recent threads with these people (newest first):\n" + "\n".join(lines)
     if mine:
-        out += "\n\nHow Bart has written to them before:\n\n" + "\n\n---\n\n".join(mine[:HISTORY_SENT])
+        out += "\n\nHow Casey has written to them before:\n\n" + "\n\n---\n\n".join(mine[:HISTORY_SENT])
     return out
 
 
 def assist(account: str, instruction: str, draft: str = "", thread_id: str | None = None,
            to: str = "", cc: str = "", subject: str = "", use_history: bool = False,
            env: dict | None = None, model: str = DRAFT_MODEL, log=print) -> dict:
-    """The composer's ✨ (Bart 2026-10-06: "add a prompt or have it [polish] an
+    """The composer's ✨ (Casey 2026-10-06: "add a prompt or have it [polish] an
     email I'm already writing … and if I ask it to, to look at my email
-    history"). Returns text only — nothing is written anywhere; Bart previews
+    history"). Returns text only — nothing is written anywhere; Casey previews
     it and chooses Replace or Insert."""
     import anthropic
     from email.utils import getaddresses
@@ -258,7 +258,7 @@ def assist(account: str, instruction: str, draft: str = "", thread_id: str | Non
             stamp = m["dt"].strftime("%Y-%m-%d %H:%M") if m["dt"] else "?"
             transcript.append(f"[{stamp}] From: {m['from']}\n{m['body'] or '(no text)'}")
         subject = subject or headers["subject"]
-        parts.append("The thread Bart is replying to, oldest to newest:\n\n" + untrusted.wrap(
+        parts.append("The thread Casey is replying to, oldest to newest:\n\n" + untrusted.wrap(
             f"Subject: {subject}\n\n" + "\n\n---\n\n".join(transcript), "thread"))
     elif subject or to:
         parts.append(f"A new email. To: {to or '(not chosen yet)'}. Subject: {subject or '(none yet)'}.")
@@ -273,9 +273,9 @@ def assist(account: str, instruction: str, draft: str = "", thread_id: str | Non
         hist = _history(account, rcpts, env, log=log) if rcpts else ""
         parts.append(untrusted.wrap(hist, "history") if hist else "(No earlier mail with these people was found.)")
     if draft:
-        parts.append("Bart's own draft so far (his words — rewrite it as he asks):\n\n" + draft)
-    ask = instruction or ("Polish Bart's draft." if draft else "Draft Bart's reply to the latest message.")
-    parts.append(f"Bart's instruction: {ask}")
+        parts.append("Casey's own draft so far (his words — rewrite it as he asks):\n\n" + draft)
+    ask = instruction or ("Polish Casey's draft." if draft else "Draft Casey's reply to the latest message.")
+    parts.append(f"Casey's instruction: {ask}")
     client = anthropic.Anthropic(api_key=require_env(env, "ANTHROPIC_API_KEY"))
     resp = client.messages.create(model=model, max_tokens=1500,
                                   system=ASSIST_SYSTEM + _account_brief(account),
@@ -315,11 +315,11 @@ def generate_draft(thread_id: str, account: str, env: dict | None = None,
             pass
 
 
-# E258 (BUILD_SPEC §6 item 5, Bart chose "Allow + flag"): an agent may draft
+# E258 (BUILD_SPEC §6 item 5, Casey chose "Allow + flag"): an agent may draft
 # to anyone, but every agent draft says so, and one addressed to someone new
 # to the account says that too. The headers are what GC's composer reads for
 # its warning banner (they survive until the draft is edited in Gmail); the
-# labels are what Bart sees in Gmail itself. Labelling is best-effort — a
+# labels are what Casey sees in Gmail itself. Labelling is best-effort — a
 # failed STORE never loses the draft.
 AGENT_LABEL = "GC/Agent-Draft"
 AGENT_NEW_LABEL = "GC/Agent-Draft-New"
@@ -385,7 +385,7 @@ def save_draft(thread_id: str, account: str, body: str, to: str = None,
             references = headers["references"]
 
         reply = EmailMessage()
-        reply["From"] = user
+        reply["From"] = mc.from_header(account, user, env)
         reply["To"] = to
         if cc:
             reply["Cc"] = cc
@@ -422,15 +422,15 @@ def compose_draft(account: str, to: str, subject: str, body: str,
                   env: dict | None = None, log=print, agent: dict | None = None) -> dict:
     """Compose a NEW email (no thread, no reply headers) and APPEND it to the
     account's Drafts folder (E21). Same one-mailbox-write guarantee as
-    save_draft — nothing here can send; Bart reviews and sends from Gmail
+    save_draft — nothing here can send; Casey reviews and sends from Gmail
     or the dashboard.
 
     Returns {"to", "cc", "subject", "preview"}. Raises on any failure.
     """
     to = (to or "").strip()
     subject = " ".join((subject or "").split())
-    if not to:
-        raise ValueError("'to' is required")
+    if not (to or cc or bcc):
+        raise ValueError("add someone to To, Cc or Bcc")
     if not subject:
         raise ValueError("subject is required")
     if not (body or "").strip():
@@ -440,8 +440,9 @@ def compose_draft(account: str, to: str, subject: str, body: str,
     imap, user = mc.connect(account, env)
     try:
         msg = EmailMessage()
-        msg["From"] = user
-        msg["To"] = to
+        msg["From"] = mc.from_header(account, user, env)
+        if to:
+            msg["To"] = to
         if cc:
             msg["Cc"] = cc
         if bcc:
@@ -475,21 +476,22 @@ def replace_draft(account: str, draft_uid: str, gm_msgid: str, body: str,
                   env: dict | None = None, log=print) -> dict:
     """Save an edited Gmail draft (E224, Dev #19). IMAP has no edit-in-place,
     so the new version is APPENDed first and only then is the old one moved
-    to Trash (Bart 2026-09-27: "it's ok to delete and resave"). A reply keeps
+    to Trash (Casey 2026-09-27: "it's ok to delete and resave"). A reply keeps
     its In-Reply-To/References so Gmail keeps it on its thread. If the old
     draft can't be removed, the new one is already safe and the caller hears
     about the leftover copy."""
     import mail_actions
     if not (body or "").strip():
         raise ValueError("empty draft body")
-    if not (to or "").strip():
-        raise ValueError("'to' is required")
+    if not ((to or "").strip() or (cc or "").strip() or (bcc or "").strip()):
+        raise ValueError("add someone to To, Cc or Bcc")
     env = env or load_env()
     imap, user = mc.connect(account, env)
     try:
         msg = EmailMessage()
-        msg["From"] = user
-        msg["To"] = to
+        msg["From"] = mc.from_header(account, user, env)
+        if to:
+            msg["To"] = to
         if cc:
             msg["Cc"] = cc
         if bcc:

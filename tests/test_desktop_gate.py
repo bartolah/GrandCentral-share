@@ -1,6 +1,6 @@
 """E260 — the Claude desktop app's layer on the agent gate.
 
-BUILD_SPEC §6, 2026-09-30. Bart: "Option A first, one account per read,
+BUILD_SPEC §6, 2026-09-30. Casey: "Option A first, one account per read,
 approve all actions." The desktop key gets every E258 agent rule plus: each
 read names one account and sees only it. Since §6 2026-10-06 ("Desktop:
 everything direct") it makes the agent's writes itself (not notes or sweeps);
@@ -168,7 +168,7 @@ class DesktopGate(unittest.TestCase):
     # ---- §6 2026-10-06: it acts directly, but only as the agent may ----
 
     def test_desktop_acts_directly_within_the_agent_rules(self):
-        # Bart: "An agent creating a draft shouldn't require an approval" …
+        # Casey: "An agent creating a draft shouldn't require an approval" …
         # "Desktop: everything direct"
         code, out = self.desktop("POST", "/task", {"action": "add", "text": "direct", "account": A})
         self.assertEqual(code, 200, out)
@@ -331,7 +331,7 @@ class DesktopClient(unittest.TestCase):
 
 
 class DraftLimits(unittest.TestCase):
-    """§6 2026-10-06 (Bart: "there shouldn't be a cap of 10"): drafts never send,
+    """§6 2026-10-06 (Casey: "there shouldn't be a cap of 10"): drafts never send,
     so they are outside the hourly write limit; only a runaway ceiling stays."""
 
     def test_drafts_are_not_writes_and_only_a_high_ceiling_remains(self):

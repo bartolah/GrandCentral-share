@@ -95,36 +95,37 @@ DENIED: dict[tuple[str, str], str] = {
     ("*", "/send"): (
         "send is a human's Send click in the dashboard composer only (BUILD_SPEC §6, "
         "2026-07-10, widened for new mail 2026-07-29, one click + Undo 2026-09-29 — "
-        "all say 'never a command-bar/Claude/OpenClaw tool'). Draft it instead and hand Bart the link."
+        "all say 'never a command-bar/Claude/OpenClaw tool'). Draft it instead and hand Casey the link."
     ),
     ("*", "/mail/bulk"): "no bulk archive/trash from an agent, ever (§6).",
     ("*", "/draft/replace"): "replacing a draft trashes the old copy — dashboard click only (E224).",
-    ("*", "/projects"): "projects are filed by Bart on the board — an agent creating or filing into one needs its own decision (§6, 2026-09-29).",
+    ("*", "/projects"): "projects are filed by Casey on the board — an agent creating or filing into one needs its own decision (§6, 2026-09-29).",
     ("*", "/calendar/rsvp"): "RSVP tells the organizer — dashboard click only (§6 Calendar RSVP, 2026-09-27).",
     ("*", "/draft/discard"): "removing a draft is a Trash write — dashboard click only (E224).",
     ("*", "/outbox"): "scheduled sends are dashboard-only territory.",
     ("*", "/connections"): "credential writes are explicitly not an agent tool (E51).",
-    ("*", "/tracking"): "what gets tracked in Bart's outgoing mail is his switch (E269, §6 2026-10-06).",
+    ("*", "/signatures"): "Casey's email signatures are set by him in a paired browser (2026-10-08).",
+    ("*", "/tracking"): "what gets tracked in Casey's outgoing mail is his switch (E269, §6 2026-10-06).",
     ("*", "/command"): (
         "that is the dashboard's own LLM command bar with write tools attached; "
         "calling it would nest an agent inside an agent."
     ),
     ("*", "/upload"): "writes files to disk; not an agent path.",
     ("*", "/attachment"): "attachments never leave through an agent (§6 E258 egress).",
-    ("*", "/agent/accounts"): "which accounts agents may touch is Bart's switch (§6 E258).",
-    ("*", "/agent/reset"): "only Bart lifts an agent lockout (§6 E258).",
-    ("*", "/agent/proposals/decide"): "approving a desktop request is Bart's click (§6 E260).",
-    ("*", "/private"): "the Private label is Bart's alone (§6 E258).",
-    ("*", "/calendar/invite"): "invites go out on Bart's click only (§6 E258 invite drafts).",
+    ("*", "/agent/accounts"): "which accounts agents may touch is Casey's switch (§6 E258).",
+    ("*", "/agent/reset"): "only Casey lifts an agent lockout (§6 E258).",
+    ("*", "/agent/proposals/decide"): "approving a desktop request is Casey's click (§6 E260).",
+    ("*", "/private"): "the Private label is Casey's alone (§6 E258).",
+    ("*", "/calendar/invite"): "invites go out on Casey's click only (§6 E258 invite drafts).",
     ("*", "/context/docs"): (
-        "Bart's context documents can hold internal-only material (pricing, "
+        "Casey's context documents can hold internal-only material (pricing, "
         "clearances); they ground his own Ask and drafts, not agents (E259)."
     ),
     ("*", "/home"): (
-        "the cross-account Home is a view for Bart only; no agent tool gains a "
+        "the cross-account Home is a view for Casey only; no agent tool gains a "
         "cross-account read (BUILD_SPEC §6, 2026-09-29)."
     ),
-    ("*", "/home/note"): "the cross-account day note is for Bart's Home only (§6, 2026-09-29).",
+    ("*", "/home/note"): "the cross-account day note is for Casey's Home only (§6, 2026-09-29).",
     ("*", "/dev"): (
         "the dev-request queue is executed unattended by a Claude Code worker that "
         "edits code. Nothing that reads email may write into it."
@@ -146,7 +147,7 @@ ACTION_ALLOW: dict[str, set[str]] = {
 
 def use_desktop_profile() -> None:
     """E260: the Claude desktop app, with its own key. Since §6 2026-10-06
-    (Bart: "Desktop: everything direct") it makes the agent's writes itself —
+    (Casey: "Desktop: everything direct") it makes the agent's writes itself —
     drafts, todos, triage, mail actions, calendar — but not notes or sweeps.
     The board enforces the same; this is the local layer."""
     global KEY_PATH, ALLOWED, PROFILE
@@ -216,7 +217,7 @@ def request(method: str, path: str, params: dict | None = None,
     if not key:
         flag = "--new-desktop-key" if PROFILE == "desktop" else "--new-key"
         raise GCError(
-            f"No agent key at {KEY_PATH}. On the Mini run "
+            f"No agent key at {KEY_PATH}. On the host run "
             f"`.venv/bin/python sweeper/agent_gate.py {flag}`, then restart the MCP client."
         )
     headers["X-GC-Agent-Key"] = key

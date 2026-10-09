@@ -1,4 +1,4 @@
-"""E100 — the morning planner (Bart's #1 pick from the "organize my day"
+"""E100 — the morning planner (Casey's #1 pick from the "organize my day"
 conversation; the LLM re-ranker queued since E47, finally built).
 
 Once each morning (07:15–08:10 window, inside the mail_sync cycle, BEFORE
@@ -12,7 +12,7 @@ It lands in three places:
   - `day_plans` table → GET /plan → a card atop the Today view
   - the 07:45 iMessage brief (notify.py prepends the musts)
   - seeded into today's journal note (ONLY if the note is still empty —
-    Bart's own words are never clobbered)
+    Casey's own words are never clobbered)
 
 Regenerate on demand: GET /plan?refresh=1 (also how we test).
 Failure is always soft: no plan means the day works exactly as before.
@@ -34,7 +34,7 @@ WINDOW = ("07:15", "08:10")
 BOARD_JSON = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                           "dashboard", "grand_central.json")
 
-PROMPT = """You are Bart's chief of staff. Given today's raw signals, produce his
+PROMPT = """You are Casey's chief of staff. Given today's raw signals, produce his
 day plan. Be concrete and opinionated — reasons reference value, age,
 and the free time between events. Do not invent items.
 
@@ -126,7 +126,7 @@ def generate(conn, env: dict | None = None, log=print) -> dict | None:
                 "INSERT OR REPLACE INTO day_plans (date, plan, created_at) "
                 "VALUES (?,?,?)",
                 (signals["date"], json.dumps(plan), datetime.now().isoformat()))
-        # seed the journal only if Bart hasn't written anything yet
+        # seed the journal only if Casey hasn't written anything yet
         if not (signals["today_note"] or "").strip():
             db.set_day_note(conn, signals["date"], plan_text(plan))
         log(f"planner: plan stored — {len(plan.get('must') or [])} must, "
@@ -138,7 +138,7 @@ def generate(conn, env: dict | None = None, log=print) -> dict | None:
 
 
 def save(conn, plan: dict, date: str | None = None) -> dict:
-    """E112: Bart edits the plan in place — his words replace Sonnet's.
+    """E112: Casey edits the plan in place — his words replace Sonnet's.
     Shape-validated and capped; stored under the same date key the morning
     run uses, so brief/UI read one plan."""
     date = date or datetime.now().astimezone().strftime("%Y-%m-%d")

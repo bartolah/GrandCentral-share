@@ -1,10 +1,10 @@
 """Answer a calendar invitation from its email: Yes / Maybe / No (Dev #16).
 
-Approved by Bart 2026-09-27 (BUILD_SPEC §6 "Calendar RSVP"): "Yes, I approve
+Approved by Casey 2026-09-27 (BUILD_SPEC §6 "Calendar RSVP"): "Yes, I approve
 of the decision. Go with whatever Google Calendar supports. I'm fine with
 RSVP anywhere." It amends E21's create-only rule by exactly one verb:
 
-  - RSVP only: Google Calendar's accepted / tentative / declined on Bart's
+  - RSVP only: Google Calendar's accepted / tentative / declined on Casey's
     OWN response. No edits, no moves, no deletes, no attendee changes, and
     no note to the organizer (gog offers --comment; it is never passed).
   - one event per click, human click only — not an Ask tool, and
@@ -75,7 +75,7 @@ def _gog(env: dict, *args: str) -> dict:
         acct = args[args.index("-a") + 1] if "-a" in args else "this account"
         if "refresh token" in err.lower() or "auth add" in err.lower() or "no token" in err.lower():
             raise PermissionError(
-                f"Calendar isn't connected for {acct} yet — on the Mini run: "
+                f"Calendar isn't connected for {acct} yet — on the host run: "
                 f"gog auth add {acct} --services calendar")
         raise RuntimeError(f"gog: {err}")
     try:
@@ -179,7 +179,7 @@ def find_event(addr: str, inv: dict, env: dict) -> dict | None:
 
 def status(account: str, thread_id: str, env: dict | None = None) -> dict:
     """What the invite bar shows: is this an answerable invite, and what did
-    Bart already say? {invite: bool, summary, start, my_status, reason}."""
+    Casey already say? {invite: bool, summary, start, my_status, reason}."""
     env = env or load_env()
     inv = invite_for_thread(account, thread_id, env)
     if not inv:
@@ -200,7 +200,7 @@ def status(account: str, thread_id: str, env: dict | None = None) -> dict:
 
 def rsvp(account: str, thread_id: str, response: str, env: dict | None = None,
          dry_run: bool = False, log=print) -> dict:
-    """Set Bart's response on the invite in this thread. response: yes|maybe|no."""
+    """Set Casey's response on the invite in this thread. response: yes|maybe|no."""
     if response not in RESPONSES:
         raise ValueError("response must be yes, maybe or no")
     env = env or load_env()

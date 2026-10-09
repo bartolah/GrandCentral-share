@@ -1,6 +1,6 @@
 """E209 — email classification, phase 1: the rules.
 
-Bart (2026-09-26): classify each email — what type it is, who the sender is to
+Casey (2026-09-26): classify each email — what type it is, who the sender is to
 him (teammate, the one-company group, someone he writes to a lot), whether he
 should respond, whether he is waiting on someone, and when to follow up — and
 let him tune it. Plan: the "Email classification with Jev" doc.
@@ -13,10 +13,10 @@ with no model call:
   relationship  teammate > company > frequent > known > new, from the team
                 roster (Settings → Classification) and this account's own
                 history — never another account's
-  respond       'no' for bulk and machine mail and when Bart wrote last;
+  respond       'no' for bulk and machine mail and when Casey wrote last;
                 person mail he hasn't answered stays 'unsure' until a model
                 judges it (the sweep's assessor today, Jev in phase 2)
-  waiting_on    Bart wrote last: 'teammate' or 'outside', naming who
+  waiting_on    Casey wrote last: 'teammate' or 'outside', naming who
   follow_up     a date: waiting on a teammate +2 business days, outside +4
                 days; owing a reply +1 business day to a teammate, +2 to others
 
@@ -25,7 +25,7 @@ fingerprint (last message date + count), the ruleset version or the roster
 changes, or the row is a day old (frequent-contact counts drift slowly).
 
 Corrections (class_feedback) win: the latest per field is applied over
-whatever a rule or a model says, so a re-run never overwrites Bart's answer.
+whatever a rule or a model says, so a re-run never overwrites Casey's answer.
 
 Jev (phase 2) may see an account's mail only when that account's switch is on
 AND a Jev key is set — jev_allowed() is the one gate. §6, 2026-09-26: subject,
@@ -61,7 +61,7 @@ OWE_TEAMMATE_BDAYS = 1
 OWE_OTHER_BDAYS = 2
 WAIT_MAX_DAYS = 30          # older than this, stop tracking (matches waiting_on)
 
-FREQUENT_MIN = 3            # threads Bart wrote last on, this account, 90 days
+FREQUENT_MIN = 3            # threads Casey wrote last on, this account, 90 days
 LOOKBACK_DAYS = 30          # classify threads active in this window
 STALE_AFTER = timedelta(days=1)
 
@@ -95,7 +95,7 @@ def add_business_days(start: datetime, n: int) -> datetime:
 
 
 def own_addresses(env: dict) -> set:
-    """Every mailbox address Grand Central reads is Bart's."""
+    """Every mailbox address Grand Central reads is Casey's."""
     from sources import gmail_reader
     return {(env.get(uk) or "").strip().lower()
             for uk, _ in gmail_reader.scan_accounts(env).values() if env.get(uk)}
@@ -139,9 +139,9 @@ def account_group(account: str, env: dict, ros: dict) -> str | None:
 
 
 def frequent_counts(conn, account: str, days: int = 90) -> dict:
-    """{email: threads in THIS account where Bart wrote last and they were on it}.
+    """{email: threads in THIS account where Casey wrote last and they were on it}.
 
-    mail_sends only sees sends made from Grand Central; a thread Bart answered
+    mail_sends only sees sends made from Grand Central; a thread Casey answered
     last in Gmail is the broader signal. Per account on purpose.
     """
     since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -249,7 +249,7 @@ def classify(row: dict, ros: dict, freq: dict, own: set, acct_group: str | None 
             out["follow_up"] = due.strftime("%Y-%m-%d")
             reasons.append(f"you wrote last — waiting on {out['waiting_who']}")
     else:
-        # a person wrote last and Bart hasn't answered: owed, pending judgement
+        # a person wrote last and Casey hasn't answered: owed, pending judgement
         conf = 0.5
         due = add_business_days(last, OWE_TEAMMATE_BDAYS if rel == "teammate" else OWE_OTHER_BDAYS)
         out["follow_up"] = due.strftime("%Y-%m-%d")

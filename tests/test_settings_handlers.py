@@ -3,7 +3,7 @@
 settings.html keeps its code inside one closure and hands the handlers its
 markup calls to window by name. E260 added Approve/Decline for desktop-app
 requests (agentDecide) without adding it to that list, so the buttons did
-nothing (Bart, 2026-10-02: "I tried to approve an Agent action … and nothing
+nothing (Casey, 2026-10-02: "I tried to approve an Agent action … and nothing
 happened"). This catches the next one offline.
 """
 

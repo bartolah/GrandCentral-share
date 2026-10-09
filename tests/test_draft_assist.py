@@ -1,4 +1,4 @@
-"""The composer's ✨ (Bart 2026-10-06): draft or rewrite from his prompt, and
+"""The composer's ✨ (Casey 2026-10-06): draft or rewrite from his prompt, and
 read his history with the recipients only when he ticks the box. Fake model,
 fake mail; nothing is sent or saved anywhere.
 
@@ -37,11 +37,11 @@ class Assist(unittest.TestCase):
                 mock.patch.object(mail_actions, "search_threads",
                                   lambda q, a, **k: searches.append(q) or [{"thread_id": "9", "subject": "Kickoff",
                                                                             "last_date": "2026-09-01", "snippet": "great call"}]), \
-                mock.patch.object(mail_actions, "fetch_thread", lambda *a, **k: [{"from": "bart@x.com", "date": "2026-09-02", "body": "Thanks Pat!"}]):
+                mock.patch.object(mail_actions, "fetch_thread", lambda *a, **k: [{"from": "casey@x.com", "date": "2026-09-02", "body": "Thanks Pat!"}]):
             out = draft_reply.assist("acctone", env=ENV, log=lambda *a: None, **kw)
         return out, seen["messages"][0]["content"], searches
 
-    def test_rewrites_bart_s_draft_by_his_instruction_without_history(self):
+    def test_rewrites_casey_s_draft_by_his_instruction_without_history(self):
         out, prompt, searches = self.run_assist(instruction="make it warmer", draft="tuesday ok",
                                                 to="Pat <pat@client.com>", subject="Meeting")
         self.assertEqual(out["body"], "Hi Pat — yes, Tuesday works.")
@@ -51,11 +51,11 @@ class Assist(unittest.TestCase):
         self.assertFalse(out["used_history"])
 
     def test_history_is_read_only_for_these_recipients_when_asked(self):
-        with mock.patch("mailclass.own_addresses", lambda env: {"bart@x.com"}):
+        with mock.patch("mailclass.own_addresses", lambda env: {"casey@x.com"}):
             out, prompt, searches = self.run_assist(instruction="reply yes", use_history=True,
-                                                    to="Pat <pat@client.com>, Bart <bart@x.com>")
+                                                    to="Pat <pat@client.com>, Casey <casey@x.com>")
         self.assertTrue(searches and all("pat@client.com" in q for q in searches))
-        self.assertFalse(any("bart@x.com" in q for q in searches))     # never Bart himself
+        self.assertFalse(any("casey@x.com" in q for q in searches))     # never Casey himself
         self.assertIn("Kickoff", prompt)
         self.assertIn("Thanks Pat!", prompt)
         self.assertTrue(out["used_history"])

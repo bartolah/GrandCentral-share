@@ -1,6 +1,6 @@
 """E258 — the "Private" label: a thread that carries it does not exist in Grand Central.
 
-BUILD_SPEC §6 E258 item 2 (Bart chose "Gone entirely"). Offline: scratch DB,
+BUILD_SPEC §6 E258 item 2 (Casey chose "Gone entirely"). Offline: scratch DB,
 fake IMAP, a scratch serve.py; fake accounts acctone/accttwo, and the SAME
 thread id in both so the latch provably stays in its own account.
 """
@@ -84,7 +84,7 @@ class Latch(unittest.TestCase):
             self.assertEqual(self.count(table, A), 0, table)
         self.assertEqual(self.count("mail_threads", B), 1)   # same id, other account
         self.assertEqual(self.count("mail_bodies", B), 1)
-        # the todo is Bart's — it stays, without the thread
+        # the todo is Casey's — it stays, without the thread
         self.assertIsNotNone(self.conn.execute("SELECT 1 FROM engagements WHERE id = ?",
                                                (self.todo,)).fetchone())
         self.assertFalse(private.mark(self.conn, A, T))      # already latched
@@ -121,7 +121,7 @@ class Latch(unittest.TestCase):
 
 
 class Board(unittest.TestCase):
-    """Bart's own browser gets not-found too; only a paired browser unmarks."""
+    """Casey's own browser gets not-found too; only a paired browser unmarks."""
 
     @classmethod
     def setUpClass(cls):

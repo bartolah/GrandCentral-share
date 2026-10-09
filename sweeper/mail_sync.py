@@ -10,7 +10,7 @@ screen reads the result via GET /mail on dashboard/serve.py.
 
 Read-only against Gmail (SELECT readonly, SEARCH, FETCH with BODY.PEEK —
 same verbs as the sweep readers) EXCEPT the snooze wake pass (E5-P1, §6
-amendment approved by Bart 2026-07-15): threads Grand Central archived at
+amendment approved by Casey 2026-07-15): threads Grand Central archived at
 snooze time (mail_triage.wake_inbox=1) get their \\Inbox label re-added
 once snoozed_until passes — Shortwave-style snooze. Beyond that it writes
 only mail_threads (+ resurrecting done_at in mail_triage when new mail
@@ -86,10 +86,10 @@ _PROMO_SUBJ_RE = re.compile(
     r"\bbuy one\b|\blimited time\b|\blast chance\b|\bclearance\b|"
     r"\bends (today|tonight|tomorrow|soon)\b|\bdeal of the\b|\bshop now\b|"
     r"\border now\b|\bblack friday\b|\bcyber monday\b)", re.I)
-# E223 (Dev #22, Bart: "put fundraising blasts into Promos"): campaign and PAC
+# E223 (Dev #22, Casey: "put fundraising blasts into Promos"): campaign and PAC
 # asks write clickbait subjects ("Bad news, team") and pad their previews with
 # blank characters, so neither is a signal. The sending platform is. Sampled
-# 2026-09-27 across Bart's inboxes: every candidate and party committee blast
+# 2026-09-27 across Casey's inboxes: every candidate and party committee blast
 # carried ActionKit in Feedback-ID or unsubscribed through NGP VAN/EveryAction,
 # and no editorial newsletter did (Axios, the Chronicle and Daily Kos use
 # Sailthru/Iterable). PACs on Mailchimp or Substack give themselves away in
@@ -99,7 +99,7 @@ _FUNDRAISE_PLATFORM_RE = re.compile(
 _FUNDRAISE_SENDER_RE = re.compile(
     r"(pac|^(dccc|dscc|dnc|dga|dlcc|nrcc|nrsc|rnc|gop))$", re.I)
 # App / bot / role senders that slip past List-Id detection but aren't a
-# person — they belong in Notifications, not People (E34, Bart: "NewsBot
+# person — they belong in Notifications, not People (E34, Casey: "NewsDesk
 # and Change Network are apps"). Matches the local part before @; the
 # curated set below handles ones whose address gives nothing away.
 _APP_LOCAL_RE = re.compile(
@@ -127,8 +127,8 @@ def _is_fundraising(meta: dict, sender: str) -> bool:
     return bool(_FUNDRAISE_SENDER_RE.search(site) or _FUNDRAISE_SENDER_RE.search(local))
 
 
-# Dev #55 (Bart: "Any email from my official domain shouldn't be a
-# promotion"): the domains of Bart's own accounts, never a public mailbox.
+# Dev #55 (Casey: "Any email from my official domain shouldn't be a
+# promotion"): the domains of Casey's own accounts, never a public mailbox.
 _PUBLIC_DOMAINS = {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com",
                    "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com"}
 
@@ -147,7 +147,7 @@ def categorize(meta: dict, sender_map: dict | None = None, own: set | None = Non
     """Deterministic bundle category from one message's headers (the
     thread's latest message decides). First match wins.
 
-    `sender_map` is Bart's curated {address: category} (E34, widened E58) —
+    `sender_map` is Casey's curated {address: category} (E34, widened E58) —
     the strongest signal, checked FIRST and in BOTH directions: it names
     apps whose address gives nothing away (app@example.org) AND
     rescues real people the structural rules would bundle (category
@@ -164,8 +164,8 @@ def categorize(meta: dict, sender_map: dict | None = None, own: set | None = Non
         return "calendar"
     if _RECEIPT_LOCAL_RE.match(local) or _RECEIPT_SUBJ_RE.search(subj):
         return "receipt"
-    # Dev #55: mail from Bart's own domains is never filed as a promo or a
-    # fundraising blast. ConnectBlue's sales@ is a Google Group, so every RFP
+    # Dev #55: mail from Casey's own domains is never filed as a promo or a
+    # fundraising blast. Brightline's sales@ is a Google Group, so every RFP
     # and teammate post carried list headers and a sales@ sender and read as
     # marketing. Where the rules would say promo, the domain itself is people
     # (a no-reply there is an update) and a subdomain, a sending tool, is an
@@ -181,7 +181,7 @@ def categorize(meta: dict, sender_map: dict | None = None, own: set | None = Non
     # and it swallowed the inbox — 61% of all threads landed in 'newsletter'.
     # Gmail and Yahoo have required that header on bulk mail since 2024, so a
     # store's sale blast, an app's no-reply alert and a fundraising solicitation
-    # all carry it and all looked like editorial digests. Bart's own product
+    # all carry it and all looked like editorial digests. Casey's own product
     # mail (no-reply@notice.example-app.com, 265 threads) matched _APP_LOCAL_RE
     # perfectly and never reached it. So the header is now the WEAKEST signal,
     # not the strongest: the specific rules get first refusal and it only
@@ -205,7 +205,7 @@ def categorize(meta: dict, sender_map: dict | None = None, own: set | None = Non
 
 
 def service_context(conn, env: dict) -> dict:
-    """What services.detect needs, loaded once per run (2026-09-30): Bart's
+    """What services.detect needs, loaded once per run (2026-09-30): Casey's
     own domains (each account's, plus his company-group domains), the roster
     (people are never services), the group names, and his own addresses."""
     import mailclass
@@ -276,7 +276,7 @@ def sync_account(account: str, env: dict, lookback_days: int,
                 t["latest_uid"] = uid
                 t["latest_meta"] = meta
 
-        # E94 (Bart's "Capitol Influence Deck" report): a reply HE sends
+        # E94 (Casey's "Consulting Deck" report): a reply HE sends
         # lives in Sent, not INBOX — so the row kept the inbound date and
         # direction, and an answered thread looked unanswered for good.
         # Merge a cheap header-only scan of recent Sent into known threads:
@@ -347,7 +347,7 @@ def sync_account(account: str, env: dict, lookback_days: int,
                 svc = services.detect(meta, svc_ctx["own"], svc_ctx["people"], svc_ctx["groups"], svc_ctx["mine"])
                 if svc:
                     svc_ctx["found"][svc["key"]] = svc
-                    # E253: a service Bart switched off keeps the category it
+                    # E253: a service Casey switched off keeps the category it
                     # always had; a merged one takes the kind of its bundle
                     tbl = svc_ctx.get("table") or {}
                     to = services.resolve(svc["key"], tbl) if svc["key"] in tbl else svc["key"]
@@ -415,7 +415,7 @@ def wake_snoozes(conn, env: dict, log=print) -> int:
 
 
 def send_due_outbox(conn, env: dict, log=print) -> int:
-    """Fire due scheduled sends (E9, approved by Bart 2026-07-17). Each row
+    """Fire due scheduled sends (E9, approved by Casey 2026-07-17). Each row
     was human-confirmed in the send dialog at schedule time; it goes through
     send_mail.send_reply — the same caps and mail_sends audit as an
     immediate send. A row is marked 'sending' BEFORE the SMTP attempt: if
@@ -437,7 +437,7 @@ def send_due_outbox(conn, env: dict, log=print) -> int:
                            bcc=row["bcc_addrs"] or None, body_html=row.get("body_html"),
                            env=env, log=log, track=track)
             else:
-                # 2026-10-06: a scheduled NEW email (a draft Bart scheduled)
+                # 2026-10-06: a scheduled NEW email (a draft Casey scheduled)
                 send_new(row["account"], row["body"], row["to_addrs"], row["subject"] or "",
                          cc=row["cc_addrs"] or None, bcc=row["bcc_addrs"] or None,
                          body_html=row.get("body_html"), env=env, log=log, track=track)
@@ -546,7 +546,7 @@ def main(argv=None) -> int:
 
         conn = None if args.dry_run else db.connect()
         try:
-            # E34: apps/bots Bart has marked as "not a person" — forced out
+            # E34: apps/bots Casey has marked as "not a person" — forced out
             # of the People bundle. Loaded once for the whole run.
             sender_map = db.sender_categories(conn) if conn else {}
             svc_ctx = service_context(conn, env) if conn else None
@@ -636,6 +636,12 @@ def main(argv=None) -> int:
                     notify.run(conn, env, log=log)
                 except Exception as e:
                     log(f"notify pass FAILED: {e!r}")
+                try:
+                    # E276: follow-ups — close the ones whose reply arrived
+                    import watch
+                    watch.check(conn, env, log=log)
+                except Exception as e:
+                    log(f"watch pass FAILED: {e!r}")
                 try:
                     # E269: opens and clicks from the tracker Worker (inert
                     # until TRACK_SECRET is set and a t.<domain> answers)

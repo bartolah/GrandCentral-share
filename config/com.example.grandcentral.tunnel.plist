@@ -6,7 +6,7 @@
     <string>com.example.grandcentral.tunnel</string>
 
     <!-- Cloudflare Tunnel for https://gc.example.com (config in
-         ~/.cloudflared/config.yml). Gives Bart the board over plain HTTPS on
+         ~/.cloudflared/config.yml). Gives Casey the board over plain HTTPS on
          networks that block Tailscale/VPNs. Cloudflare Access (email OTP)
          must stay enabled on the hostname — it is the only auth layer. -->
     <key>ProgramArguments</key>

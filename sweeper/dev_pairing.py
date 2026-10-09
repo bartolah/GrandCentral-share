@@ -8,13 +8,13 @@ local process, any tailnet device, any agent with a shell tool.
 
 Now the three writes that put text in front of the worker — filing a request,
 editing its text, and setting a request back to 'open' — need the pairing
-code. Bart enters it once per device in the Dev requests panel; the browser
+code. Casey enters it once per device in the Dev requests panel; the browser
 keeps it in localStorage and sends it as the X-GC-Dev-Code header. Only a
 SHA-256 of the code is stored here (data/dev_pairing.json, chmod 600), so the
 file cannot be replayed as the code.
 
 Scope, same as BUILD_SPEC §6 E161: this does not defend against a process
-already running as Bart's uid on the Mini, which can read config/.env or the
+already running as Casey's uid on the host, which can read config/.env or the
 SQLite file directly. It closes the queue to everything that only reaches the
 board over HTTP.
 

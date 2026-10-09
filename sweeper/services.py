@@ -1,8 +1,8 @@
-"""Bart's own services get their own bundles (2026-09-30).
+"""Casey's own services get their own bundles (2026-09-30).
 
-Bart: "Let's make Jev smarter about email notifications from our own services
-and properties and websites … ConnectBlue Notifications should be a bundle,
-ConnectBlue Sales inquiries (RFPs) from sales@connectblue, etc."
+Casey: "Let's make Jev smarter about email notifications from our own services
+and properties and websites … Brightline Notifications should be a bundle,
+Brightline Sales inquiries (RFPs) from sales@brightline, etc."
 
 Agreed in chat: automatic and editable; one bundle per service, keyed by its
 subdomain (or, on a bare domain, by its address); website RFPs through the
@@ -11,7 +11,7 @@ These are facts about who sent the mail, so they are rules, not a model's
 judgement — and nothing here sends Jev anything new (BUILD_SPEC §6).
 
 "Own domains" are each account's own domain plus the company-group domains
-Bart keeps in Settings → Classification.
+Casey keeps in Settings → Classification.
 
     .venv/bin/python sweeper/services.py        # the services table
 """
@@ -47,14 +47,14 @@ def _own_domain(host: str, own: set) -> str | None:
 
 def detect(meta: dict, own: set, people: set, groups: dict, own_addresses: set = frozenset()) -> dict | None:
     """One message's headers → {key, name, kind} when it came from one of
-    Bart's own services, else None. People are never services."""
+    Casey's own services, else None. People are never services."""
     frm = meta.get("from") or ""
     m = _EMAIL_RE.search(frm)
     if not m:
         return None
     sender = m.group(0).lower()
     if sender in own_addresses:
-        return None                                    # Bart writing, not a service
+        return None                                    # Casey writing, not a service
     local, _, host = sender.partition("@")
     base = _own_domain(host, own)
     if not base:
@@ -81,9 +81,9 @@ def detect(meta: dict, own: set, people: set, groups: dict, own_addresses: set =
     if not automated:
         return None
     display = frm.split("<")[0].strip().strip('"').strip("'").strip()
-    # Bart's own mailings (outreach campaigns that land in his inbox too) are
+    # Casey's own mailings (outreach campaigns that land in his inbox too) are
     # a service, but not one called "Your Name"
-    if local == "bart" or display.lower().startswith("bart"):
+    if local == "casey" or display.lower().startswith("casey"):
         # one bundle per company, whichever address they went out from
         return {"key": f"mailings@{base}", "name": f"{company} mailings", "kind": "service"}
     name = display or (host.split(".")[0].title() if subdomain else f"{company} {local}")
@@ -103,7 +103,7 @@ def category_for(svc: dict | None, category: str) -> str:
 
 # ------------------------------------------------------------------ store
 def register(conn, found: list) -> None:
-    """Record services seen this run; Bart's edits are never overwritten."""
+    """Record services seen this run; Casey's edits are never overwritten."""
     now = db._now_iso()
     with conn:
         for s in found:

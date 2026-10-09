@@ -60,7 +60,7 @@ def _age_days(raised_iso: str, now_iso: str) -> int:
 
 
 def _engagement(email: str, priors: dict) -> tuple:
-    """E47: a −8..+8 preference boost for a sender, learned from Bart's own
+    """E47: a −8..+8 preference boost for a sender, learned from Casey's own
     actions — replies lift, dismisses sink. Exact-address signal wins; the
     domain is a weaker fallback when the address hasn't been seen. Returns
     (boost, why) or (0, None)."""
@@ -212,8 +212,8 @@ def build_state(records: list, assessed: dict, reg: dict,
         log(f"reply_debt: {auto_suppressed} automated thread(s) suppressed "
             f"(receipt/newsletter/notification/calendar — people only)")
 
-    # ---- E46: waiting-on — asks Bart sent that went quiet -------------------
-    # The mirror of reply_debt: BART wrote last, a few days passed with no
+    # ---- E46: waiting-on — asks Casey sent that went quiet -------------------
+    # The mirror of reply_debt: CASEY wrote last, a few days passed with no
     # reply, and a real person is on the other end. A 30-day ceiling keeps
     # abandoned threads out of the nudge list.
     WAIT_MIN_DAYS, WAIT_MAX_DAYS = 3, 30
@@ -263,7 +263,7 @@ def build_state(records: list, assessed: dict, reg: dict,
     decisions_out.sort(key=lambda x: x["age_days"], reverse=True)
 
     # ---- top5 + summary -------------------------------------------------------
-    # A deeper pool than the board shows: serve.py filters out threads Bart
+    # A deeper pool than the board shows: serve.py filters out threads Casey
     # has since resolved (done/dismissed/snoozed/replied) and backfills from
     # the pool, so Top 5 stays truthful between hourly sweeps.
     top5_pool = _build_top5(reply_debt, reg, limit=12, priors=sender_priors)

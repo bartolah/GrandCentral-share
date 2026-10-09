@@ -1,4 +1,4 @@
-"""Dev queue triage (2026-09-28, Bart: "Do it").
+"""Dev queue triage (2026-09-28, Casey: "Do it").
 
 A triage pass labels each open request — priority, size, verdict — before the
 unattended worker runs, and the worker builds only clear, small-or-medium

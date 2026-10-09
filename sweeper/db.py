@@ -115,12 +115,12 @@ CREATE TABLE IF NOT EXISTS elements (
 CREATE TABLE IF NOT EXISTS mappings (
   element_id   INTEGER PRIMARY KEY,
   operation_id TEXT NOT NULL,
-  mapped_by    TEXT NOT NULL,    -- rule | model | bart
+  mapped_by    TEXT NOT NULL,    -- rule | model | casey
   confidence   REAL,
   ts           TEXT NOT NULL
 );
 
--- E19: Bart-authored context — the seed corpus for future automations,
+-- E19: Casey-authored context — the seed corpus for future automations,
 -- classifier/draft prompt grounding, and reply suggestions. Each entry is
 -- one statement scoped to what it describes (a label, a person, a project,
 -- a goal, or global). Nothing consumes these automatically yet; consumers
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS decisions (
   outcome      TEXT
 );
 
--- Append-only log of Bart's re-file corrections (ground truth; the newest
+-- Append-only log of Casey's re-file corrections (ground truth; the newest
 -- row per thread_id wins — same semantics overrides.json had).
 CREATE TABLE IF NOT EXISTS corrections (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -214,7 +214,7 @@ CREATE TABLE IF NOT EXISTS braindump (
   updated_at   TEXT NOT NULL
 );
 
--- E144: the Dev request queue — Bart files change requests from the app;
+-- E144: the Dev request queue — Casey files change requests from the app;
 -- Claude Code sessions read the open ones, build/test/ship, and write the
 -- outcome back (status + note carry the answer, e.g. the episode id).
 CREATE TABLE IF NOT EXISTS dev_requests (
@@ -227,12 +227,12 @@ CREATE TABLE IF NOT EXISTS dev_requests (
   updated_at TEXT NOT NULL
 );
 
--- E188: Web Push subscriptions — one row per device Bart subscribed from.
+-- E188: Web Push subscriptions — one row per device Casey subscribed from.
 -- `subscription` is the browser's own JSON (endpoint + keys); we never mint
 -- one, and a row is deleted the moment the push service reports it dead.
 CREATE TABLE IF NOT EXISTS push_subs (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  label        TEXT NOT NULL,          -- "Mac Safari", "iPhone" — Bart's words
+  label        TEXT NOT NULL,          -- "Mac Safari", "iPhone" — Casey's words
   endpoint     TEXT NOT NULL UNIQUE,   -- dedupe: one row per browser endpoint
   subscription TEXT NOT NULL,          -- the full PushSubscription JSON
   created_at   TEXT NOT NULL,
@@ -240,7 +240,7 @@ CREATE TABLE IF NOT EXISTS push_subs (
 );
 
 -- E188: which channel each kind of alert uses. Absent row = the defaults in
--- notify.py, so this table only ever records Bart's deviations.
+-- notify.py, so this table only ever records Casey's deviations.
 CREATE TABLE IF NOT EXISTS notify_prefs (
   kind     TEXT PRIMARY KEY,           -- brief | event | wrap | alert
   imessage INTEGER NOT NULL DEFAULT 1,
@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS scratch_pads (
 
 -- ---- Mail screen (Epoch 3) ------------------------------------------------
 -- mail_threads is owned by sweeper/mail_sync.py (every ~3 min, blind upsert);
--- mail_triage is owned by dashboard/serve.py (Bart's pin/snooze/done state).
+-- mail_triage is owned by dashboard/serve.py (Casey's pin/snooze/done state).
 -- Split on purpose: the sync job can never clobber triage state.
 CREATE TABLE IF NOT EXISTS mail_threads (
   thread_id       TEXT NOT NULL,
@@ -305,12 +305,12 @@ CREATE TABLE IF NOT EXISTS element_tags (
   source_ref TEXT NOT NULL,           -- gmail thread_id
   kind       TEXT NOT NULL DEFAULT 'objective',
   value      TEXT NOT NULL,           -- objective id
-  tagged_by  TEXT NOT NULL DEFAULT 'bart',
+  tagged_by  TEXT NOT NULL DEFAULT 'casey',
   ts         TEXT NOT NULL,
   PRIMARY KEY (source, source_ref, kind, value)
 );
 
--- Scheduled sends (E9, approved by Bart 2026-07-17): a human-confirmed
+-- Scheduled sends (E9, approved by Casey 2026-07-17): a human-confirmed
 -- reply waiting for its send time. mail_sync fires due rows through the
 -- same send_mail.send_reply path (same caps, same mail_sends audit row).
 -- Cancellable while pending; a row stuck in 'sending' means the process
@@ -365,7 +365,7 @@ CREATE TABLE IF NOT EXISTS ask_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_ask_messages_chat ON ask_messages(chat_id, id);
 
--- Bart-curated senders that are apps/bots, not people (E34) — forces the
+-- Casey-curated senders that are apps/bots, not people (E34) — forces the
 -- bundle category so they land in Notifications instead of People. Keyed by
 -- lowercased email; category kept for future kinds but is 'notification'
 -- today. mail_sync consults this every pass.
@@ -375,11 +375,11 @@ CREATE TABLE IF NOT EXISTS sender_categories (
   ts       TEXT NOT NULL
 );
 
--- E69: free-form daily notes — Bart's plan/journal for a day, one row per
+-- E69: free-form daily notes — Casey's plan/journal for a day, one row per
 -- date. Editable all day from the Today view; later a context source for
 -- the LLM layers (steward/re-ranker/brief consumers), by design.
 CREATE TABLE IF NOT EXISTS day_notes (
-  date       TEXT PRIMARY KEY,   -- YYYY-MM-DD (Bart's local day)
+  date       TEXT PRIMARY KEY,   -- YYYY-MM-DD (Casey's local day)
   text       TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS engagement_threads (
 );
 
 -- Inbox steward (E59): LLM-proposed sender→bundle suggestions, awaiting
--- Bart's one-click verdict. The steward NEVER acts alone — approving a row
+-- Casey's one-click verdict. The steward NEVER acts alone — approving a row
 -- writes sender_categories exactly like a manual 🤖 click; 'skipped' rows
 -- (judged person/unsure) are kept so a sender is never re-audited.
 CREATE TABLE IF NOT EXISTS steward_suggestions (
@@ -461,7 +461,7 @@ CREATE TABLE IF NOT EXISTS steward_suggestions (
   decided_at TEXT
 );
 
--- E111: the 🧙 Wizard — every agent-proposed todo waits here for Bart's
+-- E111: the 🧙 Wizard — every agent-proposed todo waits here for Casey's
 -- verdict (steward principle: the agent NEVER acts alone). kinds: 'email'
 -- (suggested todo from recent mail), 'granola-item' (explicit action item
 -- from a meeting's notes), 'granola' (LLM-implied follow-up from a meeting).
@@ -492,7 +492,7 @@ CREATE TABLE IF NOT EXISTS wizard_scan (
 );
 
 -- E209: email classification (plan: "Email classification with Jev").
--- Rules, model and Bart's corrections are stored apart and combined on read
+-- Rules, model and Casey's corrections are stored apart and combined on read
 -- (correction > model > rule), so no re-run can overwrite his answer. Every
 -- row is (account, thread_id): the same Gmail thread id in two accounts is two
 -- classifications.
@@ -525,7 +525,7 @@ CREATE TABLE IF NOT EXISTS class_people (
   name     TEXT,
   added_at TEXT NOT NULL
 );
--- 2026-09-30 (Bart: "We have several people who are part of multiple
+-- 2026-09-30 (Casey: "We have several people who are part of multiple
 -- accounts - companies"): one address can belong to several groups.
 -- class_people.grp stays as the first of them, for rollback.
 CREATE TABLE IF NOT EXISTS class_memberships (
@@ -535,8 +535,8 @@ CREATE TABLE IF NOT EXISTS class_memberships (
   PRIMARY KEY (email, grp)
 );
 CREATE TABLE IF NOT EXISTS class_groups (
-  domain   TEXT PRIMARY KEY,            -- lowercased, e.g. connectblue.com
-  grp      TEXT NOT NULL,               -- e.g. ConnectBlue group
+  domain   TEXT PRIMARY KEY,            -- lowercased, e.g. brightline.example
+  grp      TEXT NOT NULL,               -- e.g. Brightline group
   added_at TEXT NOT NULL
 );
 -- §6 (2026-09-26): Jev sees an account's mail only while that account's
@@ -547,12 +547,12 @@ CREATE TABLE IF NOT EXISTS class_accounts (
   updated_at TEXT NOT NULL
 );
 
--- Dev #32/#33 (2026-09-26): Bart's own edits to a contact — who someone IS,
+-- Dev #32/#33 (2026-09-26): Casey's own edits to a contact — who someone IS,
 -- shared by every account like the team roster. The address book itself is
 -- built from each account's mail; this only overrides a name and keeps notes.
 CREATE TABLE IF NOT EXISTS contacts (
   email      TEXT PRIMARY KEY,         -- lowercased
-  name       TEXT,                     -- Bart's name for them; wins everywhere
+  name       TEXT,                     -- Casey's name for them; wins everywhere
   notes      TEXT,
   hidden     INTEGER NOT NULL DEFAULT 0,  -- keep out of typeahead
   updated_at TEXT NOT NULL
@@ -560,19 +560,19 @@ CREATE TABLE IF NOT EXISTS contacts (
 
 -- 2026-09-26: an account HINT for a legacy todo with none — written once by
 -- tools/suggest_todo_accounts.py (old project name, or an account named in
--- the text). Only ever pre-selects a picker; Bart confirms every move.
+-- the text). Only ever pre-selects a picker; Casey confirms every move.
 CREATE TABLE IF NOT EXISTS todo_account_hints (
   engagement_id INTEGER PRIMARY KEY,
   account       TEXT NOT NULL,
   why           TEXT
 );
 
--- Append-only audit of calendar event creates (E21, approved by Bart
+-- Append-only audit of calendar event creates (E21, approved by Casey
 -- 2026-07-19; sweeper/calendar_writer.py via the gog CLI). Create-only:
 -- there is deliberately no update/delete verb and no attendee support.
 CREATE TABLE IF NOT EXISTS calendar_writes (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
-  account   TEXT NOT NULL,           -- personal|connectblue nickname
+  account   TEXT NOT NULL,           -- personal|brightline nickname
   calendar  TEXT NOT NULL,           -- Google calendarId (usually 'primary')
   event_id  TEXT,                    -- Google event id (null if parse failed)
   summary   TEXT NOT NULL,
@@ -611,26 +611,61 @@ CREATE TABLE IF NOT EXISTS project_items (
 );
 CREATE INDEX IF NOT EXISTS idx_project_items_ref ON project_items (kind, account, ref);
 
--- Bart's own services (2026-09-30): automated mail from his own domains gets
+-- Casey's own services (2026-09-30): automated mail from his own domains gets
 -- a bundle per service. Rows appear on their own the first time a service
--- sends; Bart may rename, merge one into another, or switch it off.
+-- sends; Casey may rename, merge one into another, or switch it off.
 CREATE TABLE IF NOT EXISTS services (
   key          TEXT PRIMARY KEY,       -- subdomain host, or an address on a bare domain
   kind         TEXT NOT NULL DEFAULT 'service',   -- service | sales
   auto_name    TEXT,                   -- from the sender, refreshed each sync
-  name         TEXT,                   -- Bart's name, when he gives one
+  name         TEXT,                   -- Casey's name, when he gives one
   merged_into  TEXT,
   off          INTEGER NOT NULL DEFAULT 0,
   first_seen   TEXT NOT NULL
 );
 
--- Notes live in the database (Bart 2026-09-29). A note written in a project
+-- Notes live in the database (Casey 2026-09-29). A note written in a project
 -- carries its project_id; deleting the project keeps the note, with the
 -- project's name in from_project.
+-- 2026-10-08: HTML email signatures, one per account (sweeper/signatures.py).
+-- Only a paired browser writes them; the HTML is cleaned on the way in.
+CREATE TABLE IF NOT EXISTS signatures (
+  account     TEXT PRIMARY KEY,
+  html        TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+
+-- E276 follow-ups (sweeper/watch.py): emails Casey chose to keep an eye on —
+-- a teammate's assignment, a deal/partner reply, or (until its new thread is
+-- known) a remind-me todo. Closed by the reply it waits for, or by Casey.
+CREATE TABLE IF NOT EXISTS watches (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  account       TEXT NOT NULL,
+  thread_id     TEXT NOT NULL DEFAULT '',
+  message_id    TEXT,
+  kind          TEXT NOT NULL,          -- assigned | deal | remind
+  who           TEXT,
+  who_name      TEXT,
+  note          TEXT,
+  due           TEXT,
+  subject       TEXT,
+  todo_id       INTEGER,
+  status        TEXT NOT NULL DEFAULT 'open',   -- open | closed | replaced
+  closed_reason TEXT,
+  sent_at       TEXT,
+  created_at    TEXT NOT NULL,
+  closed_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_watches_open ON watches (status, account);
+CREATE TABLE IF NOT EXISTS watch_settings (
+  account TEXT PRIMARY KEY,
+  ask     TEXT NOT NULL DEFAULT 'smart'
+);
+
 -- E269 open/click tracking (BUILD_SPEC §6, 2026-10-06; sweeper/tracking.py).
 -- track_sends: one row per tracked send (the random token the Worker sees);
 -- track_events: what the Worker logged, pulled by mail_sync (no IPs, no
--- content); track_settings: Bart's per-account switches; track_health: which
+-- content); track_settings: Casey's per-account switches; track_health: which
 -- t.<domain> answered /health (nothing is tracked on a domain that doesn't).
 CREATE TABLE IF NOT EXISTS track_sends (
   token       TEXT PRIMARY KEY,
@@ -667,7 +702,7 @@ CREATE TABLE IF NOT EXISTS track_health (
   checked_at  TEXT NOT NULL
 );
 
--- Projects step 6 (2026-09-30): Bart's ✕ on an "Add to <project>?" — one
+-- Projects step 6 (2026-09-30): Casey's ✕ on an "Add to <project>?" — one
 -- thread (account + thread_id) or a whole person for that project.
 CREATE TABLE IF NOT EXISTS project_declines (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -681,14 +716,14 @@ CREATE INDEX IF NOT EXISTS idx_project_declines ON project_declines (project_id)
 
 -- E258 (BUILD_SPEC §6, 2026-09-30): agent hardening against prompt injection.
 -- Which accounts an agent (the MCP server) may touch. No row = off: a new
--- mailbox is invisible to agents until Bart switches it on from a paired browser.
+-- mailbox is invisible to agents until Casey switches it on from a paired browser.
 CREATE TABLE IF NOT EXISTS agent_accounts (
   account    TEXT PRIMARY KEY,
   enabled    INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT NOT NULL
 );
 -- Every agent request, and every mutating request from an unidentified local
--- caller: the record Bart reviews for calls he didn't intend.
+-- caller: the record Casey reviews for calls he didn't intend.
 CREATE TABLE IF NOT EXISTS agent_audit (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   ts           TEXT NOT NULL,
@@ -705,8 +740,8 @@ CREATE TABLE IF NOT EXISTS agent_audit (
   signals      INTEGER NOT NULL DEFAULT 0  -- injection-shaped text in the result
 );
 CREATE INDEX IF NOT EXISTS idx_agent_audit_ts ON agent_audit (ts);
--- E260: what the Claude desktop app asked Bart to approve. It can only file
--- these; one runs only after Bart approves it from a paired browser, as an
+-- E260: what the Claude desktop app asked Casey to approve. It can only file
+-- these; one runs only after Casey approves it from a paired browser, as an
 -- ordinary agent call. status: pending | approved | declined | failed |
 -- expired. Rows are never deleted: this is the record of what was asked.
 CREATE TABLE IF NOT EXISTS agent_proposals (
@@ -727,7 +762,7 @@ CREATE TABLE IF NOT EXISTS agent_state (
   value TEXT NOT NULL
 );
 -- Invite drafts (E258 item 6): attendees an agent proposed for an event it
--- created. Google emails nobody until Bart clicks Send invites.
+-- created. Google emails nobody until Casey clicks Send invites.
 CREATE TABLE IF NOT EXISTS invite_drafts (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   account       TEXT NOT NULL,
@@ -761,7 +796,7 @@ CREATE TABLE IF NOT EXISTS notes (
   updated_at    TEXT NOT NULL
 );
 
--- E259 (Bart 2026-09-30): "upload additional context (like an MD file) or
+-- E259 (Casey 2026-09-30): "upload additional context (like an MD file) or
 -- just paste in the context associated with any of my accounts or projects".
 -- Long-form standing context, unlike context_notes (one statement, 500
 -- chars). scope is 'account:<slug>' or 'project:<id>'. Read by Ask, project
@@ -822,13 +857,13 @@ _MIGRATIONS = [
     ("mail_threads", "labels",
      "ALTER TABLE mail_threads ADD COLUMN labels TEXT"),
     # E30 — freeform detail on a todo. `text` is the one-line title (300 char
-    # cap, what every list renders); `notes` is everything else Bart wants to
+    # cap, what every list renders); `notes` is everything else Casey wants to
     # keep with it — context, links, what "done" means.
     ("engagements", "notes",
      "ALTER TABLE engagements ADD COLUMN notes TEXT"),
     # E168 — recurring todos: completing one spawns its next occurrence.
     # The rule is a small closed vocabulary (see RECUR_RULES), not an RRULE —
-    # everything Bart asked for fits, and a closed set can be validated.
+    # everything Casey asked for fits, and a closed set can be validated.
     ("engagements", "recur",
      "ALTER TABLE engagements ADD COLUMN recur TEXT"),
     # E52 — labels on todos (JSON array, same convention as mail_threads.labels)
@@ -842,7 +877,7 @@ _MIGRATIONS = [
     # E73 — optional High/Medium/Low priority on todos.
     ("engagements", "priority",
      "ALTER TABLE engagements ADD COLUMN priority TEXT"),
-    # E204 — todos live in Gmail's label system (Bart, 2026-09-23): each todo
+    # E204 — todos live in Gmail's label system (Casey, 2026-09-23): each todo
     # owns one GC/Todo/<name> label; label_synced marks a membership that has
     # been confirmed IN Gmail (written by us or seen there), which is what
     # lets a label removed in Gmail unlink here without racing a failed write.
@@ -850,13 +885,13 @@ _MIGRATIONS = [
      "ALTER TABLE engagements ADD COLUMN gmail_label TEXT"),
     ("engagement_threads", "label_synced",
      "ALTER TABLE engagement_threads ADD COLUMN label_synced INTEGER NOT NULL DEFAULT 0"),
-    # Account-first (Bart, 2026-09-24): a todo belongs to exactly one mail
+    # Account-first (Casey, 2026-09-24): a todo belongs to exactly one mail
     # account. Nullable and additive — rows that predate it stay NULL
     # ("unassigned") until sweeper/backfill_todo_accounts.py assigns them
     # from evidence; nothing is ever guessed and nothing is dropped.
     ("engagements", "account",
      "ALTER TABLE engagements ADD COLUMN account TEXT"),
-    # Account-first triage (Bart, 2026-09-25): DevRequests are intake inside
+    # Account-first triage (Casey, 2026-09-25): DevRequests are intake inside
     # the selected account. Historical rows are preserved as NULL and do not
     # appear in any account queue; new rows always carry an explicit owner.
     ("dev_requests", "account",
@@ -866,7 +901,7 @@ _MIGRATIONS = [
     ("mail_class", "jev", "ALTER TABLE mail_class ADD COLUMN jev TEXT"),
     ("mail_class", "jev_fp", "ALTER TABLE mail_class ADD COLUMN jev_fp TEXT"),
     ("mail_class", "jev_at", "ALTER TABLE mail_class ADD COLUMN jev_at TEXT"),
-    # E212: a person can belong to a company group (Bart: "associate people
+    # E212: a person can belong to a company group (Casey: "associate people
     # and emails with specific company groups"), teammate or not. Rows from
     # E209 were all teammates, hence the default.
     ("class_people", "grp", "ALTER TABLE class_people ADD COLUMN grp TEXT"),
@@ -875,23 +910,23 @@ _MIGRATIONS = [
     # Dev #16 (§6 Calendar RSVP, 2026-09-27): the audit table also records
     # RSVPs. NULL = an E21 create; 'rsvp:accepted|tentative|declined' = a reply.
     ("calendar_writes", "action", "ALTER TABLE calendar_writes ADD COLUMN action TEXT"),
-    # Dev triage (2026-09-28, Bart: "Do it" — a triage pass before the worker
+    # Dev triage (2026-09-28, Casey: "Do it" — a triage pass before the worker
     # builds). Labels only; the request text is never touched by triage.
-    # 2026-09-30: which of Bart's own services sent the thread (services.key)
+    # 2026-09-30: which of Casey's own services sent the thread (services.key)
     ("mail_threads", "service", "ALTER TABLE mail_threads ADD COLUMN service TEXT"),
     # Projects step 5 (2026-09-30): a chat asked on a project page stays with it
     ("ask_chats", "project_id", "ALTER TABLE ask_chats ADD COLUMN project_id INTEGER"),
-    # Dev #66 (2026-10-06): VIP / Top prospect, set by Bart (tiers.py); tier_no
+    # Dev #66 (2026-10-06): VIP / Top prospect, set by Casey (tiers.py); tier_no
     # remembers a suggestion he waved off
     ("contacts", "tier", "ALTER TABLE contacts ADD COLUMN tier TEXT"),
     ("contacts", "tier_no", "ALTER TABLE contacts ADD COLUMN tier_no TEXT"),
-    # Drafts (Bart 2026-10-06: "I also need a way to schedule a draft email"):
+    # Drafts (Casey 2026-10-06: "I also need a way to schedule a draft email"):
     # a scheduled send keeps its formatting, may be a NEW email (thread_id ''),
     # and remembers the Gmail draft it came from so that draft goes once sent
     ("mail_outbox", "body_html", "ALTER TABLE mail_outbox ADD COLUMN body_html TEXT"),
     ("mail_outbox", "draft_uid", "ALTER TABLE mail_outbox ADD COLUMN draft_uid TEXT"),
     ("mail_outbox", "draft_msgid", "ALTER TABLE mail_outbox ADD COLUMN draft_msgid TEXT"),
-    # E269: Bart's 👁 Track choice rides with a scheduled send (NULL = the default rule)
+    # E269: Casey's 👁 Track choice rides with a scheduled send (NULL = the default rule)
     ("mail_outbox", "track", "ALTER TABLE mail_outbox ADD COLUMN track INTEGER"),
     ("dev_requests", "priority", "ALTER TABLE dev_requests ADD COLUMN priority TEXT"),
     ("dev_requests", "size", "ALTER TABLE dev_requests ADD COLUMN size TEXT"),
@@ -902,7 +937,7 @@ _MIGRATIONS = [
     ("dev_requests", "triaged_at", "ALTER TABLE dev_requests ADD COLUMN triaged_at TEXT"),
     ("dev_requests", "triage_by", "ALTER TABLE dev_requests ADD COLUMN triage_by TEXT"),
     # E258: who wrote a Context entry. 'agent' rows are saved inactive and only
-    # count once Bart approves them from a paired browser.
+    # count once Casey approves them from a paired browser.
     ("context_notes", "source", "ALTER TABLE context_notes ADD COLUMN source TEXT"),
 ]
 
@@ -1255,7 +1290,7 @@ def notify_pref_set(conn: sqlite3.Connection, kind: str, imessage: bool, push: b
 
 
 def acct_order(conn: sqlite3.Connection) -> list:
-    """Dev #42: Bart's dragged account-tab order, kept here (not per browser)
+    """Dev #42: Casey's dragged account-tab order, kept here (not per browser)
     so every device and session shows the same tabs in the same order."""
     row = conn.execute("SELECT value FROM meta WHERE key = 'acct_order'").fetchone()
     try:
@@ -1352,7 +1387,7 @@ def open_engagements(conn: sqlite3.Connection) -> list:
 
 
 # --------------------------------------------------------------------------
-# Decisions — choices only Bart can make, never mixed into task lists (§2.6)
+# Decisions — choices only Casey can make, never mixed into task lists (§2.6)
 # --------------------------------------------------------------------------
 def add_decision(conn: sqlite3.Connection, text: str,
                  blocking: str | None = None) -> int:
@@ -1378,7 +1413,7 @@ def decide_decision(conn: sqlite3.Connection, dec_id: int, outcome: str) -> bool
 
 
 # --------------------------------------------------------------------------
-# Context notes (E19) — Bart's rules/notes corpus for future consumers
+# Context notes (E19) — Casey's rules/notes corpus for future consumers
 # --------------------------------------------------------------------------
 def list_context(conn: sqlite3.Connection, scope_prefix: str | None = None,
                  active_only: bool = False) -> list:
@@ -1397,7 +1432,7 @@ def list_context(conn: sqlite3.Connection, scope_prefix: str | None = None,
 
 def add_context(conn: sqlite3.Connection, scope: str, kind: str, text: str,
                 source: str | None = None) -> int:
-    """source='agent' (E258): saved switched off; it counts only once Bart
+    """source='agent' (E258): saved switched off; it counts only once Casey
     approves it from a paired browser, so an injected "remember that…" can
     never become a standing rule on its own."""
     if kind not in ("note", "rule", "voice", "automation"):
@@ -1460,7 +1495,7 @@ def _doc_scope(scope) -> str:
 def list_context_docs(conn: sqlite3.Connection, scopes=None,
                       active_only: bool = False, with_body: bool = True) -> list:
     """Documents for these scopes (all when None), oldest first so a
-    reader's budget goes to the ones Bart added first."""
+    reader's budget goes to the ones Casey added first."""
     cols = "*" if with_body else ("id, scope, title, filename, active, created_at, "
                                   "updated_at, length(body) AS chars")
     sql, where, args = f"SELECT {cols} FROM context_docs", [], []
@@ -1639,7 +1674,7 @@ def dev_text_hash(text: str) -> str:
 def dev_set_triage(conn: sqlite3.Connection, rid: int, *, priority=None, size=None,
                    verdict=None, note=None, dup_of=None, text_hash=None, by="claude") -> bool:
     """Write a triage label onto one request. Never touches text or status.
-    A label Bart set by hand (triage_by='bart') is not overwritten by the
+    A label Casey set by hand (triage_by='casey') is not overwritten by the
     automatic pass until the request text changes."""
     if priority is not None and priority not in DEV_PRIORITIES:
         raise ValueError("bad priority")
@@ -1662,9 +1697,9 @@ def dev_set_triage(conn: sqlite3.Connection, rid: int, *, priority=None, size=No
 
 
 def dev_answer_question(conn: sqlite3.Connection, rid: int, account: str, answer: str) -> bool:
-    """Bart answers a question the worker asked on his request: the question
+    """Casey answers a question the worker asked on his request: the question
     and his answer are appended to the request text (so the next session reads
-    both as Bart's words) and the card goes back in the queue."""
+    both as Casey's words) and the card goes back in the queue."""
     account = clean_account(account)
     answer = (answer or "").strip()[:4000]
     if not answer:
@@ -1675,7 +1710,7 @@ def dev_answer_question(conn: sqlite3.Connection, rid: int, account: str, answer
         raise ValueError("that request isn't waiting on an answer")
     stamp = _now_iso()
     text = (f"{row['text']}\n\n— Claude asked: {(row['note'] or '').strip()}"
-            f"\n— Bart answered ({stamp[:10]}): {answer}")[:12000]
+            f"\n— Casey answered ({stamp[:10]}): {answer}")[:12000]
     with conn:
         conn.execute("UPDATE dev_requests SET text = ?, status = 'open', note = ?, updated_at = ? "
                      "WHERE id = ? AND account = ?",
@@ -1687,7 +1722,7 @@ def record_granola_meetings(conn: sqlite3.Connection, meetings: list,
                             log=print) -> None:
     """Store meetings as elements and their action items as wizard
     suggestions (idempotent by text). Nothing is filed under a project or
-    account here: suggestions wait for Bart's approval, which requires an
+    account here: suggestions wait for Casey's approval, which requires an
     account."""
     created = 0
     with conn:
@@ -1703,12 +1738,12 @@ def record_granola_meetings(conn: sqlite3.Connection, meetings: list,
                  json.dumps(m.get("people") or [], ensure_ascii=False),
                  m.get("link") or "", m["created"]))
             for item in m.get("action_items", []):
-                # E109: Granola attributes items "(Name)" — only Bart's own
+                # E109: Granola attributes items "(Name)" — only Casey's own
                 # (or unattributed) reach his board; other people's balls
                 # stay in the meeting notes. E111: they land as WIZARD
                 # suggestions awaiting his ✓, not as silent todos.
                 owner = re.search(r"\(([^()]{2,60})\)\s*$", item)
-                if owner and "bart" not in owner.group(1).lower():
+                if owner and "casey" not in owner.group(1).lower():
                     continue
                 if add_wizard_suggestion(
                         conn, "granola-item", item,
@@ -1794,9 +1829,21 @@ def upsert_mail_threads(conn: sqlite3.Connection, account: str, rows: list) -> N
             "  SELECT 1 FROM mail_threads mt WHERE mt.account = mail_triage.account "
             "  AND mt.thread_id = mail_triage.thread_id AND mt.last_date > mail_triage.done_at)",
             (now, account))
+        # 2026-10-08 (Casey: "I'm missing some emails in my inbox, that are in
+        # my Gmail inbox. Where did they go?" → "Inbox always matches Gmail"):
+        # a thread hidden as done that Gmail STILL has in its inbox ten
+        # minutes later — the old board-only ✓ Handled, or an archive that
+        # failed — comes back. Gmail's inbox is the truth.
+        grace = (datetime.now(timezone.utc) - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        conn.execute(
+            "UPDATE mail_triage SET done_at = NULL, updated_at = ? "
+            "WHERE account = ? AND done_at IS NOT NULL AND done_at < ? AND EXISTS ("
+            "  SELECT 1 FROM mail_threads mt WHERE mt.account = mail_triage.account "
+            "  AND mt.thread_id = mail_triage.thread_id AND mt.in_inbox = 1)",
+            (now, account, grace))
         # E108: new INCOMING mail on a filed-and-moved thread brings it back
         # to the Inbox — Gmail re-inboxes it, and clearing moved_at lets the
-        # client show it there again. in_inbox=1 is the guard: Bart's own
+        # client show it there again. in_inbox=1 is the guard: Casey's own
         # reply bumps last_date via the Sent merge WITHOUT re-inboxing, and
         # must not clear the flag (the thread would drop out of the feed).
         conn.execute(
@@ -1810,7 +1857,7 @@ def upsert_mail_threads(conn: sqlite3.Connection, account: str, rows: list) -> N
 
 def set_mail_triage(conn: sqlite3.Connection, thread_id: str, account: str,
                     fields: dict) -> None:
-    """Upsert Bart's local triage state for one thread. fields may set
+    """Upsert Casey's local triage state for one thread. fields may set
     pinned (0/1), snoozed_until (ISO Z or None), wake_inbox (0/1), done_at
     (ISO Z or None). Local-only — Gmail writes (archive on snooze, re-inbox
     on wake) are composed by the caller."""
@@ -1834,7 +1881,7 @@ def mail_categories(conn: sqlite3.Connection) -> dict:
     """{(account, thread_id): category} for every inbox thread mail_sync has
     categorized (people|calendar|receipt|newsletter|notification). E39: the
     hourly sweep reads this so reply_debt can owe replies to people only —
-    the same category the Mail screen shows, honoring Bart's sender overrides,
+    the same category the Mail screen shows, honoring Casey's sender overrides,
     so there's one categorization, not two."""
     return {(r["account"], r["thread_id"]): r["category"]
             for r in conn.execute(
@@ -1856,7 +1903,7 @@ _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
 
 
 def sender_priors(conn: sqlite3.Connection) -> dict:
-    """E47: learn who Bart engages vs ignores, from his own actions.
+    """E47: learn who Casey engages vs ignores, from his own actions.
 
     Two clean, opposite signals — the strongest expressions of preference the
     board captures:
@@ -2084,7 +2131,7 @@ def ask_delete_chat(conn: sqlite3.Connection, chat_id: int) -> bool:
 
 
 # --------------------------------------------------------------------------
-# Sender category overrides (E34) — apps/bots Bart says aren't people
+# Sender category overrides (E34) — apps/bots Casey says aren't people
 # --------------------------------------------------------------------------
 def sender_categories(conn: sqlite3.Connection) -> dict:
     """{lowercased email: category} — the curated app-sender overrides."""
@@ -2104,7 +2151,7 @@ def set_sender_category(conn: sqlite3.Connection, email: str,
             (email, category, _now_iso()))
         # E69: apply to the existing rows RIGHT NOW, not at the next
         # mail_sync — the UI's optimistic update was being clobbered by the
-        # next /mail poll and looked like a revert (Bart hit it on a 🗂
+        # next /mail poll and looked like a revert (Casey hit it on a 🗂
         # recategorize; the override IS what the next sync would compute).
         conn.execute(
             "UPDATE mail_threads SET category = ? WHERE lower(last_from_email) = ?",
@@ -2126,14 +2173,14 @@ def steward_candidates(conn: sqlite3.Connection, own_addresses: set,
                        limit: int = 25) -> list:
     """Senders the deterministic rules judged 'people' but nobody has ever
     vouched for: in the inbox now, no sender_categories entry, never
-    suggested before (any status), never replied to by Bart (mail_sends),
+    suggested before (any status), never replied to by Casey (mail_sends),
     and no positive engagement prior. Grouped per address with evidence."""
     replied = set()
     for r in conn.execute("SELECT DISTINCT lower(to_addrs) AS t FROM mail_sends"):
         for part in re.findall(r"[\w.+-]+@[\w.-]+", r["t"] or ""):
             replied.add(part.lower())
     pri = sender_priors(conn)
-    engaged = set(pri.get("reply_email", {}))   # anyone Bart has written to
+    engaged = set(pri.get("reply_email", {}))   # anyone Casey has written to
     decided = {r["email"] for r in conn.execute("SELECT email FROM steward_suggestions")}
     known = set(sender_categories(conn))
 
@@ -2173,7 +2220,7 @@ def steward_record(conn: sqlite3.Connection, email: str, who: str,
 
 def steward_pending(conn: sqlite3.Connection) -> list:
     """E204.1: each suggestion carries the mail ACCOUNTS its sender writes to,
-    so the board can show every inbox its own steward (Bart's ⚑ #15)."""
+    so the board can show every inbox its own steward (Casey's ⚑ #15)."""
     rows = [dict(r) for r in conn.execute(
         "SELECT s.id, s.email, s.who, s.category, s.why, s.evidence, s.created_at, "
         "  (SELECT group_concat(DISTINCT mt.account) FROM mail_threads mt "
@@ -2185,7 +2232,7 @@ def steward_pending(conn: sqlite3.Connection) -> list:
 
 
 def steward_decide(conn: sqlite3.Connection, sid: int, approve: bool) -> dict | None:
-    """Bart's verdict. Approve writes sender_categories (the same store a
+    """Casey's verdict. Approve writes sender_categories (the same store a
     manual 🤖 click uses) so mail_sync applies it next pass."""
     row = conn.execute("SELECT * FROM steward_suggestions WHERE id = ? "
                        "AND status = 'pending'", (int(sid),)).fetchone()
@@ -2201,7 +2248,7 @@ def steward_decide(conn: sqlite3.Connection, sid: int, approve: bool) -> dict | 
 
 
 # --------------------------------------------------------------------------
-# E111 — the 🧙 Wizard: agent-proposed todos awaiting Bart's verdict
+# E111 — the 🧙 Wizard: agent-proposed todos awaiting Casey's verdict
 # --------------------------------------------------------------------------
 def add_wizard_suggestion(conn: sqlite3.Connection, kind: str, title: str,
                           why: str | None = None, due: str | None = None,
@@ -2234,7 +2281,7 @@ def add_wizard_suggestion(conn: sqlite3.Connection, kind: str, title: str,
 
 
 def wizard_purge_stale(conn: sqlite3.Connection, days: int = 7) -> int:
-    """E158: a pending suggestion Bart hasn't touched in `days` days expires
+    """E158: a pending suggestion Casey hasn't touched in `days` days expires
     quietly. Status 'expired' rather than DELETE so the kind+title dedupe in
     add_wizard_suggestion still holds — an expired suggestion never comes
     back, same as a dismissed one."""
@@ -2257,7 +2304,7 @@ def wizard_pending(conn: sqlite3.Connection) -> list:
 
 def wizard_decide(conn: sqlite3.Connection, sid: int, approve: bool,
                   account: str | None = None) -> dict | None:
-    """Bart's verdict. Approve creates the todo, source email linked (E106
+    """Casey's verdict. Approve creates the todo, source email linked (E106
     membership) when there is one.
     Account-first: the todo lands in the suggestion's email account; a
     meeting-only suggestion has none, so the caller must pass `account` —
@@ -2417,8 +2464,8 @@ def set_day_note(conn: sqlite3.Connection, date: str, text: str) -> None:
 # --------------------------------------------------------------------------
 CLASS_FIELDS = ("type", "relationship", "respond", "priority", "waiting_on", "follow_up")
 _CLASS_VALUES = {
-    # E217: sales splits into Prospect (Bart selling) and Cold pitch (selling
-    # to Bart), plus Spam. "Sales/outreach" stays valid for older answers.
+    # E217: sales splits into Prospect (Casey selling) and Cold pitch (selling
+    # to Casey), plus Spam. "Sales/outreach" stays valid for older answers.
     "type": ("Correspondence", "Team collaboration", "Prospect", "Cold pitch", "Spam",
              "Update", "Newsletter", "Receipt", "Calendar", "Promo", "Other", "Sales/outreach"),
     "relationship": ("teammate", "company", "frequent", "known", "new", "machine"),
@@ -2474,7 +2521,7 @@ def class_pins(conn, account: str, thread_id: str | None = None) -> dict:
 JEV_CONF_FLOOR = 0.35     # a Jev answer less confident than this doesn't override
 
 
-# E217 (Bart: "a value score for an email that is a combination of all of the
+# E217 (Casey: "a value score for an email that is a combination of all of the
 # hints, that I can use to at a glance evaluate and sort emails"). 0-100; each
 # part is named so the Classified panel can say why. Weights in one place.
 _VALUE_TYPE = {"Prospect": 15, "Team collaboration": 8, "Correspondence": 5, "Calendar": 0,
@@ -2542,13 +2589,13 @@ def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
     for f in ("type", "respond", "priority"):
         c = conf.get(f)
         if jev.get(f) is not None and c is not None and c >= JEV_CONF_FLOOR:
-            # Bart, 2026-09-30, of his boss: "His emails are never cold
+            # Casey, 2026-09-30, of his boss: "His emails are never cold
             # outreach." Jev reads what a teammate FORWARDS (a newsletter, a
             # vendor's pitch) and called 51 of Chris's 67 threads a cold
             # pitch. Who sent it is a fact from the roster, not a judgement:
             # a teammate's or a company colleague's mail is never cold
             # outreach or spam, so the rules' type stands.
-            # 2026-09-30: nor is a sales inquiry from Bart's own website
+            # 2026-09-30: nor is a sales inquiry from Casey's own website
             if f == "type" and jev[f] in JEV_NEVER_FROM_TEAM \
                     and (rules.get("relationship") in ("teammate", "company") or rules.get("sales_inquiry")):
                 out["jev_overruled"] = jev[f]
@@ -2560,18 +2607,18 @@ def class_effective(row, pins: dict, use_jev: bool = False) -> dict:
             out[f], src[f] = jev[f], "jev"
     if jev.get("expects_reply") is not None and out.get("waiting_on", "none") != "none" \
             and jev["expects_reply"] < 0.3:
-        # Bart wrote last but asked nothing — there's nobody to chase
+        # Casey wrote last but asked nothing — there's nobody to chase
         out["waiting_on"], out["waiting_who"], src["waiting_on"] = "none", None, "jev"
     if jev:
         out["jev_model"] = jev.get("model_id")
     out["value"], out["value_parts"] = class_value(out)
     for f, v in pins.items():
         if f == "follow_up" and not v:
-            v = None                      # Bart cleared the follow-up date
+            v = None                      # Casey cleared the follow-up date
         out[f], src[f] = (int(v) if f == "priority" else v), "you"
-    # Dev #59 (Bart: 'Jev should offer a "Waiting on - Me"', agreed as "the
+    # Dev #59 (Casey: 'Jev should offer a "Waiting on - Me"', agreed as "the
     # ball's in my court"): a person wrote last (the rules leave only that
-    # case "unsure") and the answer is that a reply is expected. Bart's own
+    # case "unsure") and the answer is that a reply is expected. Casey's own
     # Waiting-on answer always stands.
     if src.get("waiting_on") != "you" and out.get("waiting_on", "none") == "none" \
             and rules.get("respond") == "unsure" and out.get("respond") == "yes":
@@ -2598,7 +2645,7 @@ def class_get(conn, account: str, thread_id: str) -> dict | None:
 
 
 def class_correct(conn, account: str, thread_id: str, field: str, value: str) -> dict:
-    """Bart's answer for one field. Pinned for good; logged for tuning."""
+    """Casey's answer for one field. Pinned for good; logged for tuning."""
     if field not in CLASS_FIELDS:
         raise ValueError(f"unknown field {field!r}")
     value = str(value).strip()
@@ -2786,7 +2833,7 @@ _AUTO_ADDR = re.compile(r"^(no-?reply|do-?not-?reply|notifications?|notify|updat
 
 def contacts_for(conn, account: str, own: set, limit: int = 3000) -> list:
     """Everyone this account has corresponded with — every thread, archived
-    and sent included — with Bart's overrides and roster membership."""
+    and sent included — with Casey's overrides and roster membership."""
     seen: dict[str, dict] = {}
     for r in conn.execute("SELECT participants, last_from, last_date FROM mail_threads "
                           "WHERE account = ? ORDER BY last_date DESC", (account,)):

@@ -59,6 +59,11 @@ SINGLE = {
     "tracker":   {"key": "TRACK_SECRET", "label": "Tracking secret",
                   "note": "Shared secret with the gc-tracker Cloudflare Worker (wrangler secret put SECRET). Opens and clicks stay off until it's set.",
                   "testable": False},
+    # 2026-10-08: lets Grand Central set up t.<domain> for accounts whose DNS
+    # isn't on Cloudflare (Cloudflare for SaaS custom hostnames on brightline.example)
+    "cloudflare": {"key": "CLOUDFLARE_API_TOKEN", "label": "Cloudflare API token",
+                   "note": "brightline.example only: Zone → SSL and Certificates (Edit), DNS (Edit), Workers Routes (Edit). Used to serve t.<domain> for the tracker.",
+                   "testable": False},
     "calendar":  {"key": "GCAL_ICS_URLS", "label": "Calendar ICS URLs",
                   "note": "Comma-separated secret iCal URLs. Replace-only; treat as secrets.",
                   "testable": False, "islist": True},

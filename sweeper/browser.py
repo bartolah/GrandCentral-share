@@ -1,7 +1,7 @@
 """E200 — a real browser in the loop, over the DevTools Protocol.
 
 The gap ToDos.md recorded: selftest.py could check the API, the guardrails and
-the source, but nothing drove a browser — so every layout bug reached Bart
+the source, but nothing drove a browser — so every layout bug reached Casey
 before it reached a test, and one of them survived three fixes because it only
 appears at phone width.
 

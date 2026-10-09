@@ -1,10 +1,10 @@
 """The Dev queue's question loop (2026-09-26).
 
-Bart: "set up a scheduled job to process triage and feedback requests daily
+Casey: "set up a scheduled job to process triage and feedback requests daily
 and to ask me questions if anything is unclear, in the Dev dashboard queue."
 
 The worker marks an unclear request `question` with its question as the note;
-Bart is notified once; the worker skips it; his (paired) answer is appended to
+Casey is notified once; the worker skips it; his (paired) answer is appended to
 the request text and puts it back in the queue. Scratch SQLite only.
 
     .venv/bin/python -m unittest tests.test_dev_queue -v
@@ -43,18 +43,18 @@ class QuestionLoop(unittest.TestCase):
         return self.conn.execute("SELECT status, text, note FROM dev_requests WHERE id=?",
                                  (self.rid,)).fetchone()
 
-    def test_a_question_waits_on_bart_and_his_answer_requeues_it(self):
+    def test_a_question_waits_on_casey_and_his_answer_requeues_it(self):
         db.dev_update(self.conn, self.rid, A, status="question",
                       note="Denser on phone, desktop, or both?")
         self.assertEqual(self.status()["status"], "question")
-        # questions sort first, so they're the first thing Bart sees
+        # questions sort first, so they're the first thing Casey sees
         db.dev_add(self.conn, "another", A)
         self.assertEqual(db.dev_list(self.conn, A)[0]["id"], self.rid)
         db.dev_answer_question(self.conn, self.rid, A, "Both, phone first.")
         row = self.status()
         self.assertEqual(row["status"], "open")
         self.assertIn("— Claude asked: Denser on phone, desktop, or both?", row["text"])
-        self.assertIn("— Bart answered", row["text"])
+        self.assertIn("— Casey answered", row["text"])
         self.assertIn("Both, phone first.", row["text"])
 
     def test_only_a_question_can_be_answered(self):
@@ -79,7 +79,7 @@ class QuestionLoop(unittest.TestCase):
         db.dev_update(self.conn, self.rid, A, status="question", note="Which screen?")
         self.assertEqual(dev_triage._open_cards(self.conn), [])
 
-    def test_bart_is_told_once_per_question(self):
+    def test_casey_is_told_once_per_question(self):
         db.dev_update(self.conn, self.rid, A, status="question", note="Which screen?")
         sent = []
         fixed = datetime(2026, 9, 26, 15, 30).astimezone()

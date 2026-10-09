@@ -1,7 +1,7 @@
-"""E258 — invite drafts: an agent proposes attendees, Bart's click sends the invites.
+"""E258 — invite drafts: an agent proposes attendees, Casey's click sends the invites.
 
-BUILD_SPEC §6 E258 item 6 (Bart, 2026-09-30, chose "Invite drafts" over
-letting an agent invite directly). An invite is email Google sends on Bart's
+BUILD_SPEC §6 E258 item 6 (Casey, 2026-09-30, chose "Invite drafts" over
+letting an agent invite directly). An invite is email Google sends on Casey's
 behalf — the title and description go with it — so it is outbound, and
 outbound is a human click. This amends the E21 "no attendees" rule by exactly
 one verb, fenced as tightly as it can be:
@@ -92,7 +92,7 @@ def drop(conn, invite_id: int) -> bool:
 
 
 def send(conn, invite_id: int, env: dict | None = None, log=print, runner=subprocess.run) -> dict:
-    """Bart clicked Send invites. Adds the proposed attendees and lets Google
+    """Casey clicked Send invites. Adds the proposed attendees and lets Google
     email them. Raises on anything unexpected; nothing is retried."""
     row = conn.execute("SELECT * FROM invite_drafts WHERE id = ?", (int(invite_id),)).fetchone()
     if not row or row["status"] != "pending":

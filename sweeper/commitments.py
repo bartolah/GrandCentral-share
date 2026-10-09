@@ -1,4 +1,4 @@
-"""E101 — commitment mining (#3 of Bart's organize-my-day list).
+"""E101 — commitment mining (#3 of Casey's organize-my-day list).
 
 Your own sent mail is where dropped balls hide: "I'll send the deck by
 Friday" leaves the inbox the moment you hit send. Each mail_sync cycle
@@ -23,8 +23,8 @@ from sources.gmail_reader import ACCOUNTS, IMAP_HOST, IMAP_PORT
 MODEL = "claude-haiku-4-5-20251001"
 MAX_PER_RUN = 8
 
-PROMPT = """From these emails BART sent, extract only CLEAR first-person
-commitments Bart made to the recipient ("I'll send X", "I'll get back to
+PROMPT = """From these emails CASEY sent, extract only CLEAR first-person
+commitments Casey made to the recipient ("I'll send X", "I'll get back to
 you by Friday", "we'll have it over Monday"). Ignore pleasantries, vague
 intentions, questions, and things the OTHER person owes. today={today}.
 Return ONLY JSON: {{"commitments":[{{"i":<msg index>,"promise":"<what, ≤80
@@ -108,7 +108,7 @@ def run(conn, env: dict, log=print) -> None:
                 due = None
             to_short = (src_msg["to"] or "").split(",")[0].strip()[:60]
             thrid = src_msg.get("thread_id")
-            # E151 (Bart: "auto todos are too aggressive"): mined promises
+            # E151 (Casey: "auto todos are too aggressive"): mined promises
             # become WIZARD SUGGESTIONS now, never todos directly — ✓ in the
             # 🧙 view is what creates the todo (and couples the email).
             sid = db.add_wizard_suggestion(

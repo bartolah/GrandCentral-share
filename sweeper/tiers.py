@@ -1,14 +1,14 @@
 """VIPs and Top Prospects — Dev #66 (2026-10-06).
 
-Bart: "The Jev ratings for users should include a new user type - VIP. These
+Casey: "The Jev ratings for users should include a new user type - VIP. These
 are folk who we need to respond to and stay in touch with frequently. Also,
-Top Prospects." Interview answers: Bart tags people by hand, Grand Central
+Top Prospects." Interview answers: Casey tags people by hand, Grand Central
 suggests (in Contacts and a weekly Home card) and never tags on its own; a
 tag holds in every account, like company groups; a VIP's mail goes to the
 top of the inbox; Top Prospects get their own section too, plus a nudge when
 he hasn't been in touch for 5 days.
 
-The tag lives on the shared contacts row (contacts.tier); a suggestion Bart
+The tag lives on the shared contacts row (contacts.tier); a suggestion Casey
 waves off is remembered (contacts.tier_no) so it isn't offered again.
 
     .venv/bin/python sweeper/tiers.py           # tagged people + current suggestions
@@ -39,7 +39,7 @@ def tiers(conn) -> dict:
 
 
 def set_tier(conn, email: str, tier: str | None) -> dict:
-    """Bart's tag (None clears it). Never touches name, notes or mail."""
+    """Casey's tag (None clears it). Never touches name, notes or mail."""
     email = (email or "").strip().lower()
     if not _EMAIL.fullmatch(email):
         raise ValueError("a full email address is required")
@@ -74,7 +74,7 @@ def _people(raw_list) -> list:
 
 
 def suggest(conn, own: set, limit: int = 6) -> dict:
-    """Candidates Bart confirms with one click. VIP: people he corresponds with
+    """Candidates Casey confirms with one click. VIP: people he corresponds with
     most (threads + his sends), outside his companies. Top prospect: people
     whose mail is classified Prospect. Never already tagged, waved off, hidden,
     a teammate or company, or an automated address."""

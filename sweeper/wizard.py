@@ -1,11 +1,11 @@
-"""E111 — the 🧙 Wizard: agent-proposed todos awaiting Bart's verdict.
+"""E111 — the 🧙 Wizard: agent-proposed todos awaiting Casey's verdict.
 
 Two scans per sweep, both bounded and one-look-ever (wizard_scan):
 
   email_scan    — recent people mail (unread or needs-reply, last 48h)
                   → one Haiku call proposing todos for today/tomorrow.
                   Conservative by prompt: only clear, concrete actions
-                  BART must take; existing open todos ride along so the
+                  CASEY must take; existing open todos ride along so the
                   model doesn't re-suggest what's already on the board.
   granola_scan  — meetings from this sweep's Granola pull → one Haiku
                   call proposing follow-up actions IMPLIED by each
@@ -32,9 +32,9 @@ MODEL = "claude-haiku-4-5-20251001"
 MAX_EMAILS = 20
 MAX_MEETINGS = 8
 
-_EMAIL_PROMPT = """You are the Wizard for Bart's task board. From these
-recent emails Bart received, suggest todos he should add for today or
-tomorrow. Be CONSERVATIVE — only clear, concrete actions BART himself must
+_EMAIL_PROMPT = """You are the Wizard for Casey's task board. From these
+recent emails Casey received, suggest todos he should add for today or
+tomorrow. Be CONSERVATIVE — only clear, concrete actions CASEY himself must
 take (reply substantively, send something, decide, schedule). Skip
 newsletters, FYIs, receipts, other people's work, and anything already
 covered by the existing open todos provided. today={today}.
@@ -42,8 +42,8 @@ Return ONLY JSON: {{"suggestions":[{{"i":<email index>,"title":"<imperative,
 ≤80 chars>","why":"<≤100 chars citing the email>","due":"YYYY-MM-DD or
 null"}}]}} — an empty list is a fine answer."""
 
-_MEETING_PROMPT = """You are the Wizard for Bart's task board. For each of
-these meeting summaries, suggest follow-up actions for BART (the board's
+_MEETING_PROMPT = """You are the Wizard for Casey's task board. For each of
+these meeting summaries, suggest follow-up actions for CASEY (the board's
 owner) that are clearly IMPLIED by the discussion but NOT in the explicit
 action-item list provided per meeting. Think: promised intros, decisions
 needing follow-through, threads left dangling. Be conservative — at most 3

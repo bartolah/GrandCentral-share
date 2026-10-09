@@ -2,7 +2,7 @@
 BUILD_SPEC §6, 2026-09-29).
 
 A project belongs to no account and only points at things, each keyed by the
-account it lives in. These tests pin the rules Bart set in the interview:
+account it lives in. These tests pin the rules Casey set in the interview:
 up to 3 pins, completing never touches todos, deleting keeps the content and
 moves notes to Notes, a todo's emails show once — and the account boundary
 itself stays exactly as it was. Scratch SQLite only.
@@ -143,16 +143,16 @@ class Projects(unittest.TestCase):
         self.assertIsNone(ev["2026-10-02|all-day|Offsite"]["account"])
         self.assertIsNone(ev["2026-10-02|all-day|Offsite"]["granola"])
 
-    def test_people_on_the_project_s_emails_are_suggested_never_bart(self):
+    def test_people_on_the_project_s_emails_are_suggested_never_casey(self):
         self.conn.execute("UPDATE mail_threads SET participants = ?, last_from = ? WHERE account = ?",
-                          ('["Maya Lin <maya@example.com>", "maya@example.com", "Bart <bart@acctone.com>"]',
+                          ('["Maya Lin <maya@example.com>", "maya@example.com", "Casey <casey@acctone.com>"]',
                            "Maya Lin <maya@example.com>", A))
         P.add_item(self.conn, self.pid, "thread", A, "555")
-        v = P.project_view(self.conn, self.pid, mine={"bart@acctone.com"})
+        v = P.project_view(self.conn, self.pid, mine={"casey@acctone.com"})
         self.assertEqual([(x["email"], x["name"], x["threads"]) for x in v["suggest_people"]],
                          [("maya@example.com", "Maya Lin", 1)])
         P.add_item(self.conn, self.pid, "contact", None, "maya@example.com")
-        self.assertEqual(P.project_view(self.conn, self.pid, mine={"bart@acctone.com"})["suggest_people"], [])
+        self.assertEqual(P.project_view(self.conn, self.pid, mine={"casey@acctone.com"})["suggest_people"], [])
 
     def test_a_note_moves_into_a_project_and_back_out_to_notes(self):
         nid = P.note_add(self.conn, None, "Loose idea", "call Maya")
@@ -178,7 +178,7 @@ class Projects(unittest.TestCase):
         later = "9999-01-01T00:00:00Z"
         self._mail(A, "700", "maya@example.com", later)
         self._mail(B, "700", "maya@example.com", later)                      # same id, other account
-        self._mail(A, "701", "maya@example.com", later, last_direction="outbound")   # Bart wrote last
+        self._mail(A, "701", "maya@example.com", later, last_direction="outbound")   # Casey wrote last
         self._mail(A, "702", "maya@example.com", later, category="newsletter")
         self._mail(A, "703", "maya@example.com", later, in_inbox=0)
         self._mail(A, "704", "someone@else.com", later)

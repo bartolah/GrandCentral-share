@@ -1,11 +1,11 @@
-"""E188 — Web Push to Bart's own browsers (Mac Safari, iPhone home screen).
+"""E188 — Web Push to Casey's own browsers (Mac Safari, iPhone home screen).
 
 Companion to notify.py, which speaks iMessage. Same rule as §6: these
-messages go ONLY to devices Bart himself subscribed from — a subscription is
+messages go ONLY to devices Casey himself subscribed from — a subscription is
 created by a click in the board, stored here, and removed the moment the push
 service says it is gone.
 
-What leaves the Mini: an encrypted payload to the browser vendor's push
+What leaves the host: an encrypted payload to the browser vendor's push
 endpoint (Apple for Safari, Google for Chrome), signed with the VAPID key in
 config/.env. The payload carries the same one-line alert text the iMessage
 path already sends — no mail bodies, no credentials, no third-party
@@ -86,5 +86,5 @@ def send(title: str, body: str, url: str = "/", tag: str = "gc", log=print) -> d
 if __name__ == "__main__":       # .venv/bin/python sweeper/push.py "title" "body"
     import sys
     t = sys.argv[1] if len(sys.argv) > 1 else "Grand Central"
-    b = sys.argv[2] if len(sys.argv) > 2 else "Test push from the Mini."
+    b = sys.argv[2] if len(sys.argv) > 2 else "Test push from the host."
     print(send(t, b, tag="test"))

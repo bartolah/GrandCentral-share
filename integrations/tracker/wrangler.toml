@@ -10,13 +10,13 @@ compatibility_date = "2026-06-01"
 
 # One custom domain per account domain; add a line when an account is added.
 # Only zones in this Cloudflare account can have a custom domain. As of
-# 2026-10-06 that's connectblue.org; capitolinfluence.ai and crowdblue.com
+# 2026-10-06 that's brightline.example; capitolinfluence.ai and fieldhouse.example
 # are hosted elsewhere, so those accounts stay untracked (Grand Central only
 # tracks a domain whose /health answers) until their DNS moves to Cloudflare.
 routes = [
-  { pattern = "t.connectblue.org", custom_domain = true },
+  { pattern = "t.brightline.example", custom_domain = true },
   # { pattern = "t.capitolinfluence.ai", custom_domain = true },
-  # { pattern = "t.crowdblue.com", custom_domain = true },
+  # { pattern = "t.fieldhouse.example", custom_domain = true },
 ]
 
 [[d1_databases]]

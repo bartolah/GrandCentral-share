@@ -1,4 +1,4 @@
-"""Google Calendar reader via secret ICS URLs (Phase 1.5, Bart-approved).
+"""Google Calendar reader via secret ICS URLs (Phase 1.5, Casey-approved).
 
 Read-only and OAuth-free: each Google calendar exposes a "Secret address in
 iCal format" (Calendar settings → Integrate calendar). Those URLs go in
@@ -55,14 +55,14 @@ WINDOW_DAYS = 7
 def _cal_label(cal: icalendar.Calendar) -> str:
     """Short chip label for which calendar an event came from.
 
-    Pragmatic, Bart-specific mapping keyed off the feed's calendar name;
+    Pragmatic, Casey-specific mapping keyed off the feed's calendar name;
     extend as more calendars join.
     """
     name = str(cal.get("X-WR-CALNAME", "")).lower()
-    if "connectblue" in name:
+    if "brightline" in name:
         return "work"
-    if "crowdblue" in name:
-        return "crowdblue"
+    if "fieldhouse" in name:
+        return "fieldhouse"
     return "personal"
 
 

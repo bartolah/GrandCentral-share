@@ -1,4 +1,4 @@
-"""E81 — last-week thread-body cache (Bart: "cache the last week of emails
+"""E81 — last-week thread-body cache (Casey: "cache the last week of emails
 content? Not necessarily attachments?").
 
 Opening a thread used to be a live IMAP fetch (~3s). This module keeps the
@@ -41,7 +41,7 @@ def _now() -> str:
 def _slim(payload: dict) -> str:
     # default=str: parse_msg occasionally hands back email.header.Header
     # objects (undecoded To/Cc) — stringify rather than dying (seen live
-    # on a crl thread, 2026-08-02).
+    # on a civic thread, 2026-08-02).
     js = json.dumps(payload, default=str)
     if len(js) <= MAX_JSON:
         return js
@@ -101,6 +101,14 @@ def cached(conn: sqlite3.Connection, account: str, thread_id: str) -> dict | Non
         return None if out.get("missing") else out
     except Exception:
         return None
+
+
+def forget(conn: sqlite3.Connection, account: str, thread_id: str) -> None:
+    """Drop one thread's stored bodies — after Casey replies on it, so the
+    pane reads the thread fresh instead of the copy from before his reply
+    (2026-10-08: "it was sent, but I'm not seeing it appear in the thread")."""
+    with conn:
+        conn.execute("DELETE FROM mail_bodies WHERE account = ? AND thread_id = ?", (account, thread_id))
 
 
 def warm(env: dict, log=print, cap: int = WARM_CAP) -> None:

@@ -218,7 +218,7 @@ class Pass(unittest.TestCase):
         self.assertEqual(db.class_get(self.conn, A, TID)["group"], "CB group")
 
     def test_a_person_can_be_in_several_groups_and_each_account_names_its_own(self):
-        # 2026-09-30, Bart: "He's technically part of all three teams."
+        # 2026-09-30, Casey: "He's technically part of all three teams."
         db.class_group_set(self.conn, "one.co", "One")
         db.class_group_set(self.conn, "two.co", "Two")
         db.class_person_set(self.conn, "boss@outdoor.com", "Boss", grp="One")
@@ -248,7 +248,7 @@ class Pass(unittest.TestCase):
         self.assertEqual(db.class_roster(self.conn)["people"], [])
 
     def test_a_teammate_s_mail_is_never_a_cold_pitch_whatever_jev_says(self):
-        # Bart of his boss: "His emails are never cold outreach." Jev judged
+        # Casey of his boss: "His emails are never cold outreach." Jev judged
         # what he forwarded and called 51 of his 67 threads a cold pitch.
         def eff(rel, jev_type, conf=0.9):
             r = {"rules": json.dumps({"type": "Team collaboration" if rel != "new" else "Correspondence",
@@ -263,7 +263,7 @@ class Pass(unittest.TestCase):
                                  ("Team collaboration", "rules", bad))
         self.assertEqual(eff("new", "Cold pitch")["type"], "Cold pitch")        # a stranger can pitch
         self.assertEqual(eff("teammate", "Prospect")["type"], "Prospect")       # other judgements stand
-        # Bart's own correction still wins over everything
+        # Casey's own correction still wins over everything
         r = {"rules": json.dumps({"type": "Team collaboration", "relationship": "teammate"}),
              "model": None, "model_source": None, "jev": None}
         self.assertEqual(db.class_effective(r, {"type": "Cold pitch"}, use_jev=True)["type"], "Cold pitch")
@@ -290,9 +290,9 @@ class Pass(unittest.TestCase):
         yes = {"respond": "yes", "confidence": {"respond": 0.9}}
         self.assertEqual((eff(yes)["waiting_on"], eff(yes)["source"]["waiting_on"]), ("me", "jev"))
         self.assertEqual(eff({"respond": "no", "confidence": {"respond": 0.9}})["waiting_on"], "none")
-        self.assertEqual(eff(yes, {"waiting_on": "none"})["waiting_on"], "none")    # Bart's answer stands
+        self.assertEqual(eff(yes, {"waiting_on": "none"})["waiting_on"], "none")    # Casey's answer stands
         self.assertEqual(eff(yes, {"respond": "no"})["waiting_on"], "none")
-        # when Bart wrote last it's never his move, whatever a model says
+        # when Casey wrote last it's never his move, whatever a model says
         out = mc.classify(row(last_direction="outbound", participants=json.dumps(["Pat <pat@else.org>", ME])),
                           {"teammates": {}, "domains": {}, "hash": "h"}, {}, {ME})
         e2 = db.class_effective({"rules": json.dumps(out), "model": None, "model_source": None,
@@ -306,7 +306,7 @@ class Pass(unittest.TestCase):
             db.class_person_set(self.conn, "not-an-address")
         with self.assertRaises(ValueError):
             db.class_group_set(self.conn, "no dots", "G")
-        self.assertEqual(db.class_group_set(self.conn, "@ConnectBlue.com", "CB group"), "connectblue.com")
+        self.assertEqual(db.class_group_set(self.conn, "@brightline.example", "CB group"), "brightline.example")
 
 
 class JevGate(unittest.TestCase):

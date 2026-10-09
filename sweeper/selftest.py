@@ -1,6 +1,6 @@
 """E197 — Grand Central self-test.
 
-Bart: "Can you run through a series of tests to make sure things are working
+Casey: "Can you run through a series of tests to make sure things are working
 right across the app? I keep finding bugs."
 
 Two halves:
@@ -190,7 +190,7 @@ def _status(path: str) -> int:
 
 
 # ------------------------------------------------------------------- wiring
-# The bugs Bart keeps finding are wiring bugs: a button calling a function
+# The bugs Casey keeps finding are wiring bugs: a button calling a function
 # that does not exist, a fetch to a route nobody serves, a stylesheet talking
 # about an element the app never emits. Headless Chrome cannot be made to
 # settle on this page, so these are read straight out of the source.

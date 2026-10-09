@@ -1,4 +1,4 @@
-"""Drafts can be scheduled (Bart 2026-10-06: "I also need a way to schedule a
+"""Drafts can be scheduled (Casey 2026-10-06: "I also need a way to schedule a
 draft email to send it"). A scheduled row may be a NEW email (thread_id ''),
 keeps its HTML, and once sent its Gmail draft goes to Trash. Replies still go
 through send_reply. Scratch SQLite; send_mail and mail_actions are faked —

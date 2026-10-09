@@ -1,11 +1,11 @@
-"""Create events on Bart's OWN Google calendars via the gog CLI (E21).
+"""Create events on Casey's OWN Google calendars via the gog CLI (E21).
 
-Approved by Bart 2026-07-19 ("make sure the OpenClaw integration can add
+Approved by Casey 2026-07-19 ("make sure the OpenClaw integration can add
 calendar items"). The ICS feeds in sources/calendar_reader.py stay the
 read path; this module is the ONE calendar write, scoped deliberately:
 
   - create-only: no update, no delete — none may be added without a new
-    explicit Bart decision (same pattern as the no-purge rule). RSVP was
+    explicit Casey decision (same pattern as the no-purge rule). RSVP was
     added by exactly such a decision (2026-09-27) and lives on its own in
     calendar_rsvp.py
   - own calendars only, NO attendees: an attendee list would put the event
@@ -56,7 +56,7 @@ except ImportError:  # pragma: no cover - direct-run fallback
 # grant is keyed by the account's email address.
 ACCOUNT_EMAIL_KEYS = {
     "personal": "GMAIL_PERSONAL_USER",
-    "connectblue": "GMAIL_CONNECTBLUE_USER",
+    "brightline": "GMAIL_BRIGHTLINE_USER",
 }
 
 GOG_TIMEOUT = 30
@@ -65,7 +65,7 @@ _DATE_ONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 def _parse_when(value: str, all_day: bool, field: str) -> str:
     """Validate/normalize a start|end value. Date-only for all-day events,
-    RFC3339 otherwise (naive input gets the Mini's local offset)."""
+    RFC3339 otherwise (naive input gets the host's local offset)."""
     value = (value or "").strip()
     if all_day:
         if not _DATE_ONLY.match(value):
@@ -126,7 +126,7 @@ def create(account: str, summary: str, start: str, end: str = None,
     if dry_run:
         cmd.append("--dry-run")
 
-    # gog uses the FILE keyring backend here: the Mini's login keychain is
+    # gog uses the FILE keyring backend here: the host's login keychain is
     # locked in every headless context (no TTY for its password prompt), the
     # same reason git needs the SSH deploy key. The file keyring is unlocked
     # by GOG_KEYRING_PASSWORD, which lives in config/.env (chmod 600, §6).
@@ -141,7 +141,7 @@ def create(account: str, summary: str, start: str, end: str = None,
         err = (proc.stderr or proc.stdout or "").strip()[:500]
         if "refresh token missing" in err or "auth add" in err.lower():
             raise RuntimeError(
-                f"gog is not authorized for {email} — Bart must run "
+                f"gog is not authorized for {email} — Casey must run "
                 f"once, in a session with a browser: "
                 f"gog auth add {email} --services calendar")
         raise RuntimeError(f"gog calendar create failed: {err}")

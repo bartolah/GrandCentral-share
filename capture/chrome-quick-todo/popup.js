@@ -222,7 +222,7 @@ $("gear").addEventListener("click", async () => {
 $("saveBase").addEventListener("click", async () => {
   const v = $("baseUrl").value.trim().replace(/\/+$/, "");
   await chrome.storage.sync.set({ baseUrl: v || DEFAULT_BASE });
-  // local, not sync: the code should not travel to every Chrome signed in as Bart
+  // local, not sync: the code should not travel to every Chrome signed in as Casey
   pairCode = $("pairCode").value.trim();
   await chrome.storage.local.set({ pairCode });
   $("settings").classList.add("hidden");

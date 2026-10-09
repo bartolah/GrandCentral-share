@@ -3,7 +3,7 @@
 BUILD_SPEC §6 (2026-09-29) allows a Home that shows every account at once on
 the condition that it is a view, never an owner. These tests pin that:
 each section is built from its own account only (the same thread id in two
-accounts stays two rows), building Home writes nothing, the caps Bart asked
+accounts stays two rows), building Home writes nothing, the caps Casey asked
 for hold ("no more than 5"), the day note for one account never sees
 another account's mail, and agents cannot reach the new routes.
 
@@ -139,7 +139,7 @@ BOARD = {"calendar": [{"date": TODAY, "events": [
     {"time": "16:30", "end": "17:15", "title": "Retreat planning", "cal": "work"},
     {"time": "16:45", "end": "17:15", "title": "School pickup", "cal": "personal"},
     {"time": "09:00", "end": "", "title": "Standup", "cal": "work"},
-    {"time": "all-day", "end": "", "title": "Offsite", "cal": "crowdblue"},
+    {"time": "all-day", "end": "", "title": "Offsite", "cal": "fieldhouse"},
 ]}]}
 
 
@@ -148,7 +148,7 @@ class DayNote(HomeCase):
         evs = day_note.events_today(BOARD, TODAY)
         cl = day_note.clashes(evs)
         self.assertEqual([(c["a"], c["b"]) for c in cl], [("Retreat planning", "School pickup")])
-        self.assertEqual((cl[0]["a_account"], cl[0]["b_account"]), ("connectblue", "personal"))
+        self.assertEqual((cl[0]["a_account"], cl[0]["b_account"]), ("brightline", "personal"))
 
     def test_an_event_with_no_end_counts_as_thirty_minutes(self):
         evs = [{"time": "09:00", "end": "", "title": "a", "account": None},
@@ -206,7 +206,7 @@ class CalendarEndTimes(unittest.TestCase):
         from sources import calendar_reader
         day = datetime.now().astimezone().date()
         d = day.strftime("%Y%m%d")
-        ics = ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nX-WR-CALNAME:ConnectBlue\r\n"
+        ics = ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nX-WR-CALNAME:Brightline\r\n"
                f"BEGIN:VEVENT\r\nUID:1\r\nSUMMARY:Standup\r\nDTSTART:{d}T090000\r\nDTEND:{d}T093000\r\nEND:VEVENT\r\n"
                f"BEGIN:VEVENT\r\nUID:2\r\nSUMMARY:Red-eye\r\nDTSTART:{d}T230000\r\n"
                f"DTEND:{(day + timedelta(days=1)).strftime('%Y%m%d')}T060000\r\nEND:VEVENT\r\n"

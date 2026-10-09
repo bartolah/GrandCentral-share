@@ -1,10 +1,10 @@
 """E258 — who is calling the board, and what they may do (BUILD_SPEC §6, 2026-09-30).
 
-Bart, 2026-09-30: "an LLM will be reading my email and then acting … I want
+Casey, 2026-09-30: "an LLM will be reading my email and then acting … I want
 the protections enforced in the server, because that's the layer I control
 regardless of what the model decides." Before this, the only thing between an
 agent and POST /send was the MCP client's own deny list: the board itself
-accepted `confirm: true` from any local process as if it were Bart's click.
+accepted `confirm: true` from any local process as if it were Casey's click.
 
 Every request is one of three principals:
 
@@ -19,7 +19,7 @@ Every request is one of three principals:
            to switched-on accounts.
   local  — neither. Keeps today's access EXCEPT the human-only routes, and its
            writes are audited. Honest scope, same as E161/E162: a process
-           running as Bart's uid can read config/.env and the database, so the
+           running as Casey's uid can read config/.env and the database, so the
            real boundary for OpenClaw is its exec allowlist (§6 E258 item 11).
 
 If both headers arrive, the request is treated as the agent — the narrower one.
@@ -50,7 +50,7 @@ DESKTOP_KEY_PATH = (os.environ.get("GC_DESKTOP_KEY_PATH")
 # ---------------------------------------------------------------------------
 
 HUMAN_ONLY_POST = {
-    "/send": "sending is Bart's click in a paired browser (§6 E258 item 1)",
+    "/send": "sending is Casey's click in a paired browser (§6 E258 item 1)",
     "/outbox": "scheduled sends are a paired browser's call",
     "/mail/bulk": "bulk mail actions are a paired browser's call",
     "/draft/replace": "replacing a draft trashes the old copy",
@@ -58,22 +58,23 @@ HUMAN_ONLY_POST = {
     "/calendar/rsvp": "an RSVP tells the organizer",
     "/calendar/invite": "sending invites emails the attendees (§6 E258 item 6)",
     "/connections": "credential writes",
-    "/tracking": "what gets tracked in Bart's outgoing mail is his switch (§6 2026-10-06)",
+    "/signatures": "what goes at the bottom of every email Casey sends is his to set (2026-10-08)",
+    "/tracking": "what gets tracked in Casey's outgoing mail is his switch (§6 2026-10-06)",
     "/upload": "writes files to disk",
-    "/agent/accounts": "which accounts agents may touch is Bart's switch",
-    "/agent/reset": "only Bart lifts an agent lockout",
-    "/private": "unmarking a Private thread is Bart's call (§6 E258 item 2)",
-    "/agent/proposals/decide": "approving what the desktop app asked for is Bart's click (§6 E260)",
+    "/agent/accounts": "which accounts agents may touch is Casey's switch",
+    "/agent/reset": "only Casey lifts an agent lockout",
+    "/private": "unmarking a Private thread is Casey's call (§6 E258 item 2)",
+    "/agent/proposals/decide": "approving what the desktop app asked for is Casey's click (§6 E260)",
     # E259: a context document grounds Ask and every reply draft, so writing
     # one is as sensitive as approving agent Context
-    "/context/docs": "context documents ground Ask and drafts; only Bart writes them (E259)",
+    "/context/docs": "context documents ground Ask and drafts; only Casey writes them (E259)",
 }
 
 # Routes that mix safe verbs with human-only ones.
 HUMAN_ONLY_ACTIONS = {
     "/mail-action": {"trash", "untrash"},
     # update covers switching an entry on — which is how an agent-written
-    # entry gets approved — so it and delete are Bart's.
+    # entry gets approved — so it and delete are Casey's.
     "/context": {"update", "delete"},
 }
 
@@ -91,21 +92,21 @@ AGENT_GET = {
     "/thread": "one thread, in a switched-on account",
     "/mail": "the inbox, filtered to switched-on accounts",
     "/mail/search": "Gmail search, only across switched-on accounts",
-    "/context": "Bart's Context notes, filtered to switched-on accounts",
+    "/context": "Casey's Context notes, filtered to switched-on accounts",
     "/labels": "one account's labels",
-    "/calendar": "Bart's calendar, for finding free time (scheduling)",
+    "/calendar": "Casey's calendar, for finding free time (scheduling)",
 }
 
 AGENT_POST = {
     "/draft": "Claude writes a reply into Drafts; never sends",
     "/draft/save": "save exact reply text into Drafts; never sends",
     "/draft/compose": "save a new email into Drafts; never sends",
-    "/calendar": "create an event on Bart's own calendar; attendees become an invite draft",
+    "/calendar": "create an event on Casey's own calendar; attendees become an invite draft",
     "/task": "todos",
     "/mail/triage": "board triage state for one thread",
     "/mail-action": "archive / star / label one thread",
     "/dismiss": "drop a thread off the board's rails",
-    "/context": "a 'remember that…' note, held inactive until Bart approves",
+    "/context": "a 'remember that…' note, held inactive until Casey approves",
     "/sweep": "kick a sweep (2 a day)",
 }
 
@@ -118,12 +119,12 @@ AGENT_ACTIONS = {
 }
 
 # ---------------------------------------------------------------------------
-# E260: the Claude desktop app (BUILD_SPEC §6, 2026-09-30). Bart: "Option A
+# E260: the Claude desktop app (BUILD_SPEC §6, 2026-09-30). Casey: "Option A
 # first, one account per read, approve all actions." A caller with the desktop
 # key gets every agent rule above (switches, Private, limits, lockout, audit,
 # filtering) and three more: every read names ONE account and sees only that
 # account's rows; it never acts; its one write is a proposal that runs only
-# after Bart approves it from a paired browser, as an ordinary agent call.
+# after Casey approves it from a paired browser, as an ordinary agent call.
 # ---------------------------------------------------------------------------
 
 # /calendar is left out: it is one calendar across every account, and each
@@ -131,15 +132,15 @@ AGENT_ACTIONS = {
 DESKTOP_GET = {**{r: why for r, why in AGENT_GET.items() if r != "/calendar"},
                "/agent/proposals": "the status of its own proposals"}
 # Routes a proposal may carry: the agent's writes minus notes and sweeps
-# (a note feeds the Ask bar's prompt; a sweep spends tokens on Bart's mail).
+# (a note feeds the Ask bar's prompt; a sweep spends tokens on Casey's mail).
 PROPOSABLE = {r for r in AGENT_POST if r not in ("/context", "/sweep")}
-# BUILD_SPEC §6, 2026-10-06 (Bart: "An agent creating a draft shouldn't
+# BUILD_SPEC §6, 2026-10-06 (Casey: "An agent creating a draft shouldn't
 # require an approval", then "Desktop: everything direct"): the desktop app
 # now makes those same writes itself, under every agent rule (switches,
 # Private, allowed actions, limits, lockout, audit). /agent/propose stays for
 # compatibility; nothing requires it any more.
 DESKTOP_POST = {**{r: AGENT_POST[r] for r in PROPOSABLE},
-                "/agent/propose": "ask Bart to approve one agent action"}
+                "/agent/propose": "ask Casey to approve one agent action"}
 ONE_ACCOUNT_GET = {"/brief", "/todos", "/thread", "/mail", "/mail/search", "/labels",
                    "/context", "/agent/proposals"}
 
@@ -155,7 +156,7 @@ LIMITS = [
     ("thread", DAY, 150, "150 thread reads a day"),
     ("search", HOUR, 30, "30 searches an hour"),
     ("write", HOUR, 20, "20 writes an hour"),
-    # §6 2026-10-06 (Bart: "there shouldn't be a cap of 10"): drafts never
+    # §6 2026-10-06 (Casey: "there shouldn't be a cap of 10"): drafts never
     # send, so they're outside the hourly write limit; this ceiling only
     # catches a runaway loop
     ("draft", DAY, 200, "200 drafts a day (a runaway-loop ceiling)"),
@@ -285,7 +286,7 @@ def _lock(conn, reason: str) -> None:
     with conn:
         conn.execute("INSERT OR REPLACE INTO agent_state (key, value) VALUES ('lock', ?)",
                      (json.dumps({"at": _now(), "reason": reason}),))
-    try:  # tell Bart; never let the push break the gate
+    try:  # tell Casey; never let the push break the gate
         import push
         push.send("Grand Central agent locked out",
                   f"{reason}. Review the audit, then reset it in Settings.",
@@ -333,7 +334,7 @@ def check(conn, headers, method: str, route: str, args: dict) -> Ctx:
     who = principal(headers)
     ctx = Ctx(who, method, route, args, (headers.get("X-GC-Tool") or "")[:60] or None)
 
-    # E258 item 2: a Private thread does not exist here — for Bart's own
+    # E258 item 2: a Private thread does not exist here — for Casey's own
     # browser too ("Gone entirely"). Only POST /private (unmark) may name one.
     tid = str(args.get("thread_id") or args.get("forward_of") or "").strip()
     acct = str(args.get("account") or "").strip()
@@ -355,7 +356,7 @@ def check(conn, headers, method: str, route: str, args: dict) -> Ctx:
             raise _refuse(ctx, f"'{act}' on {route} is human-only. Use a paired browser.",
                           pairing_required=True)
         if route == "/mail-action" and _is_private_label(args.get("label")):
-            raise _refuse(ctx, f"the {PRIVATE_LABEL} label is set and cleared by Bart only.",
+            raise _refuse(ctx, f"the {PRIVATE_LABEL} label is set and cleared by Casey only.",
                           pairing_required=True)
 
     if who == "local":
@@ -369,7 +370,7 @@ def check(conn, headers, method: str, route: str, args: dict) -> Ctx:
     lock = lock_state(conn)
     if lock:
         raise _refuse(ctx, f"the agent is locked out since {lock['at']} ({lock['reason']}). "
-                           "Bart resets it in Settings after reviewing the audit.",
+                           "Casey resets it in Settings after reviewing the audit.",
                       status=423, count=False)
 
     if who == "desktop":
@@ -405,7 +406,7 @@ def check(conn, headers, method: str, route: str, args: dict) -> Ctx:
 
 def check_proposal(conn, ctx: "Ctx", args: dict, on: set) -> None:
     """E260: a proposal must be something the agent itself could do, in a
-    switched-on account; checked again, as the agent, when Bart approves."""
+    switched-on account; checked again, as the agent, when Casey approves."""
     path, body = args.get("path"), args.get("body")
     if path not in PROPOSABLE or not isinstance(body, dict):
         raise _refuse(ctx, f"{path!r} cannot be proposed.")
@@ -413,7 +414,7 @@ def check_proposal(conn, ctx: "Ctx", args: dict, on: set) -> None:
     if allowed is not None and body.get("action") not in allowed:
         raise _refuse(ctx, f"'{body.get('action')}' is not an allowed action on {path}.")
     if path == "/mail-action" and _is_private_label(body.get("label")):
-        raise _refuse(ctx, f"the {PRIVATE_LABEL} label is set and cleared by Bart only.")
+        raise _refuse(ctx, f"the {PRIVATE_LABEL} label is set and cleared by Casey only.")
     inner = Ctx("agent", "POST", path, body, None)
     try:
         _check_accounts(conn, inner, on)
@@ -433,7 +434,7 @@ def _check_accounts(conn, ctx: Ctx, on: set) -> None:
     if acct and acct != "all":
         if acct not in on:
             raise _refuse(ctx, f"account {acct!r} is not switched on for agents. "
-                               "Bart switches accounts on in Settings.")
+                               "Casey switches accounts on in Settings.")
         ctx.accounts.add(acct)
     elif ctx.route in ("/thread", "/labels", "/draft", "/draft/save", "/draft/compose",
                        "/calendar", "/mail/triage", "/mail-action", "/dismiss") \
@@ -504,7 +505,7 @@ def _check_limits(conn, ctx: Ctx) -> None:
             "AND refusal IS NULL AND ts >= ?", (_who(ctx), _since(window)))
             if bucket in _bucket(Ctx("agent", r[1], r[0], {}, None)))
         if n >= cap:
-            raise _refuse(ctx, f"rate limit: {label}. Bart can raise it; bulk reading "
+            raise _refuse(ctx, f"rate limit: {label}. Casey can raise it; bulk reading "
                                "is a sign something is wrong.", status=429)
     used = conn.execute(
         "SELECT COALESCE(SUM(result_bytes), 0) FROM agent_audit "
@@ -561,7 +562,7 @@ def filter_response(ctx: Ctx, obj, conn=None):
 
     out = walk(obj)
     if ctx.who == "desktop" and ctx.route == "/brief" and isinstance(out, dict):
-        # E260: one account's brief; the board-wide counts and Bart's own day
+        # E260: one account's brief; the board-wide counts and Casey's own day
         # note span accounts, so the desktop app does not get them
         out = {k: v for k, v in out.items() if k not in ("summary", "day_note", "owed_count")}
     _collect(ctx, out)
@@ -628,7 +629,7 @@ def _now() -> str:
 
 
 # ---------------------------------------------------------------------------
-# CLI — run on the Mini
+# CLI — run on the host
 # ---------------------------------------------------------------------------
 
 def main(argv=None) -> int:

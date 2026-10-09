@@ -1,6 +1,6 @@
 """E249 — Home's note for the day: a few sentences, not a plan.
 
-Bart, on the Home mockup: "You can pull in the Day notes, but they're too
+Casey, on the Home mockup: "You can pull in the Day notes, but they're too
 dense right now. Let's just have it be a few sentences." So this is not the
 E100 planner (theme, must, should, can-wait); it is two or three plain
 sentences about what matters today, and any clash in the calendar.
@@ -13,7 +13,7 @@ Two scopes, stored per day in `home_notes`:
     overdue, and the assessor's one-line summaries of top-scored threads,
     every item labelled with its account. Never message bodies or snippets.
     It is a separate call; assess.py stays batched strictly per account.
-It only produces text for Bart. It writes nothing else and takes no action.
+It only produces text for Casey. It writes nothing else and takes no action.
 
 Clashes are found in code (overlapping calendar blocks), not guessed by the
 model: the model is told about them so it can mention them in words.
@@ -40,7 +40,7 @@ MAX_CHARS = 600
 BOARD_JSON = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                           "dashboard", "grand_central.json")
 
-PROMPT = """You write Bart's note for the day on his Home screen. Given today's
+PROMPT = """You write Casey's note for the day on his Home screen. Given today's
 signals, write two or three short, plain sentences: what matters most today
 and why, and any calendar clash listed under "clashes". Name people and
 meetings as given. No lists, no headings, no greeting, no advice he did not

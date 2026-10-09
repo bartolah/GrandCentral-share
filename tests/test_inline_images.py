@@ -1,6 +1,6 @@
 """E267: images pasted into an email (cid:) are addressable parts.
 
-Bart, 2026-10-02: "I'm not seeing inline images in my emails render." The
+Casey, 2026-10-02: "I'm not seeing inline images in my emails render." The
 pane points <img src="cid:…"> at /attachment?idx=, so parse_msg's chips and
 fetch_attachment's part walk must count parts the same way, and every
 embedded image needs its Content-ID. Offline: a hand-built MIME message.

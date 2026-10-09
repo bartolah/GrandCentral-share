@@ -1,19 +1,19 @@
-"""Set up an account's projects from a plan file (E259, Bart 2026-09-30).
+"""Set up an account's projects from a plan file (E259, Casey 2026-09-30).
 
-Bart: "reorganize many of the pending ConnectBlue tasks under projects
-associated with ConnectBlue … no more than 10 projects". A plan names the
+Casey: "reorganize many of the pending Brightline tasks under projects
+associated with Brightline … no more than 10 projects". A plan names the
 projects, the context documents to load (for the account and for each
 project), and the words that sort the account's open todos into them.
 
-This is Bart filing, done once and reviewed, not a classifier: automatic
+This is Casey filing, done once and reviewed, not a classifier: automatic
 project classification stays retired (ABOUT.md). So the default is a dry
 run that prints every proposed filing; nothing is written until --apply, and
 --move / --skip correct any line first. Filing only points a project at a
 todo (projects.add_item); the todo stays in its account and nothing touches
-Gmail. Todos already in a project are left where Bart put them.
+Gmail. Todos already in a project are left where Casey put them.
 
-    .venv/bin/python sweeper/project_seed.py config/seeds/connectblue/plan.json
-    .venv/bin/python sweeper/project_seed.py PLAN --move 412="SalesDB" --skip 398
+    .venv/bin/python sweeper/project_seed.py config/seeds/brightline/plan.json
+    .venv/bin/python sweeper/project_seed.py PLAN --move 412="SalesBase" --skip 398
     .venv/bin/python sweeper/project_seed.py PLAN --apply
 """
 
@@ -28,7 +28,7 @@ import sys
 import db
 import projects
 
-MAX_PROJECTS = 10           # Bart: "no more than 10 projects"
+MAX_PROJECTS = 10           # Casey: "no more than 10 projects"
 MAX_TIED = 2                # a todo that fits two projects equally goes in both
 
 

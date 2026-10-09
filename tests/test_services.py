@@ -1,8 +1,8 @@
 """Your own services get their own bundles (2026-09-30).
 
-Bart: "Let's make Jev smarter about email notifications from our own services
-and properties and websites … ConnectBlue Notifications should be a bundle,
-ConnectBlue Sales inquiries (RFPs) from sales@connectblue, etc." Design agreed
+Casey: "Let's make Jev smarter about email notifications from our own services
+and properties and websites … Brightline Notifications should be a bundle,
+Brightline Sales inquiries (RFPs) from sales@brightline, etc." Design agreed
 in chat: automatic and editable, one bundle per service (subdomain), website
 RFPs kept prominent. Pure functions over header dicts; fictional domains.
 
@@ -34,10 +34,10 @@ def det(frm, subject="", bulk=False, list_unsub=False):
 
 class Detect(unittest.TestCase):
     def test_a_system_on_a_subdomain_is_a_service_keyed_by_that_subdomain(self):
-        d = det("BlueNet <no-reply@salesdb.bluenet.org>")
-        self.assertEqual((d["key"], d["kind"], d["name"]), ("salesdb.bluenet.org", "service", "BlueNet"))
+        d = det("BlueNet <no-reply@salesbase.bluenet.org>")
+        self.assertEqual((d["key"], d["kind"], d["name"]), ("salesbase.bluenet.org", "service", "BlueNet"))
         # every address on that subdomain is the same service
-        self.assertEqual(det("BlueNet Events <events@salesdb.bluenet.org>")["key"], "salesdb.bluenet.org")
+        self.assertEqual(det("BlueNet Events <events@salesbase.bluenet.org>")["key"], "salesbase.bluenet.org")
 
     def test_an_automated_address_on_the_bare_domain_is_keyed_by_address(self):
         d = det("BlueNet Notifications <no-reply@bluenet.org>", bulk=True)
@@ -70,14 +70,14 @@ class Detect(unittest.TestCase):
         d = det('"noreply-spamdigest via accounts" <accounts@redco.com>', bulk=True)
         self.assertEqual(d["name"], "RedCo accounts")
 
-    def test_bart_s_own_mailings_are_a_service_named_for_the_company(self):
-        a, b = det("Your Name <bart@bluenet.net>", bulk=True), det("Bart from BlueNet <partners@bluenet.net>", bulk=True)
+    def test_casey_s_own_mailings_are_a_service_named_for_the_company(self):
+        a, b = det("Your Name <casey@bluenet.net>", bulk=True), det("Casey from BlueNet <partners@bluenet.net>", bulk=True)
         self.assertEqual((a["name"], a["key"]), ("BlueNet mailings", "mailings@bluenet.net"))
         self.assertEqual(b["key"], a["key"])                  # one bundle, whichever address
 
     def test_outbound_mail_is_never_a_service(self):
-        self.assertIsNone(S.detect({"from": "Bart <bart@bluenet.org>", "subject": "", "bulk": True},
-                                   OWN, PEOPLE, GROUPS, own_addresses={"bart@bluenet.org"}))
+        self.assertIsNone(S.detect({"from": "Casey <casey@bluenet.org>", "subject": "", "bulk": True},
+                                   OWN, PEOPLE, GROUPS, own_addresses={"casey@bluenet.org"}))
 
 
 class Category(unittest.TestCase):
@@ -101,12 +101,12 @@ class Store(unittest.TestCase):
         self.conn.close()
         self._dir.cleanup()
 
-    def test_services_register_once_and_keep_bart_s_edits(self):
-        S.register(self.conn, [{"key": "salesdb.bluenet.org", "name": "BlueNet", "kind": "service"}])
-        S.edit(self.conn, "salesdb.bluenet.org", name="SalesDB")
-        S.register(self.conn, [{"key": "salesdb.bluenet.org", "name": "BlueNet", "kind": "service"}])
-        got = S.table(self.conn)["salesdb.bluenet.org"]
-        self.assertEqual((got["name"], got["auto_name"]), ("SalesDB", "BlueNet"))
+    def test_services_register_once_and_keep_casey_s_edits(self):
+        S.register(self.conn, [{"key": "salesbase.bluenet.org", "name": "BlueNet", "kind": "service"}])
+        S.edit(self.conn, "salesbase.bluenet.org", name="SalesBase")
+        S.register(self.conn, [{"key": "salesbase.bluenet.org", "name": "BlueNet", "kind": "service"}])
+        got = S.table(self.conn)["salesbase.bluenet.org"]
+        self.assertEqual((got["name"], got["auto_name"]), ("SalesBase", "BlueNet"))
 
     def test_merge_and_switch_off_resolve(self):
         S.register(self.conn, [{"key": "a.bluenet.org", "name": "A", "kind": "service"},
@@ -120,10 +120,10 @@ class Store(unittest.TestCase):
             S.edit(self.conn, "a.bluenet.org", merged_into="a.bluenet.org")
 
     def test_duplicate_names_get_their_subdomain(self):
-        S.register(self.conn, [{"key": "salesdb.bluenet.org", "name": "BlueNet", "kind": "service"},
+        S.register(self.conn, [{"key": "salesbase.bluenet.org", "name": "BlueNet", "kind": "service"},
                                {"key": "partners@bluenet.net", "name": "BlueNet", "kind": "service"}])
         names = {k: v["label"] for k, v in S.table(self.conn).items()}
-        self.assertEqual(names["salesdb.bluenet.org"], "BlueNet · salesdb")
+        self.assertEqual(names["salesbase.bluenet.org"], "BlueNet · salesbase")
         self.assertEqual(names["partners@bluenet.net"], "BlueNet · partners")
 
     def test_settings_lists_each_account_s_services_with_counts(self):

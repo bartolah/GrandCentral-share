@@ -15,7 +15,7 @@
     <key>WorkingDirectory</key>
     <string>/Users/you/Code/GrandCentral</string>
 
-    <!-- Hourly across work hours, 07:00 .. 19:00 local (spec §8 q2: Bart chose hourly). -->
+    <!-- Hourly across work hours, 07:00 .. 19:00 local (spec §8 q2: Casey chose hourly). -->
     <key>StartCalendarInterval</key>
     <array>
         <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>

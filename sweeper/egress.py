@@ -1,6 +1,6 @@
 """E258 — outbound hosts are allowlisted per process (BUILD_SPEC §6 item 10).
 
-Bart, 2026-09-30: "Hard-gate anything that moves data outward … Allowlist by
+Casey, 2026-09-30: "Hard-gate anything that moves data outward … Allowlist by
 destination, deny by default. The quiet risk isn't a rogue send — it's data
 leaving via a summary, a fetched attachment, or a search result." Chose "Log 3
 days, then enforce".

@@ -39,7 +39,7 @@ from sources.calendar_reader import read_events  # noqa: E402
 from sources.gmail_reader import read_account  # noqa: E402
 from sources import gmail_reader  # noqa: E402
 
-# Hourly sweeps across work hours (spec §8 q2: Bart chose hourly).
+# Hourly sweeps across work hours (spec §8 q2: Casey chose hourly).
 SWEEP_HOURS = tuple(range(7, 20))  # 07:00 .. 19:00 inclusive
 LOG_RETENTION_DAYS = 30
 
@@ -160,7 +160,7 @@ def main():
     # ---- 1c. granola (E2-P3) — only attempted when a token exists ----------
     # Without GRANOLA_TOKEN the source is not tried and not listed in
     # sources_swept; the reader is UNVERIFIED against the real service until
-    # Bart provides access (see sources/granola_reader.py header).
+    # Casey provides access (see sources/granola_reader.py header).
     granola_meetings = []
     if env.get("GRANOLA_TOKEN", "").strip():
         try:
@@ -257,7 +257,7 @@ def main():
         except Exception as e:
             log(f"steward: FAILED ({e!r}) — suggestions skipped this sweep")
         # ---- 🧙 wizard (E111) — propose todos from mail + meeting follow-ups.
-        # Suggestions only; every todo waits for Bart's ✓ on the Wizard page.
+        # Suggestions only; every todo waits for Casey's ✓ on the Wizard page.
         try:
             import wizard
             wizard.run(env, meetings=granola_meetings, log=log)

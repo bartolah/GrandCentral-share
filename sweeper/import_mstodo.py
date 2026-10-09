@@ -1,6 +1,6 @@
 """One-time Microsoft To-Do import (E2-P3, decision #3: export file, no creds).
 
-Reads an export file Bart hands over — CSV or JSON, headers matched loosely —
+Reads an export file Casey hands over — CSV or JSON, headers matched loosely —
 and creates engagements with source='mstodo'. Idempotent: a task with the
 same text that already exists under that source is skipped, so re-running
 the import (or importing an overlapping export) never duplicates.
@@ -16,7 +16,7 @@ Run:
     cd sweeper
     ../.venv/bin/python import_mstodo.py --file ~/Desktop/todo-export.csv --dry-run
     ../.venv/bin/python import_mstodo.py --file ~/Desktop/todo-export.csv
-    ../.venv/bin/python import_mstodo.py --file x.csv --account crl
+    ../.venv/bin/python import_mstodo.py --file x.csv --account civic
 """
 
 from __future__ import annotations

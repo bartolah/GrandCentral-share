@@ -1,9 +1,9 @@
 """Legacy todos with no account (2026-09-26).
 
-Bart: "Where did the old todos go? How do I bring them back in each of the
+Casey: "Where did the old todos go? How do I bring them back in each of the
 right accounts with their mapped emails?" Evidence-backed ones are placed by
 sweeper/backfill_todo_accounts.py; the rest are listed with hints from
-tools/suggest_todo_accounts.py and moved by Bart. Scratch SQLite only.
+tools/suggest_todo_accounts.py and moved by Casey. Scratch SQLite only.
 
     .venv/bin/python -m unittest tests.test_unassigned_todos -v
 """

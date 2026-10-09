@@ -1,4 +1,4 @@
-"""Inbox steward (E59) — LLM-audited sender bundling, Bart-approved.
+"""Inbox steward (E59) — LLM-audited sender bundling, Casey-approved.
 
 The deterministic categorizer (mail_sync.categorize) can't judge brand
 addresses that carry no role token — todaytix@, hello@substack — so they
@@ -9,11 +9,11 @@ propose a bundle for the ones that are clearly services.
 
 Guardrails:
   * The steward NEVER acts alone. It writes steward_suggestions rows;
-    Bart approves or rejects each in the shell. Approval writes
+    Casey approves or rejects each in the shell. Approval writes
     sender_categories — the exact store a manual 🤖 click uses.
   * A sender is audited ONCE ever ('skipped' rows persist for verdicts of
     person/unsure), so tokens stay bounded and people aren't re-litigated.
-  * Bart's Context corpus (kind 'rule'/'note', active) rides in the prompt,
+  * Casey's Context corpus (kind 'rule'/'note', active) rides in the prompt,
     so plain-English instructions steer the verdicts.
   * Fails soft: any error logs and skips — the sweep never breaks on it.
 
@@ -51,11 +51,11 @@ Categories for services:
   promo         — marketing, offers, sales outreach blasts from brands
   receipt       — billing, orders, payments
 
-Bart's own rules (follow these over your own judgment):
+Casey's own rules (follow these over your own judgment):
 {rules}
 
 Judge conservatively: if the sender might be a real human who would expect
-a reply from Bart, answer "person". If genuinely unsure, answer "unsure".
+a reply from Casey, answer "person". If genuinely unsure, answer "unsure".
 Never mark someone person→service merely because they write rarely.
 
 Senders:

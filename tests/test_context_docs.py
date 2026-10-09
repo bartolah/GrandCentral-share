@@ -1,13 +1,13 @@
 """E259: context documents, and the main Ask reading projects and notes.
 
-Bart, 2026-09-30: "upload additional context (like an MD file) or just paste
+Casey, 2026-09-30: "upload additional context (like an MD file) or just paste
 in the context associated with any of my accounts or projects … used by the
 AI to be smarter about that account or project", and "the Grand Central AI
 … isn't aware of the changes that we've made to projects and notes".
 
 What these pin: a document belongs to one account or one project; project
 Ask reads the project's documents and those of the accounts its items live
-in, and nothing else; the main Ask reads the documents of the account Bart is
+in, and nothing else; the main Ask reads the documents of the account Casey is
 looking at, and can read (never write) projects, notes and documents; agents
 are denied the route. Scratch SQLite, a fake Anthropic client, a scratch
 serve.py; nothing live.
@@ -89,13 +89,13 @@ class Documents(_Scratch):
         self.assertEqual([d["truncated"] for d in out], [False, True])
 
     def test_deleting_a_project_keeps_its_documents_as_notes(self):
-        pid = P.create(self.conn, "Newsbot")
-        db.add_context_doc(self.conn, f"project:{pid}", "Newsbot brief", "scores news")
+        pid = P.create(self.conn, "Newsdesk")
+        db.add_context_doc(self.conn, f"project:{pid}", "Newsdesk brief", "scores news")
         out = P.delete(self.conn, pid)
         self.assertEqual(out["notes_kept"], 1)
         self.assertEqual(db.list_context_docs(self.conn), [])
         n = P.notes_list(self.conn)[0]
-        self.assertEqual((n["title"], n["body"], n["from_project"]), ("Newsbot brief", "scores news", "Newsbot"))
+        self.assertEqual((n["title"], n["body"], n["from_project"]), ("Newsdesk brief", "scores news", "Newsdesk"))
 
 
 class ProjectAskReadsItsDocuments(_Scratch):
@@ -121,7 +121,7 @@ class ProjectAskReadsItsDocuments(_Scratch):
 class MainAsk(_Scratch):
     def setUp(self):
         super().setUp()
-        self.pid = P.create(self.conn, "Causes Amplify", description="micro-influencer network")
+        self.pid = P.create(self.conn, "Signal Boost", description="micro-influencer network")
         todo = db.add_engagement(self.conn, "Send Robin the deck", account=A)
         P.add_item(self.conn, self.pid, "todo", None, str(todo))
         P.note_add(self.conn, self.pid, "Clearance", "Robin signs off on performance figures")
@@ -148,7 +148,7 @@ class MainAsk(_Scratch):
     def test_it_knows_projects_notes_and_the_accounts_documents(self):
         seen = self.run_ask(selection={"account": A})
         prompt = seen["messages"][-1]["content"]
-        self.assertIn("Causes Amplify", prompt)             # the projects are in the snapshot
+        self.assertIn("Signal Boost", prompt)             # the projects are in the snapshot
         self.assertIn("Voice rules for A", prompt)          # the account being looked at
         self.assertNotIn("Voice rules for B", prompt)       # another account's: catalog only
         self.assertIn("B brief", prompt)
@@ -174,10 +174,10 @@ class MainAsk(_Scratch):
             found = command._run_tool("query_notes", {"q": "Robin"}, {})
             note = command._run_tool("query_notes", {"note_id": found["notes"][0]["id"]}, {})
             doc = command._run_tool("read_context_doc", {"id": self.doc_a}, {})
-        self.assertEqual([p["name"] for p in lst["projects"]], ["Causes Amplify"])
+        self.assertEqual([p["name"] for p in lst["projects"]], ["Signal Boost"])
         self.assertEqual([t["text"] for t in one["todos"]], ["Send Robin the deck"])
         self.assertEqual(found["count"], 1)
-        self.assertEqual(note["note"]["project_name"], "Causes Amplify")
+        self.assertEqual(note["note"]["project_name"], "Signal Boost")
         self.assertEqual(doc["body"], "Voice rules for A")
         self.assertEqual(self.conn.total_changes, before)
 
@@ -185,7 +185,7 @@ class MainAsk(_Scratch):
 class DraftsReadTheAccountsBrief(_Scratch):
     def test_brief_is_the_accounts_own(self):
         import draft_reply
-        db.add_context_doc(self.conn, f"account:{A}", "A brief", "Sign as Bart. No pricing.")
+        db.add_context_doc(self.conn, f"account:{A}", "A brief", "Sign as Casey. No pricing.")
         db.add_context_doc(self.conn, f"account:{B}", "B brief", "the other one")
         with self.patched():
             brief = draft_reply._account_brief(A)
@@ -217,7 +217,7 @@ class Route(unittest.TestCase):
         conn.execute("INSERT INTO mail_threads (thread_id, account, subject, last_date, in_inbox, category) "
                      "VALUES ('1', ?, 's', '2026-09-30T10:00:00Z', 1, 'people')", (A,))
         conn.commit()
-        cls.pid = P.create(conn, "Newsbot")
+        cls.pid = P.create(conn, "Newsdesk")
         conn.close()
         # E259: writes are human-only, so the scratch board gets a pairing code
         cls.pairpath = os.path.join(cls._dir.name, "pairing.json")
@@ -257,7 +257,7 @@ class Route(unittest.TestCase):
             return e.code, json.loads(e.read() or b"{}")
 
     def test_paste_a_long_brief_then_list_read_toggle_delete(self):
-        body = "# ConnectBlue\n" + "Never write em-dashes.\n" * 3000      # ~66k chars, past the 32KB cap
+        body = "# Brightline\n" + "Never write em-dashes.\n" * 3000      # ~66k chars, past the 32KB cap
         code, out = self.call("POST", "/context/docs", {"action": "add", "scope": f"account:{A}",
                                                         "title": "CB", "body": body, "filename": "cb.md"})
         self.assertEqual(code, 200, out)

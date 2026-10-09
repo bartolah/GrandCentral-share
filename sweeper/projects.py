@@ -1,7 +1,7 @@
 """Projects — the cross-job layer (spec: ACCOUNT_FIRST.md "Projects — spec";
 BUILD_SPEC §6, 2026-09-29).
 
-Bart: "Todos and Emails should remain in their accounts … we will handle this
+Casey: "Todos and Emails should remain in their accounts … we will handle this
 through Projects." A project belongs to no account and only POINTS at things:
 threads, todos, calendar events and contacts, each named by the account it
 lives in and its id there — keyed (account, ref), never by id alone, because
@@ -25,7 +25,7 @@ import sys
 import db
 
 KINDS = ("thread", "todo", "event", "contact")
-MAX_PINS = 3                       # Bart: "Up to 3"
+MAX_PINS = 3                       # Casey: "Up to 3"
 BACKLOG_DAYS = 30                  # step 6: a new person's recent mail, suggested once
 _THREAD_RE = re.compile(r"^\d{1,25}$")
 _EMAIL_RE = re.compile(r"^[^@\s]{1,120}@[^@\s]{1,200}\.[^@\s]{1,40}$")
@@ -124,7 +124,7 @@ def open_todos(conn, pid: int) -> list:
 
 def complete(conn, pid: int) -> dict:
     """Marks the project done and records when. Its todos are NOT touched:
-    the board asks Bart, and completes any he chooses in their own account."""
+    the board asks Casey, and completes any he chooses in their own account."""
     _get(conn, pid)
     with conn:
         _touch(conn, pid, status="done", completed_at=db._now_iso(), pin_rank=None)
@@ -145,7 +145,7 @@ def delete(conn, pid: int) -> dict:
     with conn:
         kept = conn.execute("UPDATE notes SET project_id = NULL, from_project = ?, updated_at = ? "
                             "WHERE project_id = ?", (p["name"], db._now_iso(), int(pid))).rowcount
-        # E259: its context documents are Bart's writing too — kept as Notes
+        # E259: its context documents are Casey's writing too — kept as Notes
         now = db._now_iso()
         for d in conn.execute("SELECT title, body FROM context_docs WHERE scope = ?",
                               (f"project:{int(pid)}",)).fetchall():
@@ -243,7 +243,7 @@ def projects_for_item(conn, kind: str, account: str | None, ref) -> list:
 # ------------------------------------------------------------------ suggestions
 def suggestions(conn, pid: int | None = None, account: str | None = None,
                 include_backlog: bool = False) -> list:
-    """Step 6 (Bart 2026-09-30): "Add to <project>?" — a thread whose latest
+    """Step 6 (Casey 2026-09-30): "Add to <project>?" — a thread whose latest
     message is FROM someone on an open project's People list, still in an
     inbox, person-to-person, not already in the project (on its own or inside
     one of its todos), and not declined. "New" means it arrived after the
@@ -307,7 +307,7 @@ def _declined(conn, pid, account, thread_id, person) -> bool:
 
 def decline(conn, pid: int, account: str | None = None, thread_id: str | None = None,
             person: str | None = None) -> dict:
-    """Bart's ✕: "not this one" (a thread) or "stop suggesting <person> for
+    """Casey's ✕: "not this one" (a thread) or "stop suggesting <person> for
     <project>". Only this project forgets; the person stays on it."""
     _get(conn, pid)
     if person:
@@ -357,7 +357,7 @@ def note_update(conn, note_id: int, title=None, body=None) -> dict:
 
 
 def note_move(conn, note_id: int, pid: int | None) -> dict:
-    """Step 4 (Bart: notes "can also be promoted"): a note sits in at most one
+    """Step 4 (Casey: notes "can also be promoted"): a note sits in at most one
     project; moving it in or back out to Notes never changes its text."""
     row = conn.execute("SELECT * FROM notes WHERE id = ?", (int(note_id),)).fetchone()
     if row is None:
@@ -385,7 +385,7 @@ def notes_list(conn, q: str | None = None) -> list:
 
 
 def note_delete(conn, note_id: int) -> bool:
-    """Deleting a note is Bart deleting his own writing, on purpose (the board
+    """Deleting a note is Casey deleting his own writing, on purpose (the board
     confirms first). It never touches mail."""
     with conn:
         return conn.execute("DELETE FROM notes WHERE id = ?", (int(note_id),)).rowcount > 0
@@ -455,8 +455,8 @@ def _utc_bound(date: str, days: int) -> str:
 
 
 def _suggest_people(conn, items: list, mine=frozenset()) -> list:
-    """Bart: a People list "with suggestions" — whoever writes on the
-    project's own emails and isn't on it yet. Never Bart himself."""
+    """Casey: a People list "with suggestions" — whoever writes on the
+    project's own emails and isn't on it yet. Never Casey himself."""
     have = {i["ref"] for i in items if i["kind"] == "contact"}
     keys = {(i["account"], i["ref"]) for i in items if i["kind"] == "thread"}
     for i in items:
@@ -505,7 +505,7 @@ def project_view(conn, pid: int, mine=frozenset()) -> dict:
             e = conn.execute("SELECT id, text, state, due, account, done_at FROM engagements WHERE id = ?",
                              (int(it["ref"]),)).fetchone()
             it["todo"] = dict(e) if e else None
-            # Bart: a todo's emails show folded inside it — all of them, with
+            # Casey: a todo's emails show folded inside it — all of them, with
             # enough to recognise each (subject, sender, date)
             it["threads"] = [dict(t) for t in conn.execute(
                 "SELECT et.account, et.thread_id, m.subject, m.last_from, m.last_date FROM engagement_threads et "
@@ -519,7 +519,7 @@ def project_view(conn, pid: int, mine=frozenset()) -> dict:
                 "in_inbox, message_count, last_direction FROM mail_threads WHERE account = ? AND thread_id = ?",
                 (it["account"], it["ref"])).fetchone()
             it["mail"] = dict(m) if m else None
-            # Bart: a todo's emails show once, folded inside the todo
+            # Casey: a todo's emails show once, folded inside the todo
             it["in_todo"] = (it["account"], it["ref"]) in todo_threads
         elif it["kind"] == "contact":
             c = conn.execute("SELECT name, notes FROM contacts WHERE email = ?", (it["ref"],)).fetchone()

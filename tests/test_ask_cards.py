@@ -1,6 +1,6 @@
-"""E265 — Ask proposes, Bart clicks (BUILD_SPEC §6, 2026-10-02).
+"""E265 — Ask proposes, Casey clicks (BUILD_SPEC §6, 2026-10-02).
 
-Bart: the ✨ Ask panel should add calendar events (and invite drafts), draft
+Casey: the ✨ Ask panel should add calendar events (and invite drafts), draft
 new emails and triage threads — "Show a card, I click". These tests pin that
 the three propose_ tools never act: they only build a card with the exact
 request for the board's own route, validated first, and run_command returns

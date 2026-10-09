@@ -1,6 +1,6 @@
 /* Grand Central open/click tracker — E269 (BUILD_SPEC §6, 2026-10-06).
  *
- * Bart: "Let's do it. Yes, this is through our Google Workspace for sales and
+ * Casey: "Let's do it. Yes, this is through our Google Workspace for sales and
  * campaign emails." One Worker serves t.<domain> for every account domain.
  *
  *   GET /o/<token>.gif               log an open, return a 1x1 transparent GIF

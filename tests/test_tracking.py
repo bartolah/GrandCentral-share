@@ -2,8 +2,8 @@
 
 Pins the promises in the §6 entry: tracking is inert until the domain is
 healthy and the secret set; teammates-only mail and switched-off accounts
-aren't tracked by default but Bart's 👁 toggle wins; only the HTML part
-changes; click redirects are signed exactly as the Worker checks them; Bart's
+aren't tracked by default but Casey's 👁 toggle wins; only the HTML part
+changes; click redirects are signed exactly as the Worker checks them; Casey's
 own view strips everything; automatic opens (Apple prefetch, scanners, the
 first 30 seconds) never count; and a tracking failure never stops a send.
 Scratch SQLite, fake accounts, no network, no SMTP.
@@ -32,7 +32,7 @@ import db  # noqa: E402
 import tracking as T  # noqa: E402
 
 A = "acctone"
-ENV = {"GMAIL_ACCTONE_USER": "bart@bluenet.org", "GMAIL_ACCTTWO_USER": "bart@gmail.com",
+ENV = {"GMAIL_ACCTONE_USER": "casey@bluenet.org", "GMAIL_ACCTTWO_USER": "casey@gmail.com",
        "TRACK_SECRET": "s3cret"}
 
 
@@ -73,6 +73,8 @@ class Decide(Base):
         with mock.patch.object(T, "DEFAULT_ON", {A}):
             self.assertTrue(T.decide(self.conn, A, ENV, "Pat <pat@client.com>", cc="gina@team.org")["on"])
             self.assertFalse(T.decide(self.conn, A, ENV, "gina@team.org", cc="sam@bluenet.org")["on"])
+            # a teammate's own company domain is inside too (Brett at Chris's company)
+            self.assertFalse(T.decide(self.conn, A, ENV, "brett@team.org")["on"])
             self.assertTrue(T.decide(self.conn, A, ENV, "gina@team.org", override=True)["on"])
             self.assertFalse(T.decide(self.conn, A, ENV, "pat@client.com", override=False)["on"])
             T.set_settings(self.conn, A, enabled=False)
@@ -113,8 +115,11 @@ class Mail(Base):
         html, links = T.prepare(None, "Hi <Pat>\nhttps://site.com", "TOKEN_abcdefghijklmn", "bluenet.org", "s", True)
         self.assertIn("Hi &lt;Pat&gt;", html)
         self.assertEqual(links, ["https://site.com"])
+        # Outlook ignores white-space:pre-wrap — line breaks must be real <br>s
+        self.assertNotIn("pre-wrap", html)
+        self.assertIn("Hi &lt;Pat&gt;<br>", html)
 
-    def test_bart_s_own_view_strips_the_image_and_unwraps_links(self):
+    def test_casey_s_own_view_strips_the_image_and_unwraps_links(self):
         html, _ = T.prepare(self.HTML, "", "TOKEN_abcdefghijklmn", "bluenet.org", "s3cret", True)
         clean = T.strip(html, ["bluenet.org"])
         self.assertNotIn("t.bluenet.org", clean)
@@ -196,6 +201,7 @@ class SendPath(Base):
         self.healthy()
         out, msg = self._send({})
         self.assertTrue(out["tracked"])
+        self.assertEqual(msg["From"], "Your Name <casey@bluenet.org>")     # a name, not a bare address
         html = msg.get_body(("html",)).get_content()
         plain = msg.get_body(("plain",)).get_content()
         self.assertIn("t.bluenet.org/o/", html)
@@ -203,6 +209,28 @@ class SendPath(Base):
         row = self.conn.execute("SELECT * FROM track_sends").fetchone()
         self.assertEqual((row["account"], row["thread_id"], row["message_id"]), (A, "", msg["Message-ID"]))
         self.assertEqual(json.loads(row["links"]), ["https://site.com"])
+
+    def test_cc_only_is_enough_and_there_is_no_empty_to_line(self):
+        # dev #73: "To shouldn't be required, if a CC or BCC is in place"
+        import send_mail
+        sent = {}
+
+        class FakeSMTP:
+            def __init__(self, *a, **k): pass
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def login(self, *a): pass
+            def send_message(self, msg): sent["msg"] = msg
+        real = db.connect
+        env = {**ENV, "GMAIL_ACCTONE_PASS": "x"}
+        with mock.patch.object(send_mail.smtplib, "SMTP_SSL", FakeSMTP), \
+                mock.patch.object(db, "connect", lambda *a, **k: real(self.path)), \
+                mock.patch.dict(send_mail.ACCOUNTS, {A: ("GMAIL_ACCTONE_USER", "GMAIL_ACCTONE_PASS")}):
+            send_mail.send_new(A, "Hi", "", "Note", cc="gina@team.org", env=env, log=lambda *a: None)
+            self.assertIsNone(sent["msg"]["To"])
+            self.assertEqual(sent["msg"]["Cc"], "gina@team.org")
+            with self.assertRaises(ValueError):
+                send_mail.send_new(A, "Hi", "", "Note", env=env, log=lambda *a: None)   # nobody at all
 
     def test_a_tracking_failure_still_sends_untracked(self):
         self.healthy()

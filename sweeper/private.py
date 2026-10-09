@@ -1,6 +1,6 @@
 """E258 — the "Private" label: a thread that carries it does not exist in Grand Central.
 
-Bart, 2026-09-30: "What if we create a label that any account can use that is
+Casey, 2026-09-30: "What if we create a label that any account can use that is
 ignored automatically, like 'private', and those emails, once added are removed
 from Grand Central?" — then chose "Gone entirely" (never stored, never shown
 on the board, never sent to Claude, Jev or any agent) over hiding it from
@@ -102,8 +102,8 @@ def guard(account: str, thread_id: str, conn=None) -> None:
 
 
 # (table, where-clause) — every stored row derived from a thread. Todos stay
-# (they are Bart's), but lose their link to the thread. Sends and scheduled
-# replies stay: they are Bart's own words and the send log is an audit trail.
+# (they are Casey's), but lose their link to the thread. Sends and scheduled
+# replies stay: they are Casey's own words and the send log is an audit trail.
 _PURGE = [
     ("mail_threads", "account = :a AND thread_id = :t"),
     ("mail_triage", "account = :a AND thread_id = :t"),

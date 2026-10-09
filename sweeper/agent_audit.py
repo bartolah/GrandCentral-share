@@ -1,6 +1,6 @@
 """E258 — the first-week review of what agents did (BUILD_SPEC §6 item 8).
 
-Bart, 2026-09-30: "I want to review the first week and specifically look for
+Casey, 2026-09-30: "I want to review the first week and specifically look for
 calls I didn't intend — that's how injection shows up." Reads agent_audit
 (written by the board for every agent request and every unidentified local
 write) and prints:

@@ -2,7 +2,7 @@
 """
 Serve the Grand Central dashboard on the home network.
 
-Listens on 8080 but answers only loopback and tailnet peers (E161): the Mini
+Listens on 8080 but answers only loopback and tailnet peers (E161): the host
 itself, the MCP server, cloudflared (fronted by Cloudflare Access), and
 Tailscale devices. Plain-LAN clients are refused — the board has no password
 of its own, so it relies on Access and Tailscale, both of which authenticate.
@@ -52,7 +52,7 @@ command}.py — this file only parses/bounds the HTTP request and dispatches):
     GET  /reply-meta        read-only: derived reply recipients/subject
                             (powers the Send confirm dialog)
     POST /send              the system's ONE send path (E3-P4, approved by
-                            Bart 2026-07-10): a single human-confirmed
+                            Casey 2026-07-10): a single human-confirmed
                             reply. Requires confirm:true + the explicit
                             recipient list the human saw; single thread,
                             ≤10 recipients; logged to mail_sends. NEVER a
@@ -60,7 +60,7 @@ command}.py — this file only parses/bounds the HTTP request and dispatches):
 
 Outbound is drafts-by-default; /send above is the sole, human-clicked
 exception (spec §6 as amended 2026-07-10). Archive/star/label are mailbox
-writes beyond Drafts, approved by Bart 2026-07-04 (BUILD_SPEC.md records
+writes beyond Drafts, approved by Casey 2026-07-04 (BUILD_SPEC.md records
 both decisions).
 
 Run:  python3 dashboard/serve.py
@@ -86,17 +86,17 @@ DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 # Who may connect (E161, 2026-09-03)
 #
 # The board used to answer anyone who could route to 0.0.0.0:8080, with no
-# authentication at all — so any device on whatever LAN the Mini sat on could
-# POST /send and mail as Bart. Rather than invent a bespoke password layer, we
+# authentication at all — so any device on whatever LAN the host sat on could
+# POST /send and mail as Casey. Rather than invent a bespoke password layer, we
 # lean on the two real auth systems already in front of this box:
 #
-#   loopback  — the Mini itself, the MCP server, and cloudflared, which is
+#   loopback  — the host itself, the MCP server, and cloudflared, which is
 #               fronted by Cloudflare Access (email OTP) for remote users
 #   tailnet   — 100.64.0.0/10, device-authenticated by Tailscale
 #
 # Plain LAN clients get the connection refused before a byte of HTTP is
 # parsed. Escape hatch: GC_ALLOW_LAN=1 restores the old behaviour without a
-# code change, in case Tailscale is down and Bart needs the board from a
+# code change, in case Tailscale is down and Casey needs the board from a
 # laptop on the same network.
 # ---------------------------------------------------------------------------
 
@@ -157,7 +157,7 @@ ALLOWED_ORIGIN_HOSTS = _origin_hosts()
 # E264 (dev #63, BUILD_SPEC §6 2026-10-01): the Quick Todo Chrome extension
 # posts with Origin chrome-extension://<id>, which E161 rightly refuses. One
 # extension gets through: the ID its manifest key pins, and only on a request
-# carrying the device pairing code — so it is Bart's paired device, not just
+# carrying the device pairing code — so it is Casey's paired device, not just
 # any page or extension that knows the ID.
 def _quicktodo_ext_id() -> str:
     try:
@@ -202,7 +202,7 @@ def _clean(s, limit=200):
 
 _THRID_RE = re.compile(r"^\d{1,25}$")
 
-# Account-first (Bart, 2026-09-24): projects, goals, automatic classification,
+# Account-first (Casey, 2026-09-24): projects, goals, automatic classification,
 # Attio and the old entity dashboard are retired. The routes answer 410 Gone
 # instead of vanishing so a stale browser tab or extension fails loudly and
 # legibly; every table and file behind them is left untouched (rollback = delete
@@ -230,7 +230,7 @@ def _preview_type(data: bytes) -> str | None:
 
 
 def _track_choice(payload: dict):
-    """E269: the composer's 👁 Track toggle — True/False when Bart touched
+    """E269: the composer's 👁 Track toggle — True/False when Casey touched
     it, None to let tracking.decide() apply the account's default."""
     v = payload.get("track")
     return v if isinstance(v, bool) else None
@@ -278,7 +278,7 @@ def _run_as_agent(path: str, body: dict, tool: str) -> tuple:
 
 
 def _top5_resolved(conn, t: dict, generated_at: str, now: str) -> bool:
-    """Has Bart resolved this Top 5 thread since the sweep wrote the JSON?
+    """Has Casey resolved this Top 5 thread since the sweep wrote the JSON?
     Resolved = dismissed, done, actively snoozed, or replied through the
     board (a mail_sends row newer than the sweep). Every lookup is scoped to
     the thread's own account."""
@@ -304,7 +304,7 @@ def _top5_resolved(conn, t: dict, generated_at: str, now: str) -> bool:
             "AND status IN ('pending', 'sending')",
             (tid, t.get("account") or "")).fetchone():
         return True  # a queued scheduled reply counts as handled
-    # E32: a reply Bart sent from Gmail or his phone leaves no mail_sends
+    # E32: a reply Casey sent from Gmail or his phone leaves no mail_sends
     # row, so the board used to keep asking for it until the next hourly
     # sweep. mail_sync refreshes last_direction every ~3 min, so an
     # outbound-last thread whose newest message postdates the sweep means
@@ -346,7 +346,7 @@ def _fetch_forward_atts(payload, account):
 
 
 def _parse_attachments(payload):
-    """E82 (§6 amended 2026-08-02, Bart: "let's add basic attachment
+    """E82 (§6 amended 2026-08-02, Casey: "let's add basic attachment
     support"): ≤3 files, ≤5MB total, base64 in the /send JSON, decoded
     here and passed to send_mail on the SAME human-confirmed send.
     Never written to disk. Returns [] when absent."""
@@ -421,7 +421,7 @@ def _todo_label_async(eng_id: int, account: str, thread_id: str, add: bool) -> N
 
 
 def _home_accounts(conn) -> list:
-    """The accounts the tabs show, in Bart's saved order (same source as
+    """The accounts the tabs show, in Casey's saved order (same source as
     GET /accounts): accounts with synced mail or todos."""
     rows = conn.execute(
         "SELECT account FROM mail_threads WHERE account IS NOT NULL "
@@ -490,7 +490,7 @@ def _future_iso(s):
     except ValueError:
         raise ValueError("bad snooze time")
     if dt.tzinfo is None:
-        dt = dt.astimezone()  # naive input means Bart's local time
+        dt = dt.astimezone()  # naive input means Casey's local time
     dt = dt.astimezone(timezone.utc)
     if dt <= datetime.now(timezone.utc):
         raise ValueError("snooze time must be in the future")
@@ -568,7 +568,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return g is not None and g.who.startswith("agent")
 
     def _agent_draft(self, account, to, cc, bcc):
-        """E258 item 5: None for Bart; for an agent, who on the draft is new."""
+        """E258 item 5: None for Casey; for an agent, who on the draft is new."""
         if not self._is_agent():
             return None
         import agent_gate
@@ -580,7 +580,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return {}
         return {"flagged": "GC/Agent-Draft-New" if agent["new"] else "GC/Agent-Draft",
                 "new_recipients": agent["new"],
-                "reminder": ("Saved to Drafts, NOT sent. Flagged for Bart: new to this "
+                "reminder": ("Saved to Drafts, NOT sent. Flagged for Casey: new to this "
                              "account — " + ", ".join(agent["new"])) if agent["new"]
                             else "Saved to Drafts, NOT sent."}
 
@@ -608,7 +608,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         if parsed.path == "/grand_central.json":
             # The contract file, with Top 5 filtered through live triage on
-            # the way out: rows Bart has resolved since the sweep (done /
+            # the way out: rows Casey has resolved since the sweep (done /
             # dismissed / snoozed / replied / queued a reply) drop instantly
             # instead of at the next hourly sweep; top5_pool backfills to 5.
             try:
@@ -655,7 +655,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     else:
                         jev_on = False
                     # E253: your own services (services.py) — each thread's
-                    # bundle, after Bart's merges and off-switches
+                    # bundle, after Casey's merges and off-switches
                     import services
                     stbl = services.table(conn)
                     svc_map = {}
@@ -687,7 +687,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self._json(200, {"ok": True, "synced_at": synced_at,
                                      "total": len(threads), "threads": threads[:limit]})
                     return
-                # Dev #66: who Bart tagged VIP / Top prospect (shared by every account)
+                # Dev #66: who Casey tagged VIP / Top prospect (shared by every account)
                 try:
                     import tiers as _tiers
                     _c = db.connect()
@@ -702,6 +702,48 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                  "sync": _mail_sync_status(),
                                  "services": svc_map,
                                  "threads": threads, "outbox": outbox})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/signatures":
+            # 2026-10-08: each account's HTML signature (and its text twin)
+            try:
+                import db, signatures
+                conn = db.connect()
+                try:
+                    self._json(200, {"ok": True, "signatures": signatures.get_all(conn)})
+                finally:
+                    conn.close()
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path in ("/watch", "/watch/suggest", "/watch/person"):
+            # E276: follow-ups Casey chose — one account's list, the after-send
+            # suggestion (rules only), or a person's open assignments.
+            try:
+                import db, watch
+                from common import load_env as _le
+                qs = urllib.parse.parse_qs(parsed.query)
+                conn = db.connect()
+                try:
+                    acct = _clean((qs.get("account") or [""])[0], 40)
+                    if parsed.path == "/watch/person":
+                        out = {"assigned": watch.open_assignments(conn, _clean((qs.get("email") or [""])[0], 120))}
+                    else:
+                        if not acct or not _account_known(conn, acct):
+                            raise ValueError("known account required")
+                        if parsed.path == "/watch":
+                            out = {"watches": watch.listing(conn, acct, include_closed=(qs.get("closed") or ["0"])[0] == "1"),
+                                   "ask": watch.ask_mode(conn, acct)}
+                        else:
+                            out = watch.suggest(conn, acct, _le(), _clean((qs.get("to") or [""])[0], 500),
+                                                _clean((qs.get("cc") or [""])[0], 500),
+                                                _clean((qs.get("thread_id") or [""])[0], 25) or None)
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
@@ -1022,7 +1064,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
             return
         if parsed.path == "/steward":
-            # E59: pending sender suggestions awaiting Bart's verdict.
+            # E59: pending sender suggestions awaiting Casey's verdict.
             try:
                 import db
                 conn = db.connect()
@@ -1034,7 +1076,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
             return
         if parsed.path == "/wizard":
-            # E111: pending 🧙 suggestions awaiting Bart's verdict.
+            # E111: pending 🧙 suggestions awaiting Casey's verdict.
             try:
                 import db
                 conn = db.connect()
@@ -1055,7 +1097,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
             return
         if parsed.path == "/version":
-            # E28: the board is a long-lived single page — Bart leaves a tab
+            # E28: the board is a long-lived single page — Casey leaves a tab
             # open for days. Without this, a deploy lands on the server while
             # his browser keeps running the JS it loaded hours ago, and new
             # features look "not implemented". The page polls this and offers
@@ -1117,7 +1159,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 conn = db.connect()
                 try:
                     todos = db.todo_view(conn)
-                    # E69: Bart's free-form note for the day rides along as
+                    # E69: Casey's free-form note for the day rides along as
                     # agent context (no interpretation — just the text).
                     day_note = db.get_day_note(conn, today).get("text") or None
                 finally:
@@ -1161,7 +1203,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
                 # ?refresh=1 — an agent may explicitly kick a sweep when
                 # stale (same lock/subprocess as the Sweep button; ~4 min).
-                # Never automatic: sweeps cost classifier tokens and Bart
+                # Never automatic: sweeps cost classifier tokens and Casey
                 # chose the 07:00-19:00 schedule deliberately.
                 refresh_started = False
                 qs = urllib.parse.parse_qs(parsed.query)
@@ -1233,7 +1275,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 import mail_actions
                 qs = urllib.parse.parse_qs(parsed.query)
                 acct = _clean((qs.get("account") or ["all"])[0], 40)
-                accounts = (["personal", "connectblue"]
+                accounts = (["personal", "brightline"]
                             if acct == "all" else [acct])
                 rows, errors = [], []
                 for a in accounts:
@@ -1296,7 +1338,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": str(e)})
             return
         if parsed.path == "/calendar/invite":
-            # Dev #16: is this thread an invitation Bart can answer, and what
+            # Dev #16: is this thread an invitation Casey can answer, and what
             # did he already say? Read-only (IMAP + a calendar list).
             try:
                 import calendar_rsvp
@@ -1353,7 +1395,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
             return
         if parsed.path == "/context":
-            # E19: Bart's context corpus — rules/notes that future
+            # E19: Casey's context corpus — rules/notes that future
             # automations, prompts, and reply suggestions will draw on.
             try:
                 import db
@@ -1367,7 +1409,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
             return
         if parsed.path == "/contacts/tiers":
-            # Dev #66: suggested VIPs and Top Prospects (Bart confirms each)
+            # Dev #66: suggested VIPs and Top Prospects (Casey confirms each)
             try:
                 import db, tiers, mailclass
                 from common import load_env
@@ -1382,7 +1424,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         if parsed.path == "/contacts":
             # Dev #32-#34: one account's address book — names and addresses
-            # only, from its own mail (never another account's), plus Bart's edits.
+            # only, from its own mail (never another account's), plus Casey's edits.
             try:
                 import db
                 from common import load_env
@@ -1616,7 +1658,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     _clean((qs.get("uid") or [""])[0], 12),
                     int((qs.get("idx") or ["0"])[0]))
                 safe = re.sub(r'[^\w. ()\[\]-]', "_", name)[:120] or "attachment"
-                # 2026-10-07 (Bart: "preview PDFs and image attachments, before
+                # 2026-10-07 (Casey: "preview PDFs and image attachments, before
                 # downloading them"): ?view=1 shows a PDF or a plain image in
                 # the browser — only when the bytes really are that type (magic
                 # number), typed by us, never the sender's label; SVG/HTML and
@@ -1680,7 +1722,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         Same-origin fetches from the board send an Origin (or at least a
         Referer) matching the host the page was served from, so comparing
         against the request's own Host header self-configures for every name
-        Bart reaches the board by. The extra allowlist covers the tunnel, in
+        Casey reaches the board by. The extra allowlist covers the tunnel, in
         case cloudflared is ever configured to rewrite Host.
         """
         source = self.headers.get("Origin") or self.headers.get("Referer")
@@ -1800,7 +1842,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if route == "/connections":
             # E51: write a credential to config/.env (add Gmail, set/clear a
             # key) or test one live. Secrets in, never out. Allowed from
-            # anywhere behind Cloudflare Access (Bart's call) — the write path
+            # anywhere behind Cloudflare Access (Casey's call) — the write path
             # itself never echoes a value and always backs up + chmod 600.
             try:
                 import connections
@@ -1812,7 +1854,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         elif route == "/accounts/order":
             # Dev #42: the dragged account-tab order, saved server-side so it
-            # follows Bart across browsers and sessions.
+            # follows Casey across browsers and sessions.
             try:
                 import db
                 conn = db.connect()
@@ -1827,7 +1869,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/agent/accounts":
-            # E258: Bart's per-account switch for agents (human-only in the gate).
+            # E258: Casey's per-account switch for agents (human-only in the gate).
             try:
                 import agent_gate
                 import db
@@ -1849,7 +1891,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif route == "/agent/propose":
             # E260: the Claude desktop app's only write. The gate has already
             # checked that the action is one an agent may take, in a switched-on
-            # account; here it is only filed. Nothing runs until Bart approves.
+            # account; here it is only filed. Nothing runs until Casey approves.
             try:
                 import db
                 gctx = getattr(self, "_gctx", None)
@@ -1860,7 +1902,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if len(db.proposal_list(conn, "pending", limit=PROPOSALS_PENDING_MAX)) \
                             >= PROPOSALS_PENDING_MAX:
                         raise ValueError(f"{PROPOSALS_PENDING_MAX} requests are already "
-                                         "waiting for Bart; ask him to clear some first")
+                                         "waiting for Casey; ask him to clear some first")
                     pid = db.proposal_add(conn, _clean(payload.get("tool"), 60) or "?",
                                           payload.get("account"),
                                           _clean(payload.get("preview"), 600) or "",
@@ -1869,7 +1911,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     conn.close()
                 self._json(200, {"ok": True, "status": "pending_approval", "id": pid,
                                  "note": "Filed. Nothing has happened yet: it runs only if "
-                                         "Bart approves it on the board (expires in 24h)."})
+                                         "Casey approves it on the board (expires in 24h)."})
             except PermissionError as e:
                 self._json(403, {"ok": False, "error": str(e)})
             except ValueError as e:
@@ -1878,7 +1920,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/calendar/invite":
-            # E258 item 6: Bart sends (or drops) an invite draft. Human-only
+            # E258 item 6: Casey sends (or drops) an invite draft. Human-only
             # in the gate — the one place attendees ever reach Google.
             try:
                 import calendar_invite
@@ -1925,7 +1967,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/agent/proposals/decide":
-            # E260: Bart's click (human-only in the gate). Approving runs the
+            # E260: Casey's click (human-only in the gate). Approving runs the
             # request as an ordinary agent call over loopback, so every E258
             # check (switches, Private, limits, lockout, audit) applies again
             # at the moment it runs, not only when it was filed.
@@ -1944,7 +1986,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if decision == "approve" and not agent_gate.load_key():
                         raise ValueError("approved requests run as the agent, and there is no "
                                          "agent key: run `.venv/bin/python sweeper/agent_gate.py "
-                                         "--new-key` on the Mini first")
+                                         "--new-key` on the host first")
                     if not db.proposal_claim(conn, pid, "approved" if decision == "approve"
                                              else "declined"):
                         raise ValueError(f"request {pid} is already {prop['status']}")
@@ -2005,7 +2047,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/draft/assist":
-            # 2026-10-06: the composer's ✨ — draft or rewrite from Bart's
+            # 2026-10-06: the composer's ✨ — draft or rewrite from Casey's
             # prompt, optionally reading his history with these recipients.
             # Text only; not an agent route (agent_gate allowlists exclude it).
             try:
@@ -2034,7 +2076,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif route == "/reply_options":
             # E157: 2-3 distinct reply options for a thread — pure text back
             # to the composer, nothing written to any mailbox. On-demand
-            # only (Bart is evaluating before any automation).
+            # only (Casey is evaluating before any automation).
             try:
                 import draft_reply  # lazy: pulls in anthropic
                 thread_id = _clean(payload.get("thread_id"), 25)
@@ -2083,7 +2125,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route in ("/draft/replace", "/draft/discard"):
-            # E224 (Dev #19, Bart 2026-09-27: "it's ok to delete and resave"):
+            # E224 (Dev #19, Casey 2026-09-27: "it's ok to delete and resave"):
             # an edited draft is saved as a new one and the old copy goes to
             # Gmail Trash; after a draft is sent from GC, its copy goes too.
             # Drafts folder only, checked by Gmail message id, recoverable. Human click
@@ -2190,8 +2232,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": str(e)})
 
         elif route == "/calendar/rsvp":
-            # §6 Calendar RSVP (Bart 2026-09-27, Dev #16): Yes / Maybe / No on
-            # an invitation in one thread — Bart's own response only, nothing
+            # §6 Calendar RSVP (Casey 2026-09-27, Dev #16): Yes / Maybe / No on
+            # an invitation in one thread — Casey's own response only, nothing
             # else about the event, audited. Human click only: in
             # gc_client.DENIED and not an Ask tool.
             try:
@@ -2211,7 +2253,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 import calendar_writer
                 # E258 item 6: attendees are a PROPOSAL (an invite draft). The
                 # event is created without them, exactly as before; Google
-                # emails nobody until Bart clicks Send invites.
+                # emails nobody until Casey clicks Send invites.
                 attendees = None
                 if payload.get("attendees"):
                     import calendar_invite
@@ -2240,7 +2282,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     out["invite_draft"] = {
                         "id": iid, "attendees": attendees, "new": new,
                         "note": "Event created WITHOUT attendees. Nobody is invited until "
-                                "Bart clicks Send invites (Settings → Agents)."}
+                                "Casey clicks Send invites (Settings → Agents)."}
                 self._json(200, {"ok": True, **out})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
@@ -2248,7 +2290,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/daynote":
-            # E69: save the day's note. Bart-authored free text — length
+            # E69: save the day's note. Casey-authored free text — length
             # capped in db, newlines preserved (no _clean on the body).
             try:
                 import db
@@ -2267,7 +2309,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/braindump":
-            # E134: add / edit / archive / mark-promoted an idea. Bart-authored
+            # E134: add / edit / archive / mark-promoted an idea. Casey-authored
             # free text — newlines preserved, bounded length only.
             try:
                 import db
@@ -2351,7 +2393,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                          or (action == "update" and (payload.get("text") is not None
                                                      or status == "open")))
                 if gated and action == "update" and payload.get("text") is None:
-                    # A session handing a request it picked up back to Bart
+                    # A session handing a request it picked up back to Casey
                     # with a question (building -> open) re-queues text that
                     # was already paired; only reopening an answered one is gated.
                     c0 = db.connect()
@@ -2368,7 +2410,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self._json(403, {"ok": False, "pairing_required": True,
                                      "error": ("this device isn't paired for dev requests — enter the pairing code"
                                                if dev_pairing.is_configured() else
-                                               "no dev pairing code is set yet — run sweeper/dev_pairing.py --new on the Mini")})
+                                               "no dev pairing code is set yet — run sweeper/dev_pairing.py --new on the host")})
                     return
                 if action == "check":
                     self._json(200, {"ok": True})
@@ -2384,7 +2426,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 conn = db.connect()
                 try:
                     if action == "answer":
-                        # the worker asked; Bart's paired answer re-queues it
+                        # the worker asked; Casey's paired answer re-queues it
                         if not account or not _account_known(conn, account):
                             raise ValueError("known account required")
                         db.dev_answer_question(conn, int(payload.get("id", 0) or 0), account,
@@ -2401,7 +2443,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         self._json(200, {"ok": True, "id": rid,
                                          "account": account})
                     elif action == "triage":
-                        # Bart relabels a card (paired only): its priority, or
+                        # Casey relabels a card (paired only): its priority, or
                         # "build" to clear a card triage held back. Text and
                         # status are untouched; his label sticks until the text
                         # changes. The worker's own rules still apply to it.
@@ -2423,7 +2465,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         db.dev_set_triage(conn, rid, priority=_clean(payload.get("priority"), 3) or None,
                                           size=size, verdict=verdict,
                                           note=("Set by you" if verdict or payload.get("priority") else None),
-                                          text_hash=db.dev_text_hash(row[0]), by="bart")
+                                          text_hash=db.dev_text_hash(row[0]), by="casey")
                         self._json(200, {"ok": True})
                     elif action == "update":
                         if not account or not _account_known(conn, account):
@@ -2440,7 +2482,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         if ok and status == "open" and prev and prev[0] == "building":
                             # The worker handed it back (a denied permission, or
                             # more than it should do alone): don't hand it the
-                            # same card again next run — it waits for Bart.
+                            # same card again next run — it waits for Casey.
                             db.dev_set_triage(conn, int(payload.get("id", 0)), verdict="session",
                                               note="Handed back by the worker — needs a session with you.",
                                               by="claude")
@@ -2473,7 +2515,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         self._json(200, {"ok": True, "classification": out})
                         return
                     if action in ("service-rename", "service-merge", "service-off"):
-                        # E253: Bart's edits to his own services. Only names,
+                        # E253: Casey's edits to his own services. Only names,
                         # bundles and on/off — nothing here touches Gmail.
                         import services
                         key = _clean(payload.get("key"), 120)
@@ -2542,7 +2584,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 conn = db.connect()
                 try:
                     if "tier" in payload or payload.get("tier_decline"):
-                        # Dev #66: Bart tags (or waves off a suggested) VIP / Top prospect
+                        # Dev #66: Casey tags (or waves off a suggested) VIP / Top prospect
                         import tiers
                         if payload.get("tier_decline"):
                             tiers.decline(conn, _clean(payload.get("email"), 120), _clean(payload.get("tier_decline"), 10))
@@ -2564,7 +2606,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/steward":
-            # E59: Bart's verdict on a steward suggestion. Approve writes
+            # E59: Casey's verdict on a steward suggestion. Approve writes
             # sender_categories (the manual-🤖 store); reject just closes it.
             try:
                 import db
@@ -2588,7 +2630,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/plan":
-            # E112: Bart's edit of the day plan (client sends the whole
+            # E112: Casey's edit of the day plan (client sends the whole
             # structured plan; planner.save validates and caps).
             try:
                 import db
@@ -2609,7 +2651,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/wizard":
-            # E111: Bart's verdict on a 🧙 suggestion. Approve creates the
+            # E111: Casey's verdict on a 🧙 suggestion. Approve creates the
             # todo (source email linked per E106); dismiss just closes it.
             try:
                 import db
@@ -2681,14 +2723,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 thread_id = _clean(payload.get("thread_id"), 25)
                 account = _clean(payload.get("account"), 40)
                 label = _clean(payload.get("label"), 100)
+                # dev #69 (2026-10-08): bursts of archives saw occasional 500s
+                # from Gmail connection hiccups. Every action here is safe to
+                # repeat (archive/star/label/trash leave the same end state),
+                # so a transient IMAP/network failure gets one retry.
+                def _once(fn, *a, **k):
+                    import imaplib, ssl, time as _t
+                    try:
+                        return fn(*a, **k)
+                    except (imaplib.IMAP4.abort, ssl.SSLError, OSError, TimeoutError) as e:
+                        self.log_message("RETRY mail-action %s %s/%s after %r", action, account, thread_id, e)
+                        _t.sleep(1.5)
+                        return fn(*a, **k)
                 if action == "archive":
-                    out = mail_actions.archive_thread(thread_id, account)
+                    out = _once(mail_actions.archive_thread, thread_id, account)
                 elif action == "trash":
                     # E7-P3 (§6 amended 2026-07-17): move to Gmail Trash —
                     # recoverable 30d, never purged, human click only (the
                     # command bar's tool list deliberately excludes this).
                     # Local done+dismissal ride along so nothing resurfaces.
-                    out = mail_actions.trash_thread(thread_id, account)
+                    out = _once(mail_actions.trash_thread, thread_id, account)
                     import db
                     conn = db.connect()
                     try:
@@ -2703,21 +2757,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     finally:
                         conn.close()
                 elif action == "star":
-                    out = mail_actions.star_thread(thread_id, account, star=True)
+                    out = _once(mail_actions.star_thread, thread_id, account, star=True)
                 elif action == "unstar":
-                    out = mail_actions.star_thread(thread_id, account, star=False)
+                    out = _once(mail_actions.star_thread, thread_id, account, star=False)
                 elif action == "label-add":
-                    out = mail_actions.label_thread(thread_id, account, label, add=True)
+                    out = _once(mail_actions.label_thread, thread_id, account, label, add=True)
                 else:
-                    out = mail_actions.label_thread(thread_id, account, label, add=False)
+                    out = _once(mail_actions.label_thread, thread_id, account, label, add=False)
                 self._json(200, {"ok": True, **out})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
             except Exception as e:
+                self.log_message("ERR mail-action %r", e)   # dev #69: say why, next time
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/send":
-            # The system's ONE send path (E3-P4, approved by Bart 2026-07-10,
+            # The system's ONE send path (E3-P4, approved by Casey 2026-07-10,
             # BUILD_SPEC §6 amendment). Guardrails enforced here and in
             # sweeper/send_mail.py: confirm:true required (a replayed
             # /draft/save can never send), explicit recipients required (the
@@ -2731,15 +2786,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if isinstance(payload.get(k), (list, dict)):
                         raise ValueError(f"{k} must be a plain string")
                 to = _clean(payload.get("to"), 500)
-                if not to:
-                    raise ValueError("explicit To recipients are required")
+                # dev #73: explicit recipients in To, Cc or Bcc — the list the
+                # human saw — and at least one of them
+                if not (to or _clean(payload.get("cc"), 500) or _clean(payload.get("bcc"), 500)):
+                    raise ValueError("explicit recipients are required (To, Cc or Bcc)")
                 thread_id = _clean(payload.get("thread_id"), 25)
                 account = _clean(payload.get("account"), 40)
                 if payload.get("new") is True:
-                    # E53 (Bart's explicit §6 widening, 2026-07-29): a NEW
+                    # E53 (Casey's explicit §6 widening, 2026-07-29): a NEW
                     # email — no thread — through the same confirmed path.
                     # send_new enforces the identical caps + audit. Since
-                    # 2026-10-06 (Bart: "a way to schedule a draft email") a new
+                    # 2026-10-06 (Casey: "a way to schedule a draft email") a new
                     # email can be scheduled too: same queue, fired by mail_sync
                     # through send_new.
                     if payload.get("send_at"):
@@ -2788,7 +2845,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if payload.get("attachments"):
                         raise ValueError("attachments send now only — "
                                          "scheduling stores text")
-                    # Scheduled send (E9, approved by Bart 2026-07-17): the
+                    # Scheduled send (E9, approved by Casey 2026-07-17): the
                     # human confirmed these exact recipients in the dialog;
                     # the queue holds them verbatim and mail_sync fires the
                     # row through send_mail.send_reply (same caps + audit).
@@ -2825,6 +2882,75 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     body_html=str(payload.get("body_html") or "")[:60000] or None,
                     track=_track_choice(payload),
                 )
+                try:   # the stored copy predates this reply — read it fresh next time
+                    import db, mail_cache
+                    _c = db.connect()
+                    try:
+                        mail_cache.forget(_c, account, thread_id)
+                    finally:
+                        _c.close()
+                except Exception:
+                    pass
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/signatures":
+            # 2026-10-08: Casey sets an account's signature (HTML, cleaned on
+            # the way in). Paired browser only (agent_gate.HUMAN_ONLY_POST).
+            try:
+                import db, signatures
+                account = _clean(payload.get("account"), 40)
+                conn = db.connect()
+                try:
+                    if not account or not _account_known(conn, account):
+                        raise ValueError("known account required")
+                    out = signatures.set_sig(conn, account, str(payload.get("html") or ""))
+                finally:
+                    conn.close()
+                self._json(200, {"ok": True, **out})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
+        elif route == "/watch":
+            # E276: Casey's own follow-ups — never an agent route (not in the
+            # agent allowlists). Touches no mail.
+            try:
+                import db, watch
+                a = _clean(payload.get("action"), 10)
+                conn = db.connect()
+                try:
+                    if a == "add":
+                        acct = _clean(payload.get("account"), 40)
+                        if not acct or not _account_known(conn, acct):
+                            raise ValueError("known account required")
+                        out = {"id": watch.add(conn, acct, _clean(payload.get("kind"), 10),
+                                               _clean(payload.get("thread_id"), 25),
+                                               _clean(payload.get("message_id"), 200) or None,
+                                               _clean(payload.get("who"), 120) or None,
+                                               _clean(payload.get("who_name"), 80) or None,
+                                               str(payload.get("note") or "")[:300] or None,
+                                               _clean(payload.get("due"), 10) or None,
+                                               _clean(payload.get("subject"), 200) or None,
+                                               int(payload.get("todo_id") or 0) or None)}
+                    elif a == "done":
+                        watch.done(conn, int(payload.get("id") or 0)); out = {}
+                    elif a == "edit":
+                        watch.edit(conn, int(payload.get("id") or 0),
+                                   None if payload.get("note") is None else str(payload.get("note"))[:300],
+                                   _clean(payload.get("due"), 10) or None); out = {}
+                    elif a == "push":
+                        out = {"due": watch.push(conn, int(payload.get("id") or 0), int(payload.get("days") or 2))}
+                    elif a == "ask":
+                        out = {"ask": watch.set_ask_mode(conn, _clean(payload.get("account"), 40), _clean(payload.get("ask"), 10))}
+                    else:
+                        raise ValueError(f"unknown action {a!r}")
+                finally:
+                    conn.close()
                 self._json(200, {"ok": True, **out})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
@@ -2832,7 +2958,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/tracking":
-            # E269: Bart's per-account tracking switches. Paired browser only
+            # E269: Casey's per-account tracking switches. Paired browser only
             # (agent_gate.HUMAN_ONLY_POST); touches no mail.
             try:
                 import db, tracking
@@ -2855,7 +2981,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             # Pin/snooze/done state for the Mail screen (E3-P3). The Gmail
             # half of "done" (archive) is a separate /mail-action call
             # composed by the client. Snooze is Shortwave-style since E5-P1
-            # (§6 amendment, Bart 2026-07-15): it ALSO archives the thread
+            # (§6 amendment, Casey 2026-07-15): it ALSO archives the thread
             # in Gmail now, and mail_sync's wake pass re-inboxes it when the
             # time passes (wake_inbox=1 marks that promise). Unsnooze
             # re-inboxes immediately. Both Gmail writes are best-effort —
@@ -3137,7 +3263,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/context/docs":
-            # E259: Bart pastes or uploads a context document for an account
+            # E259: Casey pastes or uploads a context document for an account
             # or a project. Board clicks only: not an Ask tool, and denied to
             # agents in gc_client. Nothing here touches Gmail.
             try:
@@ -3191,7 +3317,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                              source="agent" if by_agent else None)
                         self._json(200, {"ok": True, "id": nid, **(
                             {"held": True, "note": "saved switched off — it counts once "
-                             "Bart approves it in Settings → Context"} if by_agent else {})})
+                             "Casey approves it in Settings → Context"} if by_agent else {})})
                     elif action == "update":
                         fields = payload.get("fields")
                         ok = db.update_context(conn, int(payload.get("id", 0)),
@@ -3233,7 +3359,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": repr(e)})
 
         elif route == "/mail/refresh":
-            # E204 (Bart: "always able to see the latest emails… an easy way
+            # E204 (Casey: "always able to see the latest emails… an easy way
             # to refresh"): run a quick mail_sync now — inbox + todo labels,
             # no planner/notify passes. mail_sync's own lock refuses overlap;
             # a sync already underway just means "wait for that one".
@@ -3279,7 +3405,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     raise ValueError("empty command")
                 selection = payload.get("selection")
                 selection = selection if isinstance(selection, dict) else None
-                # E259: the account Bart is looking at, so its context
+                # E259: the account Casey is looking at, so its context
                 # documents ground the answer
                 if _clean(payload.get("account"), 40):
                     selection = {**(selection or {}), "account": _clean(payload.get("account"), 40)}
@@ -3288,12 +3414,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 # request without limit.
                 history = payload.get("history")
                 history = history[-12:] if isinstance(history, list) else None
-                # E26: Bart picks model + effort in the Ask panel; both are
+                # E26: Casey picks model + effort in the Ask panel; both are
                 # allow-listed inside command.py, which falls back to the
                 # defaults on anything unrecognised.
                 # E136: persist the QUESTION before the model runs (it can
                 # take 80s+, and a dropped tunnel connection used to leave
-                # zero trace in history — Bart hit this). The answer lands
+                # zero trace in history — Casey hit this). The answer lands
                 # as a second write when it exists; a crash leaves the
                 # question standing as evidence the ask happened.
                 chat_id = payload.get("chat_id")
@@ -3322,7 +3448,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     model=_clean(payload.get("model"), 40) or command_mod.COMMAND_MODEL,
                     effort=_clean(payload.get("effort"), 10) or None,
                     project_id=project_id)
-                # Best-effort — a storage failure must never cost Bart the
+                # Best-effort — a storage failure must never cost Casey the
                 # answer he just waited for.
                 try:
                     import db
@@ -3364,7 +3490,7 @@ class Server(socketserver.ThreadingTCPServer):
 
 
 def _tailnet_addrs() -> list:
-    """The Mini's own tailnet addresses, for the startup banner only."""
+    """The host's own tailnet addresses, for the startup banner only."""
     found = []
     try:
         out = subprocess.run(["/sbin/ifconfig"], capture_output=True, text=True,

@@ -1,6 +1,6 @@
 """Shared IMAP helpers for thread-scoped mailbox operations.
 
-Anything that starts by locating one of Bart's Gmail threads by its
+Anything that starts by locating one of Casey's Gmail threads by its
 X-GM-THRID and reading its messages lives here: `draft_reply.py` (compose +
 APPEND to Drafts) and `mail_actions.py` (archive/star/label/fetch-full-thread)
 both build on this instead of duplicating the connect/search/parse logic.
@@ -41,6 +41,16 @@ def validate_thread_id(thread_id) -> str:
     if not _THRID_RE.match(s):
         raise ValueError(f"bad thread_id {thread_id!r}")
     return s
+
+
+def from_header(account: str, user: str, env: dict) -> str:
+    """'Your Name <casey@…>' — the From line of everything Grand Central
+    sends or drafts (2026-10-08: a bare address showed in Outlook as just
+    "casey@brightline.example"). GMAIL_<STEM>_NAME overrides it per account,
+    SENDER_NAME for all of them."""
+    from email.utils import formataddr
+    name = (env.get(f"GMAIL_{str(account).upper()}_NAME") or env.get("SENDER_NAME") or "Your Name").strip()
+    return formataddr((name, user)) if name else user
 
 
 def connect(account: str, env: dict) -> tuple:
@@ -272,7 +282,7 @@ def reply_headers(imap: imaplib.IMAP4_SSL, user: str, thread_id: str,
         raise RuntimeError("could not read any thread messages")
     last = messages[-1]
 
-    # Reply target: the newest message NOT from Bart (reply-debt case);
+    # Reply target: the newest message NOT from Casey (reply-debt case);
     # fall back to the newest message.
     me = user.lower()
     target = next((m for m in reversed(messages)

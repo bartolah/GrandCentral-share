@@ -7,7 +7,7 @@ record per thread with the facts the classifier and state-builder need:
 
     - subject, participants, message count
     - the LATEST message: who it's from, inbound vs outbound (relative to
-      Bart's own address), its timestamp, age in days, and a text snippet
+      Casey's own address), its timestamp, age in days, and a text snippet
 
 Reply-debt is computed structurally downstream from `last_direction` /
 `last_from` rather than guessed by the model — the reader just reports facts.
@@ -46,7 +46,7 @@ IMAP_PORT = 993
 # config/.env by convention: any GMAIL_<SLUG>_USER paired with a matching
 # GMAIL_<SLUG>_APP_PASSWORD defines an account whose slug is <SLUG> lowercased.
 # This is what lets the Connections UI add a Gmail by writing two .env keys —
-# no code edit per account. `personal`/`connectblue` derive unchanged, so every
+# no code edit per account. `personal`/`brightline` derive unchanged, so every
 # existing DB row, override, and UI chip keeps working.
 _ACCT_RE = re.compile(r"^GMAIL_([A-Z0-9_]+)_USER$")
 
@@ -55,7 +55,7 @@ def scan_accounts(env: dict) -> dict:
     """Build {slug: (user_key, pass_key)} from the env's GMAIL_*_USER keys.
 
     Only pairs with a matching *_APP_PASSWORD key are included. Order is
-    deterministic (personal/connectblue first, then the rest sorted) so the UI
+    deterministic (personal/brightline first, then the rest sorted) so the UI
     and account chips stay stable across restarts.
     """
     found = {}
@@ -67,7 +67,7 @@ def scan_accounts(env: dict) -> dict:
         pass_key = f"GMAIL_{stem}_APP_PASSWORD"
         if pass_key in env:
             found[stem.lower()] = (key, pass_key)
-    order = ["personal", "connectblue"]
+    order = ["personal", "brightline"]
     ranked = sorted(found, key=lambda s: (order.index(s) if s in order else len(order), s))
     return {s: found[s] for s in ranked}
 
