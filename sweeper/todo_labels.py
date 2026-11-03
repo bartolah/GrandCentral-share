@@ -73,6 +73,11 @@ def decode_mutf7(name: str) -> str:
     return re.sub(r"&([A-Za-z0-9+,]*)-", dec, name)
 
 
+def _key(label: str) -> str:
+    """One label's identity whichever form it's in (text or IMAP wire)."""
+    return decode_mutf7(label or "").lower()
+
+
 def _label_owner(conn, label: str):
     return conn.execute(
         "SELECT id FROM engagements WHERE lower(gmail_label) = lower(?)",
@@ -148,7 +153,7 @@ def rename(conn, eng_id: int, env: dict | None = None, log=print) -> str | None:
         try:
             imap, _u = mc.connect(account, env)
             try:
-                typ, _ = imap.rename(mail_actions._quote(old), mail_actions._quote(new))
+                typ, _ = imap.rename(mail_actions._qlabel(old), mail_actions._qlabel(new))
                 if typ != "OK":
                     log(f"todo_labels: rename {old!r} -> {new!r} refused in {account}")
             finally:
@@ -197,7 +202,7 @@ def _todo_labels(imap) -> list:
 
 def _label_threads(imap, label: str) -> set:
     """Thread ids carrying the label (read-only EXAMINE of its folder)."""
-    typ, _ = imap.select(mail_actions._quote(label), readonly=True)
+    typ, _ = imap.select(mail_actions._qlabel(label), readonly=True)
     if typ != "OK":
         raise RuntimeError(f"cannot open {label!r}")
     typ, data = imap.uid("SEARCH", None, "ALL")
@@ -265,13 +270,16 @@ def _reconcile_account(conn, imap, account: str, stats: dict, log) -> None:
         try:
             gmail[label] = {t for t in _label_threads(imap, label) if str(t) not in priv}
         except Exception as e:
-            unreadable.add(label.lower())
+            unreadable.add(_key(label))
             log(f"todo_labels:{account} {label!r}: {e!r}")
     # Account boundary: a label is only ever matched to a todo of THIS
     # account (or a legacy unassigned one holding no other account's mail).
     # Matching by label text alone let a same-named label in another account
     # pull that account's threads into this account's todo.
-    by_label = {r["gmail_label"].lower(): r["id"] for r in conn.execute(
+    # 2026-11-03: compared as decoded text — GC stores the label it made as
+    # text ("&"), Gmail lists it in wire form ("&-"); unmatched, that one
+    # label would have spawned a duplicate todo
+    by_label = {_key(r["gmail_label"]): r["id"] for r in conn.execute(
         "SELECT g.id, g.gmail_label FROM engagements g "
         "WHERE g.gmail_label IS NOT NULL AND g.state != 'dropped' "
         "AND (g.account = ? OR (g.account IS NULL AND NOT EXISTS ("
@@ -282,12 +290,12 @@ def _reconcile_account(conn, imap, account: str, stats: dict, log) -> None:
     # vanished label holding the same threads — follow the rename
     # rather than orphaning the old todo and spawning a new one
     known_here = {eid for eid, m in members.items() if 1 in m.values()}
-    present = {l.lower() for l in gmail} | unreadable
+    present = {_key(l) for l in gmail} | unreadable
     vanished = {eid for eid in known_here
                 if (lbl := next((k for k, v in by_label.items() if v == eid), None))
                 and lbl not in present}
     for label, thr in gmail.items():
-        if label.lower() in by_label or not thr:
+        if _key(label) in by_label or not thr:
             continue
         for eid in list(vanished):
             confirmed = {t for t, s in members.get(eid, {}).items() if s == 1}
@@ -297,14 +305,14 @@ def _reconcile_account(conn, imap, account: str, stats: dict, log) -> None:
                     conn.execute("UPDATE engagements SET gmail_label = ?, text = ? "
                                  "WHERE id = ?", (label, new_text[:300], eid))
                 by_label = {k: v for k, v in by_label.items() if v != eid}
-                by_label[label.lower()] = eid
+                by_label[_key(label)] = eid
                 vanished.discard(eid)
                 stats["renamed"] += 1
                 log(f"todo_labels:{account} followed Gmail rename -> {label!r}")
                 break
 
     for label, thr in gmail.items():
-        eid = by_label.get(label.lower())
+        eid = by_label.get(_key(label))
         if eid is None:
             if not thr:
                 continue          # an empty stray label is not a todo
@@ -313,7 +321,7 @@ def _reconcile_account(conn, imap, account: str, stats: dict, log) -> None:
             with conn:
                 conn.execute("UPDATE engagements SET gmail_label = ? WHERE id = ?",
                              (label, eid))
-            by_label[label.lower()] = eid
+            by_label[_key(label)] = eid
             stats["created"] += 1
             log(f"todo_labels:{account} new todo from Gmail label {label!r}")
         have = members.setdefault(eid, {})
@@ -362,7 +370,7 @@ def _reconcile_account(conn, imap, account: str, stats: dict, log) -> None:
                 continue          # gone from Gmail — stop retrying
             for uid in uids:
                 typ, _ = imap.uid("STORE", uid, "+X-GM-LABELS",
-                                  f"({mail_actions._quote(label)})")
+                                  f"({mail_actions._qlabel(label)})")
                 if typ != "OK":
                     raise RuntimeError(f"STORE refused on uid {uid!r}")
             _mark(conn, r["engagement_id"], account, r["thread_id"], 1)

@@ -18,7 +18,7 @@ brightline.example: SSL and Certificates (Edit), DNS (Edit), Workers Routes (Edi
 
     .venv/bin/python integrations/tracker/saas_setup.py                  # plan + current status
     .venv/bin/python integrations/tracker/saas_setup.py --apply          # do it
-    .venv/bin/python integrations/tracker/saas_setup.py --apply capitolinfluence.ai fieldhouse.example
+    .venv/bin/python integrations/tracker/saas_setup.py --apply consulting.example fieldhouse.example
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ API = "https://api.cloudflare.com/client/v4"
 ZONE = "brightline.example"
 FALLBACK = "trk.brightline.example"
 SCRIPT = "gc-tracker"
-DEFAULT_DOMAINS = ["capitolinfluence.ai", "fieldhouse.example"]
+DEFAULT_DOMAINS = ["consulting.example", "fieldhouse.example"]
 
 
 class CF:

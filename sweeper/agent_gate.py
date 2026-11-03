@@ -163,7 +163,22 @@ LIMITS = [
     ("sweep", DAY, 2, "2 sweeps a day"),
 ]
 BYTES_PER_HOUR = 2 * 1024 * 1024
+# §6 2026-10-19 (Casey: "I'm ok with expanding the limit, as long as it's not a
+# major issue for our capacity. I'm the only one querying it through my Claude
+# instance." then confirmed 10 MB an hour with writes exempt): the desktop app
+# may receive 10 MB an hour, and the budget never refuses its writes (a draft
+# save returns a few hundred bytes; a busy reading hour shouldn't stop it saving
+# the drafts it read for). OpenClaw keeps 2 MB, writes included.
+DESKTOP_BYTES_PER_HOUR = 10 * 1024 * 1024
 BREAKER_THREADS = (20, 600)   # > 20 distinct threads in 10 minutes
+# §6 2026-10-15 (Casey chose "Raise the limit for your Claude session only (for
+# example 60 threads in 10 minutes), since you're directing it. OpenClaw stays
+# at 20."): the desktop app tripped the breaker drafting ~35 personal MarCom
+# notes, reading each person's thread first. Its hourly thread cap rises with
+# it, or 60 in 10 minutes could never happen; the daily cap, the lockout
+# itself and everything else stay the same for both agents.
+DESKTOP_BREAKER_THREADS = (60, 600)
+DESKTOP_LIMITS = {("thread", HOUR): (60, "60 thread reads an hour")}
 BREAKER_REFUSALS = (3, 300)   # 3 refusals in 5 minutes
 
 _ACCT_RE = re.compile(r"^[a-z0-9_-]{1,40}$")
@@ -498,6 +513,8 @@ def _since(seconds: int) -> str:
 def _check_limits(conn, ctx: Ctx) -> None:
     buckets = _bucket(ctx)
     for bucket, window, cap, label in LIMITS:
+        if _who(ctx) == "desktop":
+            cap, label = DESKTOP_LIMITS.get((bucket, window), (cap, label))
         if bucket not in buckets:
             continue
         n = sum(1 for r in conn.execute(
@@ -507,11 +524,15 @@ def _check_limits(conn, ctx: Ctx) -> None:
         if n >= cap:
             raise _refuse(ctx, f"rate limit: {label}. Casey can raise it; bulk reading "
                                "is a sign something is wrong.", status=429)
+    desktop = _who(ctx) == "desktop"
+    if desktop and ctx.method == "POST":
+        return
+    cap = DESKTOP_BYTES_PER_HOUR if desktop else BYTES_PER_HOUR
     used = conn.execute(
         "SELECT COALESCE(SUM(result_bytes), 0) FROM agent_audit "
         "WHERE principal = ? AND ts >= ?", (_who(ctx), _since(HOUR))).fetchone()[0]
-    if used >= BYTES_PER_HOUR:
-        raise _refuse(ctx, "rate limit: 2 MB returned an hour.", status=429)
+    if used >= cap:
+        raise _refuse(ctx, f"rate limit: {cap // (1024 * 1024)} MB returned an hour.", status=429)
 
 
 def _who(ctx: Ctx) -> str:
@@ -561,6 +582,13 @@ def filter_response(ctx: Ctx, obj, conn=None):
         return o
 
     out = walk(obj)
+    if ctx.route == "/thread" and isinstance(out, dict):
+        # 2026-10-19: Casey's Claude session hit the 2 MB-an-hour budget reading
+        # about 38 threads; each message came twice, as text and as its HTML
+        # (~4x the size), and no agent tool reads the HTML. Agents get the text.
+        for m in out.get("messages") or []:
+            if isinstance(m, dict):
+                m.pop("body_html", None)
     if ctx.who == "desktop" and ctx.route == "/brief" and isinstance(out, dict):
         # E260: one account's brief; the board-wide counts and Casey's own day
         # note span accounts, so the desktop app does not get them
@@ -614,7 +642,7 @@ def _breaker(conn, who: str = "agent") -> None:
     if refusals >= n:
         _lock(conn, f"{refusals} refused {who} calls in {window // 60} minutes")
         return
-    n, window = BREAKER_THREADS
+    n, window = DESKTOP_BREAKER_THREADS if who == "desktop" else BREAKER_THREADS
     threads = set()
     for (tids,) in conn.execute(
             "SELECT thread_ids FROM agent_audit WHERE principal = ? AND route = '/thread' "

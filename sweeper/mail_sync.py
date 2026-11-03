@@ -55,7 +55,7 @@ from common import DATA_DIR, LOGS_DIR, iso_z, load_env, load_registry  # noqa: E
 import db  # noqa: E402
 from build_state import _gmail_link  # noqa: E402
 from sources.gmail_reader import (  # noqa: E402
-    ACCOUNTS, IMAP_HOST, IMAP_PORT, _addr_list, _body_snippet, _dt_from,
+    ACCOUNTS, IMAP_HOST, IMAP_PORT, IMAP_TIMEOUT, _addr_list, _body_snippet, _dt_from,
     _fetch_headers, _first_email,
 )
 
@@ -230,7 +230,7 @@ def sync_account(account: str, env: dict, lookback_days: int,
         raise RuntimeError(f"{user_key}/{pass_key} not set in config/.env")
 
     since_date = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%d-%b-%Y")
-    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
+    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=IMAP_TIMEOUT)
     try:
         imap.login(user, password)
         # E258: latch every thread labelled Private anywhere in the account

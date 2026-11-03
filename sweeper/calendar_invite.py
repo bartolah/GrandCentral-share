@@ -123,18 +123,33 @@ def send(conn, invite_id: int, env: dict | None = None, log=print, runner=subpro
         if conn.execute("UPDATE invite_drafts SET status = 'sending' WHERE id = ? "
                         "AND status = 'pending'", (int(invite_id),)).rowcount != 1:
             raise ValueError("no pending invite with that id")
-    try:
-        proc = runner(cmd, capture_output=True, text=True, timeout=GOG_TIMEOUT, env=proc_env)
-    except Exception:
-        # unknown whether Google sent: stay 'sending' (not re-sendable) and say so
-        log(f"calendar_invite: #{invite_id} gog did not answer — left as 'sending'; "
-            "check the event in Google Calendar before retrying")
-        raise
+    # 2026-10-12: Google refused the first real one with "403 rateLimitExceeded".
+    # That answer means Google did NOT apply the update, so it is safe to wait
+    # and try again: up to three tries, 3 s then 8 s apart.
+    for attempt, pause in enumerate((3, 8, None)):
+        try:
+            proc = runner(cmd, capture_output=True, text=True, timeout=GOG_TIMEOUT, env=proc_env)
+        except Exception:
+            # unknown whether Google sent: stay 'sending' (not re-sendable) and say so
+            log(f"calendar_invite: #{invite_id} gog did not answer — left as 'sending'; "
+                "check the event in Google Calendar before retrying")
+            raise
+        limited = proc.returncode != 0 and re.search(r"rateLimitExceeded|userRateLimitExceeded|quotaExceeded|\b429\b",
+                                                      (proc.stderr or "") + (proc.stdout or ""))
+        if not limited or pause is None:
+            break
+        log(f"calendar_invite: #{invite_id} Google rate limit — retrying in {pause}s")
+        import time
+        time.sleep(pause)
     if proc.returncode != 0:
         with conn:
             conn.execute("UPDATE invite_drafts SET status = 'pending' WHERE id = ?",
                          (int(invite_id),))
-        raise RuntimeError(f"gog calendar update failed: {(proc.stderr or proc.stdout or '')[:400]}")
+        err = (proc.stderr or proc.stdout or "")[:400]
+        if re.search(r"rateLimitExceeded|quotaExceeded", err):
+            raise RuntimeError("Google is limiting invites from this account right now (rate limit). "
+                               "The event is on your calendar; try Send invites again in a few minutes.")
+        raise RuntimeError(f"gog calendar update failed: {err}")
     with conn:
         conn.execute("UPDATE invite_drafts SET status = 'sent', sent_at = ? WHERE id = ?",
                      (db._now_iso(), int(invite_id)))

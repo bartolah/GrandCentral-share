@@ -20,7 +20,7 @@ from email.utils import getaddresses, parsedate_to_datetime
 try:
     from .common import require_env
     from .sources.gmail_reader import (
-        ACCOUNTS, IMAP_HOST, IMAP_PORT, _decode, _payload_text, _strip_html,
+        ACCOUNTS, IMAP_HOST, IMAP_PORT, IMAP_TIMEOUT, _decode, _payload_text, _strip_html,
     )
 except ImportError:  # pragma: no cover - direct-run fallback
     import os
@@ -28,7 +28,7 @@ except ImportError:  # pragma: no cover - direct-run fallback
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from common import require_env
     from sources.gmail_reader import (
-        ACCOUNTS, IMAP_HOST, IMAP_PORT, _decode, _payload_text, _strip_html,
+        ACCOUNTS, IMAP_HOST, IMAP_PORT, IMAP_TIMEOUT, _decode, _payload_text, _strip_html,
     )
 
 CONTEXT_CHARS = 1500
@@ -60,7 +60,7 @@ def connect(account: str, env: dict) -> tuple:
     user_key, pass_key = ACCOUNTS[account]
     user = require_env(env, user_key)
     password = require_env(env, pass_key)
-    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
+    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=IMAP_TIMEOUT)
     imap.login(user, password)
     return imap, user
 

@@ -2266,6 +2266,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     description=str(payload.get("description") or "")[:2000] or None,
                     location=_clean(payload.get("location"), 300) if payload.get("location") else None,
                     all_day=bool(payload.get("all_day")),
+                    with_meet=payload.get("meet") is True,
                 )
                 if attendees:
                     import agent_gate

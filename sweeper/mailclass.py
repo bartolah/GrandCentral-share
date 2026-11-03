@@ -179,7 +179,7 @@ _REL_RANK = {r: i for i, r in enumerate(("teammate", "company", "frequent", "kno
 
 # ---------------------------------------------------------------- the rules
 def classify(row: dict, ros: dict, freq: dict, own: set, acct_group: str | None = None,
-             svc_kinds: dict | None = None) -> dict:
+             svc_kinds: dict | None = None, now: datetime | None = None) -> dict:
     """One mail_threads row → the rule fields, reasons and a confidence."""
     cat = row.get("category") or "other"
     direction = row.get("last_direction") or "inbound"
@@ -236,7 +236,7 @@ def classify(row: dict, ros: dict, freq: dict, own: set, acct_group: str | None 
         reasons.append("bulk or automated mail doesn't need a reply")
     elif direction == "outbound":
         out["respond"] = "no"
-        age = (datetime.now(timezone.utc) - last).days
+        age = ((now or datetime.now(timezone.utc)) - last).days
         target = [a for a in others if relationship_of(a, ros, freq, own) == "teammate"]
         if age <= WAIT_MAX_DAYS and others:
             if target:
@@ -296,7 +296,7 @@ def run(conn, env: dict, accounts: list, log=print, now: datetime | None = None)
                 if (cur and cur["fingerprint"] == _fingerprint(row) and cur["version"] == VERSION
                         and cur["roster"] == ros["hash"] and cur["classified_at"] >= stale):
                     continue
-                fields = classify(row, ros, freq, own, acct_group, svc_kinds)
+                fields = classify(row, ros, freq, own, acct_group, svc_kinds, now=now)
                 db.class_write_rules(conn, account, row["thread_id"], fields,
                                      _fingerprint(row), VERSION, ros["hash"], stamp)
                 n += 1

@@ -83,7 +83,7 @@ def _account_brief(account: str) -> str:
         return ""
     if not docs:
         return ""
-    return ("\n\nBart's standing brief for this account follows. Follow its voice "
+    return ("\n\nCasey's standing brief for this account follows. Follow its voice "
             "and naming rules; never put anything it marks internal-only (such as "
             "pricing) into the reply.\n\n" +
             "\n\n".join(f"## {d['title']}\n{d['text']}" for d in docs))

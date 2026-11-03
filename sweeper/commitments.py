@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 import db
 import mail_common as mc
 from common import require_env
-from sources.gmail_reader import ACCOUNTS, IMAP_HOST, IMAP_PORT
+from sources.gmail_reader import ACCOUNTS, IMAP_HOST, IMAP_PORT, IMAP_TIMEOUT
 
 MODEL = "claude-haiku-4-5-20251001"
 MAX_PER_RUN = 8
@@ -48,7 +48,7 @@ def run(conn, env: dict, log=print) -> None:
         if not user or not pw:
             continue
         try:
-            imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
+            imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=IMAP_TIMEOUT)
             imap.login(user, pw)
             sent = mc.find_folder(imap, "\\Sent", "[Gmail]/Sent Mail")
             imap.select(f'"{sent}"', readonly=True)

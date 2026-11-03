@@ -259,6 +259,35 @@ class GmailLabelSyncBoundary(DbCase):
         self.assertEqual(self.conn.execute("SELECT account FROM engagements").fetchone()["account"], B)
 
 
+class LabelAmpersand(GmailLabelSyncBoundary):
+    """2026-11-03: a todo named "… & …" never reached Gmail — the label went
+    out with a bare '&', which IMAP's modified UTF-7 forbids (BAD "Could not
+    parse command"). It now goes out as '&-', and Gmail listing it back that
+    way is recognised as the same todo, not a new one."""
+
+    def test_wire_form(self):
+        import mail_actions as ma
+        self.assertEqual(ma._qlabel("GC/Todo/Social Media & Marketing"),
+                         '"GC/Todo/Social Media &- Marketing"')
+        # already in wire form (read back from LIST): not double-encoded
+        self.assertEqual(ma._qlabel("GC/Todo/Social &- Marketing"), '"GC/Todo/Social &- Marketing"')
+        self.assertEqual(ma._qlabel("GC/Todo/Board deck"), '"GC/Todo/Board deck"')
+        # non-ASCII (a label Casey typed in Gmail) round-trips
+        self.assertEqual(ma._encode_mutf7("Café"), "Caf&AOk-")
+        self.assertEqual(todo_labels.decode_mutf7(ma._encode_mutf7("Café & co")), "Café & co")
+
+    def test_gmail_listing_the_wire_form_is_the_same_todo(self):
+        eid = db.add_engagement(self.conn, "Social Media & Marketing", account=A)
+        _seed_mail(self.conn, A, "101", "x")
+        db.link_thread(self.conn, eid, A, "101", add=True)
+        self.assertEqual(todo_labels.label_for(self.conn, eid), "GC/Todo/Social Media & Marketing")
+        stats = self._run(A, {"GC/Todo/Social Media &- Marketing": ["101"]})
+        self.assertEqual(stats["created"], 0)
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM engagements").fetchone()[0], 1)
+        self.assertEqual(self.conn.execute(
+            "SELECT label_synced FROM engagement_threads WHERE engagement_id=?", (eid,)).fetchone()[0], 1)
+
+
 # ---------------------------------------------------------------------------
 # HTTP layer — a scratch dashboard on a scratch port with a scratch DB.
 # ---------------------------------------------------------------------------

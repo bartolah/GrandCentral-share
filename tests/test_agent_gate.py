@@ -301,6 +301,100 @@ class AgentGate(unittest.TestCase):
         self.assertEqual(code, 200)
 
 
+class DesktopBreaker(unittest.TestCase):
+    """§6 2026-10-15: the desktop app (Casey directing it) may read 60 threads
+    in 10 minutes; OpenClaw still locks past 20."""
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.conn = db.connect(os.path.join(self._dir.name, "b.db"))
+        import agent_gate
+        self.g = agent_gate
+
+    def tearDown(self):
+        self.conn.close()
+        self._dir.cleanup()
+
+    def _reads(self, who, n, start=0):
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with self.conn:
+            self.conn.executemany(
+                "INSERT INTO agent_audit (ts, principal, method, route, status, result_bytes, thread_ids) "
+                "VALUES (?, ?, 'GET', '/thread', 200, 10, ?)",
+                [(now, who, json.dumps([f"{who}{i}"])) for i in range(start, start + n)])
+
+    def test_openclaw_locks_past_20(self):
+        self._reads("agent", 21)
+        self.g._breaker(self.conn, "agent")
+        self.assertIn("21 different threads", self.g.lock_state(self.conn)["reason"])
+
+    def test_desktop_reads_60_then_locks(self):
+        self._reads("desktop", 60)
+        self.g._breaker(self.conn, "desktop")
+        self.assertIsNone(self.g.lock_state(self.conn))
+        self._reads("desktop", 1, start=60)
+        self.g._breaker(self.conn, "desktop")
+        self.assertIn("61 different threads", self.g.lock_state(self.conn)["reason"])
+
+    def test_hourly_thread_cap_is_60_for_desktop_and_40_for_openclaw(self):
+        self._reads("desktop", 59)
+        ctx = self.g.Ctx("desktop", "GET", "/thread", {}, None)
+        self.g._check_limits(self.conn, ctx)          # 60th read allowed
+        self._reads("desktop", 1)
+        with self.assertRaises(self.g.Refused) as e:
+            self.g._check_limits(self.conn, ctx)
+        self.assertIn("60 thread reads an hour", str(e.exception))
+        self._reads("agent", 40)
+        with self.assertRaises(self.g.Refused):
+            self.g._check_limits(self.conn, self.g.Ctx("agent", "GET", "/thread", {}, None))
+
+
+class DesktopByteBudget(DesktopBreaker):
+    """§6 2026-10-19: 10 MB an hour for the desktop app, and its writes are
+    never refused by the budget; OpenClaw keeps 2 MB."""
+
+    def _used(self, who, mb):
+        now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with self.conn:
+            self.conn.execute(
+                "INSERT INTO agent_audit (ts, principal, method, route, status, result_bytes) "
+                "VALUES (?, ?, 'GET', '/todos', 200, ?)", (now, who, mb * 1024 * 1024))
+
+    def test_desktop_reads_past_2mb_then_stops_at_10(self):
+        ctx = self.g.Ctx("desktop", "GET", "/todos", {}, None)
+        self._used("desktop", 3)
+        self.g._check_limits(self.conn, ctx)
+        self._used("desktop", 7)
+        with self.assertRaises(self.g.Refused) as e:
+            self.g._check_limits(self.conn, ctx)
+        self.assertIn("10 MB", str(e.exception))
+
+    def test_desktop_writes_ignore_the_budget(self):
+        self._used("desktop", 11)
+        self.g._check_limits(self.conn, self.g.Ctx("desktop", "POST", "/draft/compose", {}, None))
+
+    def test_openclaw_keeps_2mb(self):
+        self._used("agent", 2)
+        with self.assertRaises(self.g.Refused) as e:
+            self.g._check_limits(self.conn, self.g.Ctx("agent", "POST", "/draft/compose", {}, None))
+        self.assertIn("2 MB", str(e.exception))
+
+
+class AgentThreadsAreText(unittest.TestCase):
+    """2026-10-19: agents get each message's text, not its HTML twin, so a
+    long thread doesn't spend the 2 MB-an-hour budget twice."""
+
+    def test_body_html_is_dropped_for_both_agents(self):
+        import agent_gate as g
+        for who in ("agent", "desktop"):
+            ctx = g.Ctx(who, "GET", "/thread", {}, None)
+            ctx.allowed_accounts = {"acctone"}
+            out = g.filter_response(ctx, {"ok": True, "messages": [
+                {"account": "acctone", "thread_id": "t1", "body": "hi", "body_html": "<p>hi</p>"}]})
+            self.assertEqual(out["messages"][0]["body"], "hi")
+            self.assertNotIn("body_html", out["messages"][0])
+
+
 class AgentDraftFlags(unittest.TestCase):
     """§6 E258 item 5: agent drafts may go to anyone, but say so."""
 
@@ -427,6 +521,32 @@ class InviteDrafts(unittest.TestCase):
         with self.assertRaises(TimeoutError):
             self.ci.send(self.conn, iid, env=env, log=lambda *a: None, runner=boom)
         self.assertEqual(self.ci.pending(self.conn), [])             # unknown: never re-sendable
+
+    def test_a_google_rate_limit_is_retried_then_reported_plainly(self):
+        # 2026-10-12: the first real invite hit "403 rateLimitExceeded"
+        from unittest import mock
+        iid = self.ci.propose(self.conn, "personal", {"event_id": "ev1"}, ["jane@acme.com"], [], "agent")
+        env = {"GMAIL_PERSONAL_USER": "casey@example.com"}
+
+        class Limited:
+            returncode, stdout, stderr = 1, "", "Google API error (403 rateLimitExceeded): Rate Limit Exceeded"
+
+        class Done:
+            returncode, stdout, stderr = 0, "{}", ""
+
+        answers = [Limited(), Done()]
+        with mock.patch("time.sleep") as slept:
+            out = self.ci.send(self.conn, iid, env=env, log=lambda *a: None,
+                               runner=lambda cmd, **kw: answers.pop(0))
+        self.assertEqual(out["sent_to"], ["jane@acme.com"])
+        self.assertEqual(slept.call_count, 1)
+
+        iid2 = self.ci.propose(self.conn, "personal", {"event_id": "ev1"}, ["joe@acme.com"], [], "agent")
+        with mock.patch("time.sleep"):
+            with self.assertRaisesRegex(RuntimeError, "rate limit"):
+                self.ci.send(self.conn, iid2, env=env, log=lambda *a: None,
+                             runner=lambda cmd, **kw: Limited())
+        self.assertIn(iid2, [p["id"] for p in self.ci.pending(self.conn)])   # still sendable
 
 
 class Egress(unittest.TestCase):

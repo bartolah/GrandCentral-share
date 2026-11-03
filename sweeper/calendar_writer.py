@@ -57,6 +57,12 @@ except ImportError:  # pragma: no cover - direct-run fallback
 ACCOUNT_EMAIL_KEYS = {
     "personal": "GMAIL_PERSONAL_USER",
     "brightline": "GMAIL_BRIGHTLINE_USER",
+    # 2026-10-12: every account's own calendar (each signed in to gog for
+    # calendar on 2026-09-28), so an invite goes out from the account the
+    # email lives in — still create-only, on Casey's own calendars (E21)
+    "fieldhouse": "GMAIL_FIELDHOUSE_USER",
+    "civic": "GMAIL_CIVIC_USER",
+    "consulting": "GMAIL_CONSULTING_USER",
 }
 
 GOG_TIMEOUT = 30
@@ -85,7 +91,7 @@ def _parse_when(value: str, all_day: bool, field: str) -> str:
 def create(account: str, summary: str, start: str, end: str = None,
            description: str = None, location: str = None,
            all_day: bool = False, env: dict | None = None,
-           dry_run: bool = False, log=print) -> dict:
+           dry_run: bool = False, log=print, with_meet: bool = False) -> dict:
     """Create one event on the account's primary calendar. Returns
     {account, calendar, event_id, summary, start, end, link}. Raises with
     the auth instruction when the gog grant is missing."""
@@ -123,6 +129,8 @@ def create(account: str, summary: str, start: str, end: str = None,
         cmd += ["--description", str(description)[:2000]]
     if location:
         cmd += ["--location", str(location)[:300]]
+    if with_meet:   # 2026-10-12: a Google Meet link on the event, for invites from an email
+        cmd.append("--with-meet")
     if dry_run:
         cmd.append("--dry-run")
 
@@ -146,12 +154,13 @@ def create(account: str, summary: str, start: str, end: str = None,
                 f"gog auth add {email} --services calendar")
         raise RuntimeError(f"gog calendar create failed: {err}")
 
-    event_id = link = None
+    event_id = link = meet = None
     try:
         out = json.loads(proc.stdout)
         ev = out.get("event") or out
         event_id = ev.get("id")
         link = ev.get("htmlLink")
+        meet = ev.get("hangoutLink")
     except (ValueError, AttributeError):
         pass  # dry-run and older gog builds print non-JSON; the create stood
 
@@ -171,7 +180,7 @@ def create(account: str, summary: str, start: str, end: str = None,
 
     return {"account": account, "calendar": "primary", "event_id": event_id,
             "summary": summary, "start": start, "end": end, "link": link,
-            "dry_run": dry_run}
+            "meet": meet, "dry_run": dry_run}
 
 
 def _main(argv=None) -> int:

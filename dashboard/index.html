@@ -1105,6 +1105,9 @@
   .sig-ed p { margin: 0 0 4px; }
   .rb-body .gc-sig { color: inherit; opacity: .85; }
   .rb-body .gc-sig p { margin: 0 0 3px; }
+  .row .in-todo { font-size: 11.5px; color: var(--blue); display: flex; align-items: center; gap: 4px; margin-bottom: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .in-todo b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .row .in-todo:hover { text-decoration: underline; }
   .ai-box { border: 1px solid var(--blue); border-radius: 10px; padding: 8px 10px; margin: 0 0 8px; background: var(--card); }
   .ai-box .ai-top { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 4px; }
   .ai-box .ai-top a { cursor: pointer; color: var(--faint); }
@@ -1113,6 +1116,9 @@
   .ai-box .ai-row label { display: flex; align-items: center; gap: 5px; text-transform: none; letter-spacing: 0; margin: 0; }
   .ai-box .sp { flex: 1; }
   .ai-box .ai-text { white-space: pre-wrap; font-size: 13px; padding: 8px; border-radius: 8px; background: var(--chip-bg); max-height: 260px; overflow: auto; margin-top: 6px; }
+  .rc-copy { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0 4px; font-size: 13px; opacity: .7; }
+  .rc-copy:hover { color: var(--blue); opacity: 1; }
+  .rcpt .rc-copy { align-self: center; flex: 0 0 auto; }
   .chipfield.chip-drop { outline: 2px dashed var(--blue); outline-offset: -2px; }
   .rchip[draggable="true"] { cursor: grab; }
   .draft-all { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); margin: 0 8px; text-transform: none; letter-spacing: 0; }
@@ -1372,6 +1378,15 @@
   .mcol-att { font-size: 11.5px; color: var(--muted); margin-left: 6px; flex: 0 0 auto; }
   .att .att-dl { margin-left: 4px; padding-left: 6px; border-left: 1px solid var(--line); opacity: .7; }
   .att .att-dl:hover { opacity: 1; color: var(--blue); }
+  /* E298 (dev #83): files on an email are bigger and stand out */
+  .matts { gap: 8px; }
+  .matts .att { padding: 8px 12px; font-size: 13.5px; font-weight: 600; color: var(--blue); background: var(--card); border: 1.5px solid var(--blue); border-radius: 10px; }
+  .matts .att span { color: var(--muted); font-size: 11.5px; font-weight: 400; }
+  .matts .att:hover { background: var(--hover); }
+  .matts .att .att-dl { margin-left: 6px; padding-left: 9px; font-size: 15px; opacity: 1; }
+  .att-all { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; }
+  .att-all button { color: var(--blue); font-size: 12.5px; font-weight: 600; }
+  .att-all button:hover { text-decoration: underline; }
   #attv { position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,.72); display: flex; flex-direction: column; padding: 18px; }
   #attv .attv-bar { display: flex; align-items: center; gap: 8px; color: #fff; padding: 0 4px 10px; }
   #attv .attv-bar .tool, #attv .attv-bar .btn { color: #fff; }
@@ -1455,7 +1470,7 @@
   .dlg { background: var(--card); border-radius: 14px; box-shadow: 0 24px 70px rgba(15,25,40,.4); width: min(560px, 94vw); max-height: 88vh; overflow-y: auto; padding: 20px 22px; }
   .dlg h3 { font-size: 15px; margin-bottom: 12px; }
   .dlg label { display: block; font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--faint); margin: 12px 0 4px; font-weight: 700; }
-  .dlg input[type=text], .dlg input[type=email], .dlg input[type=date], .dlg input[type=datetime-local], .dlg textarea, .dlg select { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: var(--input-bg); }
+  .dlg input[type=text], .dlg input[type=email], .dlg input[type=date], .dlg input[type=time], .dlg input[type=datetime-local], .dlg textarea, .dlg select { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: var(--input-bg); color: var(--ink); }
   .dlg textarea { min-height: 110px; resize: vertical; }
   .dlg .foot { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
   .dlg .status { font-size: 12px; color: var(--muted); flex: 1; }
@@ -1491,6 +1506,9 @@
   /* E155: tunnel-down banner — louder than #offbar because saves are failing */
   #netbar { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); max-width: min(92vw, 560px); background: #6e1f1f; color: #fff; border: 1px solid #b03a3a; border-radius: 9px; padding: 7px 14px; font-size: 12.5px; z-index: 135; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
   #netbar.back { background: #1f5232; border-color: #2e8b57; }
+  /* E297: stays in the header until the connection is back */
+  #net-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; background: #6e1f1f; color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  #net-chip[hidden] { display: none; }
   .bak-strip { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; margin: 4px 0; }
   .wn-rel { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 12px 20px; }
   .wn-rel h4 { font-size: 14px; }
@@ -1541,7 +1559,7 @@
     .top { gap: 5px; }
     .brand { gap: 5px; min-width: 0; }
     .brand h1 { display: none; }
-    .compose .lbl { display: none; }
+    .compose .lbl, #net-chip .lbl { display: none; }
     .compose { padding: 7px 9px; }
     .tbtn, #nav-btn { padding: 6px 6px; }
     .avatar { width: 30px; height: 30px; flex: 0 0 auto; }
@@ -1724,6 +1742,10 @@
   .ib-wrap > .ib-head:first-child, .ib-wrap > .new-pill + .ib-head, .ib-wrap > .ptr + .ib-head { border-top: none; }
   .ib-head .t, html[data-skin] .ib-head .t { font-size: 11px; letter-spacing: 1.1px; text-transform: uppercase;
     color: var(--faint); font-weight: 650; }
+  .inv-when { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; }
+  .inv-when label { margin-top: 8px; }
+  @media (max-width: 520px) { .inv-when { grid-template-columns: 1fr 1fr; } }
+  .ib-head .ib-unread, .t-unread { color: var(--blue); font-weight: 650; font-size: 11.5px; white-space: nowrap; }
   .ib-head .ib-count { background: var(--chip-bg); color: var(--muted); border-radius: 5px; padding: 0 6px; font-size: 11px; }
   .ib-head .fold, .ib-head .ib-sweep { color: var(--faint); cursor: pointer; width: 26px; height: 24px; display: inline-flex;
     align-items: center; justify-content: center; border-radius: 6px; padding: 0; }
@@ -2490,6 +2512,8 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
   </div>
   <div class="search">🔍<input id="q" placeholder="Filter this account — from: label: is:unread has:attachment" title="Gmail operators: from: to: subject: label: account: is:unread/starred/todo/needs has:attachment before:/after:YYYY-MM-DD, quotes and -negation. Enter searches this account." autocomplete="off"><span class="clr" onclick="qClear()" title="Clear search (Esc)">✕</span><span class="hint">/</span></div>
   <div class="top-right">
+    <!-- E297 (dev #76): shown from a dropped connection until it's back -->
+    <span id="net-chip" role="status" hidden>⚡<span class="lbl"> Disconnected</span></span>
     <div style="position:relative">
       <button class="tbtn" id="nf-btn" title="Notifications — alerts land here (connection drops, credential problems, a stuck sweeper)">🔔<span id="nf-badge" hidden></span></button>
       <div class="me-menu" id="nf-menu" hidden style="min-width:290px;max-width:340px;max-height:60vh;overflow:auto"></div>
@@ -3005,9 +3029,16 @@ function rebuild(){
   }
   // E93.5: an email grouped under a todo is SPOKEN FOR — flag it here so
   // every inbox-ish scope can hide it (E60 only hid it in Smart grouping).
-  const attached=new Set();
-  TODOS.forEach(t=>(t.threads||[]).forEach(th=>attached.add('m:'+th.account+':'+th.thread_id)));
-  ITEMS.forEach(i=>{ if(i.type==='mail') i.attached=attached.has(i.key); });
+  // 2026-10-23 (Casey: "When people respond to an email in a ToDo, I lose it
+  // in my inbox … perhaps with a note above the email row that says it's
+  // connected to a Todo. This could be a toggle"): by default a todo's email
+  // comes back to the inbox while it has something unread, under an
+  // "In todo" note; the Group menu can hide it again or always show it.
+  const owner=new Map();
+  TODOS.forEach(t=>(t.threads||[]).forEach(th=>owner.set('m:'+th.account+':'+th.thread_id,t)));
+  ITEMS.forEach(i=>{ if(i.type!=='mail') return;
+    const t=owner.get(i.key); i.todoOf=t?{id:t.id,title:t.text||'Todo'}:null;
+    i.attached=!!t&&!todoMailShows(i); });
   for(const [k,t] of DROPPED) if(Date.now()-t>600e3) DROPPED.delete(k);
   ITEMS=ITEMS.filter(i=>!DROPPED.has(i.key));
   if (rebuild._prev){
@@ -3229,6 +3260,17 @@ async function setScope(kind,id){
 // reachable via All mail, labels, projects, goals, and Gmail search —
 // just not in the default view.
 const RECENT_DAYS=30;
+let TODO_MAIL=(()=>{ try { return localStorage.getItem('gc2_todo_mail')||'new'; } catch(_){ return 'new'; } })();
+function todoMailShows(i){
+  if(TODO_MAIL==='all') return true;
+  // the one you're reading stays put when opening it marks it read
+  return TODO_MAIL==='new' && (i.unread || OPEN===i.key);
+}
+function setTodoMail(v){
+  TODO_MAIL=v; try { localStorage.setItem('gc2_todo_mail',v); } catch(_){}
+  ITEMS.forEach(i=>{ if(i.type==='mail'&&i.todoOf) i.attached=!todoMailShows(i); });
+  renderList(); renderRail();
+}
 function inboxLive(i){
   if(i.type==='todo') return true;
   if(i.attached) return false;   // lives under its todo, not in the inbox
@@ -3376,11 +3418,9 @@ function groupItems(items){
   // the emails around it rather than a section of its own.
   const todos=[], starred=[], flow=[], groups={};
   // E60: an email attached to an open todo is spoken for — it lives in its todo.
-  const attached=new Set();
-  items.forEach(i=>{ if(i.type==='todo') i.threads.forEach(t=>attached.add('m:'+t.account+':'+t.thread_id)); });
   items.forEach(i=>{
     if(i.type==='todo') todos.push(i);
-    else if(attached.has(i.key)) return;
+    else if(i.attached) return;
     else if(i.starred) starred.push(i);          // E86: star outranks category
     else if(tierOf(i)) flow.push(i);             // Dev #66: a VIP's mail is never bundled away
     else if(grpKey(i)){ const g=grpKey(i); (groups[g]=groups[g]||[]).push(i); }
@@ -3389,6 +3429,9 @@ function groupItems(items){
   todos.sort((a,b)=>String(todoActivity(b)).localeCompare(String(todoActivity(a))));
   let td=todos;
   if (TAB!=='todos' && td.length>5){ const extra=td.length-5; td=todos.slice(0,5); td._more=extra; }
+  // #75: the section says how much unread mail sits inside its todos — all of
+  // them, not just the five shown — even while it's folded
+  td._unread=todos.reduce((n,t)=>n+todoUnreadN(t),0); td._unreadTodos=todos.filter(t=>todoUnreadN(t)).length;
   const byD=(a,b)=>String(b.date||'').localeCompare(String(a.date||''));
   starred.sort(byD); flow.sort(byD);
   const entries=flow.map(i=>({d:String(i.date||''),row:i}));
@@ -3638,6 +3681,7 @@ function renderList(){
     const head = `<div class="ib-head" data-sec="${esc(name)}">
         <span class="t">${esc(name)}</span>
         ${rows._age?'':`<span class="ib-count">${rows._more?rows.length+rows._more:rows.length}</span>`}
+        ${rows._unread?`<span class="ib-unread" title="Unread email in ${rows._unreadTodos} todo${rows._unreadTodos>1?'s':''}">✉ ${rows._unread} unread</span>`:''}
         <span class="sp"></span>
         ${sweepable(name)&&GROUP==='smart'?`<span class="ib-sweep secsweep" data-sweep="${esc(name)}" title="Mark everything in ${esc(name)} done — archives the mail in Gmail">${ic('sweep')}</span>`:''}
         <span class="fold" title="${folded?'Open':'Close'} this section">${ic(folded?'down':'up','sm')}</span></div>`;
@@ -4987,7 +5031,10 @@ function groupMenu(ev){
   const r=ev.currentTarget.getBoundingClientRect();
   const opts=[['smart',smartOn()?'Smart (Jev) — needs you, team, prospects, then bundles':'Smart — todos, starred, then by date'],['value','Value — highest first'],['account','Account'],['label','Label'],['date','Date'],...(TAB==='todos'?[['urgency','Urgency — overdue, today, later']]:[])];
   ctxOpen(r.right-250,r.bottom+4,'<div style="padding:4px 10px;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--faint)">Group by</div>'
-    +opts.map(([v,l])=>`<button onclick="ctxClose();GROUP='${v}';const s=$('#group');if(s)s.value='${v}';renderList()">${GROUP===v?'✓ ':'　'}${esc(l)}</button>`).join(''));
+    +opts.map(([v,l])=>`<button onclick="ctxClose();GROUP='${v}';const s=$('#group');if(s)s.value='${v}';renderList()">${GROUP===v?'✓ ':'　'}${esc(l)}</button>`).join('')
+    +'<div style="padding:8px 10px 4px;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--faint)">Email in a todo</div>'
+    +[['new','Show in the inbox when there’s a new reply'],['all','Always show in the inbox too'],['off','Hide — it lives in its todo']]
+      .map(([v,l])=>`<button onclick="ctxClose();setTodoMail('${v}')">${TODO_MAIL===v?'✓ ':'　'}${esc(l)}</button>`).join(''));
 }
 /* pull down at the top of the list to refresh (phones) */
 (function(){
@@ -6179,6 +6226,9 @@ function todoActivity(i){
 }
 const todoUnsnoozed=i=>(i.threads||[]).filter(t=>t.snooze_returned&&!t.snoozed).length;
 const todoFresh=i=>(i.threads||[]).some(t=>t.unread)||todoUnsnoozed(i)>0;
+// Dev #75 ("show in the Bundled Todos section and for each Todo when there
+// are unread emails, so I don't lose them"): how many of its emails are unread
+const todoUnreadN=i=>(i.threads||[]).filter(t=>t.unread).length;
 
 /* E204: the end of line three — Shortwave puts the label chip, the paper
    clip and the star at the tail of the preview, not up by the name. */
@@ -6267,6 +6317,7 @@ function rowHtml(i, idx){
     <span class="selbox" title="Select — act on several at once" onclick="event.stopPropagation();toggleSel('${k}')">${ic('check','sm')}</span>
     ${lead}
     <div class="body">
+      ${i.todoOf&&SCOPE.kind!=='todo'?`<div class="l0 in-todo" title="This email belongs to a todo — open the todo" onclick="event.stopPropagation();openTodoPlace(${Number(i.todoOf.id)})">${ic('checkcircle','sm')} In todo · <b>${esc(String(i.todoOf.title).slice(0,70))}</b></div>`:''}
       <div class="l1">${(()=>{ const em=i.whoEm||i.raw.last_from_email, nm=i.whoNm||i.who;
         return `<span class="who ${em?'person':''}" ${em?`data-em="${esc(em.toLowerCase())}" data-nm="${esc(nm)}"`:''}>${esc(String(i.who).split('<')[0].trim()||i.who)}</span>`; })()}${n}
         <span class="meta">${when}</span><span class="acts">${acts}</span></div>
@@ -6285,7 +6336,9 @@ function todoRowHtml(i,open,sel,kb){
   const when = uns ? `<span class="when snz">${ic('clock','sm')} ${uns} Unsnoozed</span>`
     : i.snoozed&&i.wake ? `<span class="when">${ic('clock','sm')} ${fmtDate(i.wake)}</span>`
     : `<span class="when">${fmtDate(act)}</span>`;
-  const line2=[n?`${n} thread${n>1?'s':''}`:(i.snip?esc(i.snip.slice(0,90)):'No threads yet'),
+  const un=todoUnreadN(i);
+  const line2=[un?`<span class="t-unread" title="${un} unread email${un>1?'s':''} in this todo">✉ ${un} unread</span>`:'',
+    n?`${n} thread${n>1?'s':''}`:(i.snip?esc(i.snip.slice(0,90)):'No threads yet'),
     dueTxt?`<span class="${overdue?'due':''}">${esc(dueTxt)}</span>`:''].filter(Boolean).join(' · ');
   return `<div class="row todo read ${todoFresh(i)?'fresh':''} ${open} ${sel} ${kb}" data-key="${k}" onclick="openTodoPlace(${i.raw.id})">
     <span class="selbox" title="Select" onclick="event.stopPropagation();toggleSel('${k}')">${ic('check','sm')}</span>
@@ -6336,6 +6389,7 @@ function mailCtxHtml(i){
     _mi('◯ Create or add to todo…',`todoPick(['${k}'])`),
     _mi('📁 Add to project…',`projPickKey(null,'${k}')`),
     _mi('👀 Keep an eye on this…',`watchDlg('${k}')`),
+    _mi('📅 Invite them to a meeting…',`inviteDlg('${k}')`),
     // E221 (Dev #20): inside a todo, its emails can leave again. moveTodoDlg
     // and returnThread outlived the E204 todo page that used to call them.
     ...(()=>{ const o=SCOPE.kind==='todo'&&tpItem();
@@ -7830,6 +7884,7 @@ function paneShell(i, inner){
     ${i.type==='mail'?tb('back','Previous (k)','paneNav(-1)','hide-sm')+`<button class="tool hide-sm" onclick="paneNav(1)" title="Next (j)" style="transform:scaleX(-1)">${ic('back')}</button>`:''}
     <span class="sp"></span>
     ${i.type==='mail'?tb('reply','Reply / draft',`replyOptions('${k}')`):''}
+    ${i.type==='mail'?tb('calendar','Invite them to a meeting',`inviteDlg('${k}')`):''}
     ${tb('clock','Snooze',`snoozeDlg('${k}')`)}
     ${tb(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)}
     ${i.type==='mail'?tb('check','Archive in Gmail (e)',`archiveItem('${k}')`):tb('check','Handled',`handledItem('${k}')`)}
@@ -8031,11 +8086,56 @@ function msgSnip(m){
 function attChipsHtml(entries){
   const pvs=entries.filter(e=>attPreviewable(e.a));
   const list=pvs.map(e=>({name:e.a.filename,size:e.a.size||0,kind:attPreviewable(e.a),url:attUrl(e.m,e.k)}));
+  // E298: every file in this set, for ⬇ Download all and 📁 Save to folder
+  const files=esc(JSON.stringify(entries.map(e=>({name:e.a.filename,url:attUrl(e.m,e.k)}))));
+  const canPick=typeof window.showDirectoryPicker==='function';
+  const all=entries.length>1||canPick
+    ?`<div class="att-all">${entries.length>1?`<button title="Download every file here to your usual downloads folder" onclick="event.stopPropagation();attDownloadAll(${files})">⬇ Download all ${entries.length}</button>`:''}${canPick?`<button title="Choose a folder and save ${entries.length>1?'these files':'this file'} there" onclick="event.stopPropagation();attSaveToFolder(${files})">📁 Save to folder…</button>`:''}</div>`
+    :'';
   return entries.map(e=>{ const a=e.a, pv=attPreviewable(a), url=attUrl(e.m,e.k);
     return `<span class="att ${pv?'pv':''}">${pv
       ?`<a onclick="event.preventDefault();event.stopPropagation();attView(${esc(JSON.stringify(list))},${pvs.indexOf(e)})" href="${url}&view=1" title="Preview">${pv==='pdf'?'📄':'🖼'} ${esc(a.filename)} <span>${fmtSize(a.size||0)}</span></a>`
       :`<a href="${url}" onclick="event.stopPropagation()" title="Download (never stored on the board)">📎 ${esc(a.filename)} <span>${fmtSize(a.size||0)}</span></a>`}
-      <a class="att-dl" href="${url}" title="Download" onclick="event.stopPropagation()">⬇</a></span>`; }).join('');
+      <a class="att-dl" href="${url}" title="Download" onclick="event.stopPropagation()">⬇</a></span>`; }).join('')+all;
+}
+// E298 (Casey: "a way to download all of them. and a way to choose where they
+// are downloaded"). A page can only ask for a folder in Chrome and Edge, so
+// 📁 appears there alone; elsewhere the browser's own setting decides where
+// downloads go. The gap between clicks keeps browsers from dropping some.
+function attDownloadAll(files){
+  files.forEach((f,ix)=>setTimeout(()=>{
+    const a=document.createElement('a'); a.href=f.url; a.download=''; a.hidden=true;
+    document.body.appendChild(a); a.click(); a.remove();
+  },ix*400));
+  toast(`Downloading ${files.length} files`);
+}
+async function attFreeName(dir,name){
+  name=String(name||'attachment').replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').replace(/^\.+/,'').trim()||'attachment';
+  const dot=name.lastIndexOf('.'), stem=dot>0?name.slice(0,dot):name, ext=dot>0?name.slice(dot):'';
+  // never write over a file already in the folder
+  for(let n=1;;n++){
+    const tryName=n===1?name:`${stem} (${n})${ext}`;
+    try { await dir.getFileHandle(tryName); }
+    catch(e){ if(e.name==='NotFoundError') return tryName; throw e; }
+  }
+}
+async function attSaveToFolder(files){
+  let dir;
+  try { dir=await window.showDirectoryPicker({id:'gc-attachments',mode:'readwrite'}); }
+  catch(e){ if(e.name!=='AbortError') toast('Can’t open that folder — '+e.message); return; }
+  let saved=0;
+  try {
+    for(const f of files){
+      const r=await fetch(f.url);
+      // the service worker's fallback ignores which file was asked for (E297)
+      if(!r.ok||r.headers.get('X-GC-From-Cache')) throw new Error(`“${f.name}” didn’t download`);
+      const blob=await r.blob();
+      const h=await dir.getFileHandle(await attFreeName(dir,f.name),{create:true});
+      const w=await h.createWritable(); await w.write(blob); await w.close();
+      saved++;
+    }
+    toast(`Saved ${saved} file${saved>1?'s':''} to ${dir.name}`);
+  } catch(e){ toast(`Saved ${saved} of ${files.length} — ${e.message}`); }
 }
 // Dev #68 ("This thread isn't showing the PDF attachment that it should be
 // showing"): only the newest message opens, so files on earlier ones were
@@ -8111,6 +8211,12 @@ function cidInline(m,html){
   });
   return {html,shown};
 }
+// "Name <email>" for each address in a To/Cc header, in order, once each
+function rcptList(raw){
+  const seen=new Set();
+  return splitRcpts(String(raw||'').replace(/\s+/g,' ')).map(p=>{ const em=emOf(p), nm=nmOf(p).replace(/\s+/g,' ').trim(); if(!em||seen.has(em)) return null; seen.add(em);
+    return nm&&!nm.includes('@')?`${/[,"]/.test(nm)?'"'+nm.replace(/"/g,'')+'"':nm} <${em}>`:em; }).filter(Boolean);
+}
 function msgHtml(m,gi){
   const frm=(m.from||'').split('<')[0].trim()||m.from||'?';
   const ci=cidInline(m,m.body_html);
@@ -8140,7 +8246,10 @@ function msgHtml(m,gi){
   // person (card: copy contact / their mail / email them) — E62.
   const names=s=>String(s||'').split(',').map(x=>x.trim()).filter(Boolean)
     .map(personSpan).join(', ');
-  const rcpt=[m.to?`to ${names(m.to)}`:'', m.cc?`cc ${names(m.cc)}`:''].filter(Boolean).join(' · ');
+  // 2026-10-12 (Casey: "I need a way to copy all of the email addresses from
+  // a To or Cc line. Not just one."): ⧉ after each line copies all of it
+  const cpAll=s=>{ const list=rcptList(s); return list.length>1?`<button class="rc-copy" data-copyall="${esc(list.join(', '))}" data-n="${list.length}" title="Copy all ${list.length} addresses" onclick="event.stopPropagation();copyText(this.dataset.copyall,this.dataset.n+' addresses')">⧉</button>`:''; };
+  const rcpt=[m.to?`to ${names(m.to)}${cpAll(m.to)}`:'', m.cc?`cc ${names(m.cc)}${cpAll(m.cc)}`:''].filter(Boolean).join(' · ');
   return `<div class="msg"${gi!=null?` data-mi="${gi}"`:''}><div class="mh" title="Collapse this message"><span class="mav" style="background:${avColor(frm)}">${initials(frm)}${avImg(emOf(m.from))}</span>
     ${personSpan(m.from||frm).replace('class="person"','class="person" style="font-weight:700;font-size:13.5px"')}<span class="t">${esc((m.date||'').replace('T',' ').slice(0,16))}</span>
     ${gi!=null&&MSG_CTX?.key?`<span class="mact">${[['reply','Reply to this message','reply'],['reply','Reply all to this message','all'],['forward','Forward this message','fwd']].map(([icn,t,md])=>
@@ -8264,7 +8373,7 @@ function closePane(){
   if(PREVIEW && innerWidth>980 && SCOPE.kind!=='home' && SCOPE.kind!=='wizard'){
     document.body.classList.add('pane-open');
     $('#pane').classList.add('open');
-    $('#pane').innerHTML='<div class="empty" style="margin:auto;padding:40px 20px">Select an email or todo<br><span style="font-size:12px;color:var(--faint)">j / k move · Enter opens · e done · s snooze</span></div>';
+    $('#pane').innerHTML='<div class="empty" style="margin:auto;padding:40px 20px">Select an email or todo<br><span style="font-size:12px;color:var(--faint)">↓ / ↑ or j / k move · Enter opens · e done · s snooze</span></div>';
   } else {
     document.body.classList.remove('pane-open');
     $('#pane').classList.remove('open');
@@ -8419,6 +8528,76 @@ async function mgGo(toId){
     if(typeof todoBack==='function'&&SCOPE.kind==='todo') todoBack();
     await loadMailTodos();
   } catch(e){ if(st){ st.textContent=e.message; st.className='status err'; } }
+}
+/* 2026-10-12 (Casey: "add a way to create a calendar invite from an email,
+   with the people from the email on the invite list"): the event goes on the
+   calendar of the account the email lives in, with everyone on the thread
+   (but you) as guests. Create & send invites is your click — the §6 E258
+   rule: Google emails attendees only from a paired browser. "Create without
+   inviting" just puts it on your calendar. */
+async function inviteDlg(key){
+  const i=findItem(key); if(!i||i.type!=='mail') return;
+  await ensureMsgs(i);
+  const seen=new Map();
+  const add=raw=>String(raw||'').split(/,(?![^<]*>)/).forEach(p=>{ const em=emOf(p);
+    if(em&&!OWN.has(em)&&!/^(no-?reply|noreply|notifications?|mailer-daemon)@/i.test(em)&&!seen.has(em)) seen.set(em,(nmOf(p)&&!nmOf(p).includes('@'))?`${nmOf(p)} <${em}>`:em); });
+  (i._msgs||[]).forEach(m=>{ add(m.from); add(m.to); add(m.cc); });
+  (i.raw.participants||[]).forEach(add);
+  const guests=[...seen.values()].slice(0,10);
+  let d=new Date(); d.setDate(d.getDate()+1); while([0,6].includes(d.getDay())) d.setDate(d.getDate()+1);
+  const subj=String(i.title||'').replace(/^((re|fwd?|fw):\s*)+/i,'').trim();
+  window._inv={key, account:i.account};
+  dlg(`<h3>📅 Invite to a meeting</h3>
+    <div class="status" style="text-transform:none;letter-spacing:0">On your ${esc(acctLabel(i.account))} calendar · invites come from ${esc(acctEmail(i.account)||i.account)}</div>
+    <label>Title</label><input type="text" id="inv-title" value="${esc(subj)}">
+    <div class="inv-when"><div><label>Date</label><input type="date" id="inv-date" value="${isoLocal(d)}"></div>
+      <div><label>Start</label><input type="time" id="inv-time" value="10:00" step="900"></div>
+      <div><label>Length</label><select id="inv-len">${[[15,'15 min'],[30,'30 min'],[45,'45 min'],[60,'1 hour'],[90,'1½ hours'],[120,'2 hours']].map(([m,l])=>`<option value="${m}" ${m===30?'selected':''}>${l}</option>`).join('')}</select></div></div>
+    <label>Guests <span class="status" style="text-transform:none;letter-spacing:0">(everyone on the thread but you — up to 10)</span></label>
+    ${chipField('inv-to', guests.join(', '))}
+    <label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;margin-top:8px"><input type="checkbox" id="inv-meet" checked> Add a Google Meet link</label>
+    <label>Location <span class="status" style="text-transform:none;letter-spacing:0">(optional)</span></label><input type="text" id="inv-loc" placeholder="Office, address, or leave blank">
+    <label>Note for guests <span class="status" style="text-transform:none;letter-spacing:0">(optional)</span></label><textarea id="inv-note" rows="3">${esc(subj?'Re: '+subj:'')}</textarea>
+    <div class="foot"><button class="btn" onclick="inviteGo(true,this)">📅 Create &amp; send invites</button>
+      <button class="btn sec2" onclick="inviteGo(false,this)">Create without inviting</button>
+      <button class="btn sec2" onclick="closeDlg()">Cancel</button><span class="status" id="inv-st"></span></div>`);
+}
+async function inviteGo(send,btn){
+  const c=window._inv, st=$('#inv-st'); if(!c) return;
+  const title=$('#inv-title').value.trim(), date=$('#inv-date').value, time=$('#inv-time').value, len=+$('#inv-len').value;
+  const guests=chipVal('inv-to').split(/,(?![^<]*>)/).map(emOf).filter(Boolean);
+  const err=m=>{ st.textContent=m; st.className='status err'; };
+  if(!title) return err('Give it a title');
+  if(!date||!time) return err('Pick a date and time');
+  if(send&&!guests.length) return err('Add at least one guest, or create without inviting');
+  if(guests.length>10) return err('Up to 10 guests');
+  const [hh,mm]=time.split(':').map(Number), start=new Date(`${date}T${time}:00`), end=new Date(start.getTime()+len*60000);
+  const fmt=x=>`${isoLocal(x)}T${String(x.getHours()).padStart(2,'0')}:${String(x.getMinutes()).padStart(2,'0')}:00`;
+  btn.disabled=true; st.textContent=send?'Creating and inviting… (a slow answer from Google can take ~15s)':'Creating…'; st.className='status';
+  // 2026-10-12: the event is created once. If Google then refuses the
+  // invites, the dialog keeps that event and offers to retry just the invites
+  // — clicking again used to create a second copy of the meeting.
+  try {
+    if(!c.created){
+      c.created=await post('/calendar',{account:c.account, summary:title, start:fmt(start), end:fmt(end),
+        description:$('#inv-note').value.trim()||undefined, location:$('#inv-loc').value.trim()||undefined,
+        meet:$('#inv-meet').checked, ...(send?{attendees:guests}:{})});
+    }
+    if(send&&c.created.invite_draft) await post('/calendar/invite',{id:c.created.invite_draft.id, action:'send'});
+    closeDlg();
+    toast(send?`📅 “${title}” created — invites sent to ${guests.length} guest${guests.length>1?'s':''}`:`📅 “${title}” is on your calendar`);
+    if(typeof calEnsure==='function'){ CAL_FETCHED.clear&&CAL_FETCHED.clear(); }
+  } catch(e){
+    btn.disabled=false; err(e.message);
+    if(c.created){
+      // the meeting exists; only the invites are left to do
+      document.querySelectorAll('#dlg .inv-when input, #dlg .inv-when select, #inv-title, #inv-loc, #inv-note, #inv-meet').forEach(x=>x.disabled=true);
+      const foot=$('#dlg .foot');
+      if(foot) foot.innerHTML=`<button class="btn" onclick="inviteGo(true,this)">↻ Retry sending invites</button>
+        <button class="btn sec2" onclick="closeDlg();toast('The meeting is on your calendar without invites — send them later from Settings → Agents')">Keep it without invites</button>
+        <span class="status err" id="inv-st">${esc(e.message)}</span>`;
+    }
+  }
 }
 function todoDetailsDlg(){
   const i=tpItem(); if(!i) return; const t=i.raw;
@@ -8589,6 +8768,7 @@ document.addEventListener('mouseover', e=>{
 });
 $('#ppop')?.addEventListener?.('click',()=>{});
 document.addEventListener('click', e=>{
+  const all=e.target.closest('[data-copyall]'); if(all){ copyText(all.dataset.copyall, all.dataset.n+' addresses'); return; }
   const c=e.target.closest('[data-ppcopy]'); if(c){ copyText(c.dataset.ppcopy,'contact'); return; }
   const m=e.target.closest('[data-ppmail]'); if(m){ hidePersonPop(); Q='from:'+m.dataset.ppmail; $('#q').value=Q; syncQClr();
     $('#q').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'})); return; }
@@ -9200,10 +9380,11 @@ function resolveContact(raw){
 /* E104: compact recipient block — To on one line, Cc/Bcc folded behind
    toggles unless already populated (Gmail grammar). */
 function rcptRows(pre,to,cc,bcc){
-  return `<div class="rcpt"><span class="rl">To</span>${chipField(pre+'-to',to)}
+  const cp=f=>`<button type="button" class="rc-copy" title="Copy all the addresses in ${f.split('-')[1].toUpperCase()}" onclick="event.stopPropagation();const v=rcptList(chipVal('${f}'));v.length?copyText(v.join(', '),v.length+' address'+(v.length>1?'es':'')):toast('Nobody there yet')">⧉</button>`;
+  return `<div class="rcpt"><span class="rl">To</span>${chipField(pre+'-to',to)}${cp(pre+'-to')}
       <span class="rtog"><a id="tog-${pre}-cc" ${cc?'hidden':''} onclick="rcptShow('${pre}','cc')">Cc</a><a id="tog-${pre}-bcc" ${bcc?'hidden':''} onclick="rcptShow('${pre}','bcc')">Bcc</a></span></div>
-    <div class="rcpt" id="row-${pre}-cc" ${cc?'':'hidden'}><span class="rl">Cc</span>${chipField(pre+'-cc',cc)}</div>
-    <div class="rcpt" id="row-${pre}-bcc" ${bcc?'':'hidden'}><span class="rl">Bcc</span>${chipField(pre+'-bcc',bcc)}</div>`;
+    <div class="rcpt" id="row-${pre}-cc" ${cc?'':'hidden'}><span class="rl">Cc</span>${chipField(pre+'-cc',cc)}${cp(pre+'-cc')}</div>
+    <div class="rcpt" id="row-${pre}-bcc" ${bcc?'':'hidden'}><span class="rl">Bcc</span>${chipField(pre+'-bcc',bcc)}${cp(pre+'-bcc')}</div>`;
 }
 function rcptShow(pre,kind){
   $('#row-'+pre+'-'+kind).hidden=false; $('#tog-'+pre+'-'+kind).hidden=true;
@@ -9507,13 +9688,21 @@ async function openComposer(key,mode,mi){
   sigFill('sd-body', i.account);
   trkArm('sd', i.account);
   // E157: a chosen reply option lands in the composer, above the signature
+  const prefilled=!!window.SD_PREFILL;
   if(window.SD_PREFILL){
     sigFill('sd-body', i.account, window.SD_PREFILL);
     window.SD_PREFILL=null;
   }
   armBak('sd-body','r:'+i.raw.thread_id); offerBak('sd-body','r:'+i.raw.thread_id);   // E155
   $('#composer')._snapArmed=false; draftSnapArm('sd');                                   // Dev #53
-  setTimeout(()=>{ const m=$('#msgs'); if(m) m.scrollTop=m.scrollHeight; document.getElementById('sd-body')?.focus(); },30);
+  // Dev #79 (Casey: "Put the Cursor in the To field when there is no one
+  // addressed yet - new messages, and forwards; put it in the message body
+  // when it's a reply or reply all"): a forward, or a reply with nobody in
+  // To, starts in To (Dev #77); a reply or a chosen reply option (E157)
+  // starts in the body.
+  const inTo=!prefilled&&(fwd||!chipVal('sd-to'));
+  setTimeout(()=>{ const m=$('#msgs'); if(m) m.scrollTop=m.scrollHeight;
+    (inTo?$('#sd-to')?.querySelector('input'):document.getElementById('sd-body'))?.focus(); },30);
 }
 function composedBody(i){
   let body=rbText('sd-body').replace(/\s+$/,'');
@@ -9860,7 +10049,10 @@ function composeDlg(draft){
   const bk=d?'d:'+d.account+':'+d.draft_uid:'new';
   armBak('cp-body',bk); offerBak('cp-body',bk);   // E155
   draftSnapArm('cp');                              // Dev #53
-  setTimeout(()=>{ const t=$('#cp-to'); if(t) t.focus(); },50);
+  // Dev #74: start in To. #cp-to is the chip field's <div>, which can't take
+  // focus — the caret stayed in the body where sigFill left it. Focus its
+  // input instead; a draft that already has recipients keeps the body.
+  setTimeout(()=>{ const t=$('#cp-to'); if(t&&!chipVal('cp-to')) t.querySelector('input')?.focus(); },50);
 }
 async function doComposeSend(btn){
   const to=chipVal('cp-to'), subject=$('#cp-subject').value.trim(), body=rbText('cp-body').trim();
@@ -11324,6 +11516,34 @@ document.addEventListener('keydown', e=>{
     const mail=keys.filter(k=>k.startsWith('m:'));
     if(mail.length){ e.preventDefault(); todoPick(mail); return; }
   }
+  // 2026-10-23 (Casey: "If I have an email selected in the list, I'd like to
+  // use the Up and Down arrows to go through the list"): ↓/↑ move from the
+  // email you're on. With one open, the next email opens in its place (todo
+  // rows are stepped over, since opening one leaves the inbox); otherwise
+  // they move the cursor like j/k.
+  if((e.key==='ArrowDown'||e.key==='ArrowUp')&&VISIBLE.length){
+    e.preventDefault();
+    const d=e.key==='ArrowDown'?1:-1;
+    let at=OPEN?VISIBLE.findIndex(i=>i.key===OPEN):-1;
+    if(at<0) at=KB;
+    if(OPEN&&at>=0){
+      let n=at+d; while(n>=0&&n<VISIBLE.length&&VISIBLE[n].type!=='mail') n+=d;
+      if(n<0||n>=VISIBLE.length) return;
+      KB=n; renderList();
+      const el=document.querySelector('.row.kb'); if(el) el.scrollIntoView({block:'nearest'});
+      clearTimeout(window._arT);
+      window._arT=setTimeout(()=>{ const c=VISIBLE[KB]; if(c) openItem(c.key,true); },180);
+      return;
+    }
+    KB=at<0?(d>0?0:VISIBLE.length-1):Math.max(0,Math.min(VISIBLE.length-1,at+d));
+    renderList();
+    const el=document.querySelector('.row.kb'); if(el) el.scrollIntoView({block:'nearest'});
+    if(PREVIEW && VISIBLE[KB]){
+      clearTimeout(window._pvT);
+      window._pvT=setTimeout(()=>{ const c=VISIBLE[KB]; if(c) openItem(c.key,false); },260);
+    }
+    return;
+  }
   if(e.key==='j'||e.key==='k'){
     KB=Math.max(0,Math.min(VISIBLE.length-1,KB+(e.key==='j'?1:-1)));
     renderList();
@@ -11366,7 +11586,7 @@ async function replyKey(key,mode){
 }
 const KEYS=[
   ['Compose & find',[['c','New email'],['/','Search'],['?','This list']]],
-  ['Move around',[['j / k','Next / previous'],['o or Enter','Open'],['u','Back to the list'],['Esc','Close / step back'],
+  ['Move around',[['j / k or ↓ / ↑','Next / previous (with an email open, opens the next one)'],['o or Enter','Open'],['u','Back to the list'],['Esc','Close / step back'],
     ['g i','Inbox'],['g s','Starred'],['g t','Sent'],['g d','Drafts'],['g a','All mail'],['g k','Todos'],['g h','Home']]],
   ['Act on an email',[['e','Archive (done)'],['#','Delete — Gmail Trash, with Undo'],['s','Star / unstar'],['b or h','Snooze'],
     ['r','Reply'],['a','Reply all'],['f','Forward'],['R','Claude\'s reply options'],['l','Label'],['t','Add to todo'],
@@ -11485,10 +11705,30 @@ async function openWhatsNew(){
 function wnDots(seen){
   const on=!seen; $('#wn-dot').hidden=!on; const d2=$('#wn-dot2'); if(d2) d2.hidden=!on;
 }
-fetch('/release_notes.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
-  WN=d; const seen=localStorage.getItem('gc_wn_seen');
-  wnDots(!seen||seen===d.latest);
-}).catch(()=>{});
+/* Dev #81 (Casey: "Post release notes as notifications in the app when new
+   updates are pushed, particularly automatically"): each release newer than
+   the last one this browser announced lands in the bell; clicking it opens
+   What's New. Re-read every 10 minutes, so a release the dev worker ships
+   overnight shows up in a tab left open. The first run only remembers where
+   things stand — no flood of old releases. */
+function wnNotify(d){
+  const rels=d.releases||[], last=localStorage.getItem('gc_wn_notified');
+  if(!rels.length) return;
+  if(last){
+    const k=rels.findIndex(r=>r.id===last);
+    rels.slice(0,k<0?1:Math.min(k,5)).reverse()
+      .forEach(r=>notify('info',`New in Grand Central — ${r.id}: ${r.title}`,{wn:r.id}));
+  }
+  localStorage.setItem('gc_wn_notified',rels[0].id);
+}
+function wnLoad(){
+  fetch('/release_notes.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
+    WN=d; const seen=localStorage.getItem('gc_wn_seen');
+    wnDots(!seen||seen===d.latest);
+    wnNotify(d);
+  }).catch(()=>{});
+}
+wnLoad(); setInterval(wnLoad,600_000);
 
 /* stale-tab reload bar (E28) */
 let BUILD_VERSION=null, VERSION_STALE=false;
@@ -11546,6 +11786,8 @@ window.fetch=function(url,opts){
   return p.then(r=>{
     // 502/504 + Cloudflare's own 52x/530 mean the tunnel, not the app, failed
     if(r.status===502||r.status===504||(r.status>=520&&r.status<=530)) netDown('HTTP '+r.status);
+    // E297: a copy from the service worker's cache is a 200 from nobody
+    else if(r.headers.get('X-GC-From-Cache')) netDown('cached copy');
     else netUp();
     return r;
   }, e=>{ netDown(e.message); throw e; });
@@ -11556,6 +11798,8 @@ function netDown(why){
   // need to be in my notification menu"): the bar below says it while it
   // matters; the bell no longer keeps a record of every blip.
   if(first){ NET.down=true; NET.since=new Date(); sfx('err'); }
+  const chip=document.getElementById('net-chip');
+  if(chip){ chip.hidden=false; chip.title='Disconnected from Grand Central since '+NET.since.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
   let b=document.getElementById('netbar');
   if(!b){ b=document.createElement('div'); b.id='netbar'; document.body.appendChild(b); }
   b.className='';
@@ -11566,6 +11810,8 @@ function netDown(why){
 function netUp(){
   if(!NET.down) return;
   NET.down=false; clearInterval(NET.probe); NET.probe=null;
+  const chip=document.getElementById('net-chip');
+  if(chip) chip.hidden=true;
   const b=document.getElementById('netbar');
   if(b){ b.className='back'; b.innerHTML='✓ Reconnected — syncing…'; setTimeout(()=>b.remove(),4000); }
   sfx('ack'); loadMailTodos();
@@ -11582,10 +11828,10 @@ try{ NOTIFS=JSON.parse(localStorage.getItem('gc2_notifs')||'[]'); }catch(e){}
 // E266: sweep out the connection blips stored before they left the bell
 NOTIFS=NOTIFS.filter(n=>!/^(Connection to Grand Central lost at|Reconnected at) /.test(n.text||''));
 function nfSave(){ try{ localStorage.setItem('gc2_notifs', JSON.stringify(NOTIFS.slice(0,50))); }catch(e){} }
-function notify(kind,text){
+function notify(kind,text,extra){
   const dup=NOTIFS.find(n=>n.text===text);
   if(dup) dup.ts=Date.now();
-  else NOTIFS.unshift({ts:Date.now(),kind:kind||'info',text,seen:false});
+  else NOTIFS.unshift({ts:Date.now(),kind:kind||'info',text,seen:false,...(extra||{})});
   NOTIFS=NOTIFS.slice(0,50);
   nfSave(); nfBadge();
   const m=$('#nf-menu'); if(m&&!m.hidden) nfRender();
@@ -11598,7 +11844,7 @@ function nfBadge(){ const b=$('#nf-badge'); if(!b) return;
 function nfRender(){
   $('#nf-menu').innerHTML='<h5>Notifications</h5>'+
     (NOTIFS.length?NOTIFS.map(n=>
-      `<div class="nf-row${n.seen?'':' new'}"><span>${n.kind==='err'?'⛔':n.kind==='warn'?'⚠️':'ℹ️'}</span>
+      `<div class="nf-row${n.seen?'':' new'}"${n.wn?` style="cursor:pointer" title="Open What's New" onclick="event.stopPropagation();nfClose();openWhatsNew()"`:''}><span>${n.wn?'✨':n.kind==='err'?'⛔':n.kind==='warn'?'⚠️':'ℹ️'}</span>
        <div>${esc(n.text)}<div class="nf-ts">${agoTxt(n.ts)}</div></div></div>`).join('')
       +'<hr><button onclick="NOTIFS=[];nfSave();nfBadge();nfRender()">Clear all</button>'
      :'<div class="nf-empty">Nothing yet — credential problems and a stuck sweeper will land here.</div>')

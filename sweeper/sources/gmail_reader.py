@@ -41,6 +41,11 @@ except ImportError:  # pragma: no cover - direct-run fallback
 
 IMAP_HOST = "imap.gmail.com"
 IMAP_PORT = 993
+# 2026-11-03: a mail_sync run sat 22 hours in one SSL read from Gmail
+# (fieldhouse), and launchd never starts a second copy while one runs — so
+# mail stopped syncing. Every IMAP connection now gives up on a read that
+# hears nothing for this long; the next run (3 minutes later) tries again.
+IMAP_TIMEOUT = 90
 
 # Map short account name -> the env keys holding its credentials. Derived from
 # config/.env by convention: any GMAIL_<SLUG>_USER paired with a matching
@@ -375,7 +380,7 @@ def read_account(account: str, env: dict, lookback_days: int = 7,
     since_date = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime("%d-%b-%Y")
     now = datetime.now(timezone.utc)
 
-    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
+    imap = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=IMAP_TIMEOUT)
     try:
         imap.login(user, password)
         log(f"gmail:{account} logged in as {user}")

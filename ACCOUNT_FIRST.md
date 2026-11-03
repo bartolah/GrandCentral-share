@@ -215,6 +215,14 @@ run, since at least 20:13 on 2026-09-24): a label containing `&` is not
 IMAP modified-UTF-7 encoded (`&` must be sent as `&-`) on the STORE path
 (`todo_labels.py`). Left alone: fixing it changes live Gmail writes.
 
+**Fixed 2026-11-03 (Casey: "Yes please fix").** Label names now go to Gmail
+in modified UTF-7 (`mail_actions._qlabel`: `&` → `&-`, non-ASCII → `&…-`) on
+STORE, SELECT, RENAME and `label_thread`. `todo_labels` matches labels by
+their decoded text (`_key`), because GC stores the label it made as text and
+Gmail lists it back in wire form; without that, the first successful write
+would have spawned a duplicate todo on the next pass. Tests:
+`tests.test_account_isolation.LabelAmpersand`.
+
 ## Bounded triage queue (2026-09-25)
 
 Changes
@@ -354,7 +362,7 @@ Built under the 2026-09-29 §6 exception. What keeps it a view, not an owner:
 
 ## Teammates are never cold outreach; people in several companies (E252, 2026-09-30)
 
-Casey: "Alex Rivera … is my boss and the owner of Fieldhouse, Brightline and CapitolInfluence … He's technically part of all three teams. We should add him to all teams as a teammate. His emails are never cold outreach. We have several people who are part of multiple accounts - companies."
+Casey: "Alex Rivera … is my boss and the owner of Fieldhouse, Brightline and Consulting … He's technically part of all three teams. We should add him to all teams as a teammate. His emails are never cold outreach. We have several people who are part of multiple accounts - companies."
 
 - **The guard.** Who sent a message is a fact from the roster; what kind of message it is is Jev's judgement. Jev read what teammates forwarded and called 51 of Chris's 67 threads (and 139 of Jaime's) a cold pitch. `db.class_effective` now refuses Jev's `Cold pitch` and `Spam` when the rules say the sender is a teammate or in a company group (`JEV_NEVER_FROM_TEAM`); the rules' type stands, `jev_overruled` records what Jev said, and a reason line says so. Casey's correction still beats it. Jev's other answers (Prospect, Correspondence, respond, priority) are untouched. The criteria text in `jev.py` now says the same, without a `QVERSION` bump.
 - **Several groups per person.** `class_memberships (email, grp)` holds any number of groups; `class_people.grp` mirrors the first for rollback. `mailclass.group_of(email, ros, prefer)` names the group of the account being read (`account_group`: the group of the account's own address's domain) when the person is in it. `/classify` gains `also` and `from` on `person-add`, plus `person-leave` and `person-mate`. Nothing about this sends Jev anything new.

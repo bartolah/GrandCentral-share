@@ -28,6 +28,6 @@ updates.push.services.mozilla.com
 *.notify.windows.com
 # E269 open/click tracker (§6 2026-10-06): health checks + event pull
 t.brightline.example mail_sync
-t.capitolinfluence.ai mail_sync
+t.consulting.example mail_sync
 t.fieldhouse.example mail_sync
 t.civic.example mail_sync

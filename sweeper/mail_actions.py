@@ -191,6 +191,37 @@ def _decode_mutf7(name: str) -> str:
         return name
 
 
+def _encode_mutf7(name: str) -> str:
+    """Text -> IMAP modified UTF-7 (RFC 3501 §5.1.3), the form Gmail wants
+    label names in on the wire: '&' is sent as '&-', non-ASCII runs as
+    &base64-. Plain ASCII without '&' passes through unchanged."""
+    import base64
+    out, run = [], []
+
+    def flush():
+        if run:
+            b = base64.b64encode("".join(run).encode("utf-16-be")).decode("ascii")
+            out.append("&" + b.rstrip("=").replace("/", ",") + "-")
+            run.clear()
+    for ch in name:
+        if 0x20 <= ord(ch) <= 0x7E:
+            flush()
+            out.append("&-" if ch == "&" else ch)
+        else:
+            run.append(ch)
+    flush()
+    return "".join(out)
+
+
+def _qlabel(label: str) -> str:
+    """A label name, quoted for IMAP, in its wire form. Labels reach here as
+    text ("Social Media & Marketing", made by GC) or already in wire form
+    (read back from LIST, "Social Media &- Marketing"); decoding first makes
+    both come out the same. 2026-11-03: the bare '&' made every write to
+    that todo's label fail with BAD "Could not parse command" since 09-24."""
+    return _quote(_encode_mutf7(_decode_mutf7(label)))
+
+
 def list_account_labels(account: str, env: dict | None = None) -> list:
     """Read-only: every user-created label in the account (IMAP LIST),
     system [Gmail]/* folders and INBOX excluded — powers the thread view's
@@ -263,7 +294,7 @@ def label_thread(thread_id: str, account: str, label: str, add: bool = True,
                  env: dict | None = None, log=print, dry_run: bool = False) -> dict:
     label = validate_label(label)
     item = "+X-GM-LABELS" if add else "-X-GM-LABELS"
-    return _store_all_mail(thread_id, account, item, f"({_quote(label)})", env, log, dry_run)
+    return _store_all_mail(thread_id, account, item, f"({_qlabel(label)})", env, log, dry_run)
 
 
 def archive_thread(thread_id: str, account: str, env: dict | None = None,

@@ -7,7 +7,7 @@
 // queued, so nothing side-effectful can fire from a stale tab. Prime the cache
 // by loading the app once online; after that it opens with no network.
 
-const VERSION = 'gc-cache-v9';   // E265: Ask cards
+const VERSION = 'gc-cache-v10';   // E297: cached answers say so
 
 // Precached on install so the very first offline open works even for paths the
 // user hasn't visited yet. Everything else is cached on demand as they browse.
@@ -22,6 +22,16 @@ function keyFor(req) {
   const u = new URL(req.url);
   u.search = '';
   return u.toString();
+}
+
+// E297: a fallback from the cache looks like a healthy 200 to the page, so the
+// connection watchdog read it as "reconnected" and took the banner down while
+// the board was still cut off. Stamp it so the page can tell the difference.
+function fromCache(hit) {
+  if (!hit) return hit;
+  const headers = new Headers(hit.headers);
+  headers.set('X-GC-From-Cache', '1');
+  return new Response(hit.body, { status: hit.status, statusText: hit.statusText, headers });
 }
 
 self.addEventListener('install', (e) => {
@@ -54,7 +64,7 @@ self.addEventListener('fetch', (e) => {
           }
           return resp;
         })
-        .catch(() => caches.match(keyFor(req)).then((hit) => hit || caches.match(req))));
+        .catch(() => caches.match(keyFor(req)).then((hit) => hit || caches.match(req)).then(fromCache)));
     return;
   }
 
