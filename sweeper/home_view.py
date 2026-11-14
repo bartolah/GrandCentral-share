@@ -49,6 +49,19 @@ BUNDLE_NAME = {"notification": "Updates", "promo": "Promotions", "newsletter": "
 CAL_ACCOUNT = {"work": "brightline", "fieldhouse": "fieldhouse", "personal": "personal"}
 
 
+def _per_account_calendars() -> dict:
+    """E312: a GCAL_ICS_<SLUG> calendar is labelled with its own account."""
+    try:
+        from common import load_env
+        return {k[len("GCAL_ICS_"):].lower(): k[len("GCAL_ICS_"):].lower()
+                for k in load_env() if k.startswith("GCAL_ICS_") and k != "GCAL_ICS_URLS"}
+    except Exception:
+        return {}
+
+
+CAL_ACCOUNT = {**CAL_ACCOUNT, **_per_account_calendars()}
+
+
 def _today() -> str:
     return datetime.now().astimezone().strftime("%Y-%m-%d")
 

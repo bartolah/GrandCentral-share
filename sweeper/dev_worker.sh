@@ -18,6 +18,9 @@ cd /Users/you/Code/GrandCentral || exit 1
 LOG=logs/devworker.log
 mkdir -p logs
 echo "[$(date '+%F %T')] dev-worker run" >> "$LOG"
+# dev #82: a run Casey started from the app tells him how it went, whichever
+# way this script exits (a scheduled run leaves no marker and stays quiet)
+trap '.venv/bin/python sweeper/dev_run.py --done >> "$LOG" 2>&1' EXIT
 
 # 2026-09-28 (Casey: "Do it" — a triage step before building): first a
 # triage pass labels every new or edited open card with priority, size and a

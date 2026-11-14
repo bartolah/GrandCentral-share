@@ -37,6 +37,7 @@
       "Edit(./sweeper/auto_pull.sh)",
       "Edit(./sweeper/send_mail.py)",
       "Edit(./sweeper/connections.py)",
+      "Edit(./sweeper/dev_run.py)",
       "Bash(git add -f:*)",
       "Bash(git add --force:*)",
       "Bash(git add -A:*)",

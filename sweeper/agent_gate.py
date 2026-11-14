@@ -63,6 +63,7 @@ HUMAN_ONLY_POST = {
     "/upload": "writes files to disk",
     "/agent/accounts": "which accounts agents may touch is Casey's switch",
     "/agent/reset": "only Casey lifts an agent lockout",
+    "/dev/run": "starting the dev worker (it edits and pushes code) is a paired browser's tap (§6 2026-11-09)",
     "/private": "unmarking a Private thread is Casey's call (§6 E258 item 2)",
     "/agent/proposals/decide": "approving what the desktop app asked for is Casey's click (§6 E260)",
     # E259: a context document grounds Ask and every reply draft, so writing

@@ -503,6 +503,27 @@
   .hday-tabs .n { font-size: 11px; color: var(--faint); font-weight: 600; margin-left: 2px; }
   .hday-tabs .sp { flex: 1; }
   .hday-tabs a { font-size: 12px; color: var(--blue); cursor: pointer; padding-right: 4px; }
+  body.home-on.home-read .pane { display: flex !important; }
+  body.home-read .hday-right { display: none; }
+  body.home-read .hday-grid { grid-template-columns: minmax(0, 1fr); }
+  /* reading beside Home: the column is narrow, so it's just the email list */
+  body.home-read .hday > :not(.hday-grid), body.home-read .hday-left > :not(.hmail) { display: none; }
+  body.home-read .hmail { border: none; border-radius: 0; background: none; }
+  body.home-read .hmail-tabs { flex-wrap: wrap; }
+  .hmail { border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
+  .hmail .hmail-tabs { padding: 10px 12px 6px; border-bottom: 1px solid var(--line); }
+  .hmail .hmail-list { max-width: none; padding: 0 0 6px; }
+  .hmail .ib-head { padding-left: 16px; padding-right: 12px; }
+  .hday-note.line .full, .hday-note:not(.line) .one { display: none; }
+  .hday-note.line { cursor: pointer; padding: 10px 18px; }
+  .hday-note.line p { margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hday-note .more { color: var(--blue); font-weight: 600; font-size: 12.5px; margin-left: 4px; }
+  .hday-note:not(.line) { cursor: pointer; }
+  .hday-more { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--card); }
+  .hday-more > summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; }
+  .hday-more[open] > summary { margin-bottom: 8px; }
+  .hday-todo .d { margin-left: auto; color: var(--faint); font-size: 11.5px; white-space: nowrap; padding-left: 8px; }
+  .hday-todo .d.late, .hday-sub.late span { color: var(--red); }
   .hday-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .hday-tiles a { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px 16px; color: var(--ink); text-decoration: none; cursor: pointer; }
   .hday-tiles a:hover { border-color: var(--blue); }
@@ -649,6 +670,8 @@
   .steward-card:hover { filter: brightness(.98); }
   .steward-card .n { font-weight: 700; }
   .stw-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+  .stw-row .stw-pick { flex: 0 0 auto; width: 15px; height: 15px; accent-color: var(--blue); }
+  .stw-row .stw-when { color: var(--faint); font-size: 11.5px; margin-top: 2px; }
   /* E111: 🧙 Wizard page */
   body.wiz-on .list-head, body.wiz-on #daynote { display: none; }
   .wiz { max-width: 1120px; margin: 0 auto; padding: 16px 18px 40px; }
@@ -924,7 +947,11 @@
   /* The three-line row survives the open pane (the old E48 compact rule
      hid the preview line, which in persistent-preview mode meant ALWAYS —
      Casey: "what happened to my 3 rows?"). Lines truncate; nothing hides. */
-  body.pane-open .row { padding: 10px 12px; }
+  /* 2026-11-12 (Casey: "the hover overlay is not aligned"): the tighter rows
+     beside an open email set their padding through --row-pad, and the
+     select box follows, so it sits on the avatar again */
+  body.pane-open .row { --row-pad: 10px; padding: var(--row-pad) 12px; }
+  body.pane-open .row .selbox { left: 12px; }
   body.pane-open .group-pick { display: none; }
 
   /* ---------- bulk bar ---------- */
@@ -1105,6 +1132,15 @@
   .sig-ed p { margin: 0 0 4px; }
   .rb-body .gc-sig { color: inherit; opacity: .85; }
   .rb-body .gc-sig p { margin: 0 0 3px; }
+  /* Dev #87 (Casey, Console: "impossible to see the text, it was all dark"):
+     a signature or text pasted from Gmail carries inline light-page colors
+     (dark ink, white highlights), and whatever you type next to it inherits
+     them — dark on a dark skin. Inside the editor everything takes the
+     board's ink, the same blunt rule htmlWrapFor uses for plain mail. Display
+     only: the HTML that goes out keeps its own colors. */
+  .rb-body * { color: inherit !important; background-color: transparent !important; }
+  .rb-body a, .rb-body a * { color: var(--blue) !important; }
+  .rb-body blockquote, .rb-body blockquote * { color: var(--muted) !important; }
   .row .in-todo { font-size: 11.5px; color: var(--blue); display: flex; align-items: center; gap: 4px; margin-bottom: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .in-todo b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
   .row .in-todo:hover { text-decoration: underline; }
@@ -1274,7 +1310,8 @@
   .mcol .csnip { color: var(--faint); font-size: 12.5px; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .mcol .t { color: var(--faint); font-size: 11.5px; flex: 0 0 auto; }
   .msg .mh { cursor: pointer; }
-  .qdots { display: inline-block; margin: 8px 0 0 38px; padding: 1px 12px; border-radius: 9px; background: var(--hover); color: var(--faint); font-size: 13px; letter-spacing: 2px; cursor: pointer; user-select: none; line-height: 1.4; }
+  .qdots { display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 2px 38px; padding: 6px 14px; border-radius: 9px; border: 1px solid var(--line); background: var(--hover); color: var(--muted); font-size: 13px; cursor: pointer; user-select: none; line-height: 1.3; }
+  .qdots span { letter-spacing: 0; font-size: 12.5px; font-weight: 600; }
   .qdots:hover { color: var(--ink); }
   .qdots.on { background: var(--sel-bg); }
   .replybar { display: flex; align-items: center; gap: 10px; margin: 10px 16px 14px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; color: var(--faint); cursor: pointer; }
@@ -1498,6 +1535,7 @@
   #undobar[hidden] { display: none; }
   #undobar button { color: #ffd479; font-weight: 700; font-size: 13px; }
   #undobar button:hover { text-decoration: underline; }
+  #undobar #undo-go { color: #fff; font-weight: 600; margin-left: 4px; padding: 2px 8px; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; }
   #undo-tick { position: absolute; left: 0; bottom: 0; height: 3px; background: #ffd479; animation: undotick 6s linear forwards; }
   @keyframes undotick { from { width: 100%; } to { width: 0; } }
   .toast.show { opacity: 1; }
@@ -2351,6 +2389,18 @@
       -webkit-backdrop-filter: none; backdrop-filter: none;
     }
   }
+  /* 2026-11-09: room to breathe (Casey: "give it a little bit more vertical
+     space for each row … it's so tight right now vertically"). Shortwave's
+     rhythm: more air around a row and between its three lines. */
+  .row { --row-pad: 14px; }
+  body.pane-open .row { --row-pad: 10px; }
+  .row .l2 { margin-top: 4px; }
+  .row .l3 { margin-top: 3px; }
+  .row .in-todo { margin-bottom: 4px; }
+  .row .tail-more { display: none; align-items: center; gap: 6px; }
+  .row:hover .tail-more, .row.open .tail-more, .row.kb .tail-more { display: inline-flex; }
+  .row .when.snz, .row .meta .when { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  @media (max-width: 700px) { .row { --row-pad: 12px; } }
 </style>
 <script>
 /* E77: apply the saved skin before first paint (default: 2049). */
@@ -2615,7 +2665,7 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
 <div class="dlg-back" id="dlg-back"><div class="dlg" id="dlg"></div></div>
 <div class="toast" id="toast"></div>
 <div class="ctx" id="ctx"></div>
-<div id="undobar" hidden><span id="undo-label"></span><button onclick="undoPending()">Undo</button><i id="undo-tick"></i></div>
+<div id="undobar" hidden><span id="undo-label"></span><button onclick="undoPending()">Undo</button><button id="undo-go" hidden onclick="commitPending()" title="Send it now instead of waiting">Send now</button><i id="undo-tick"></i></div>
 <div id="ppop" hidden></div>
 
 <script>
@@ -3572,7 +3622,7 @@ function grpRowHtml(g){
 }
 /* A group opens as its own list under a back arrow (Shortwave's split). */
 let SPLIT=null;
-function openSplit(cat){ SPLIT={cat}; closePaneQuiet(); renderList(); $('#list').scrollTop=0; }
+function openSplit(cat){ if(SCOPE.kind==='home'){ setScope('inbox',null); TAB='mail'; syncTabs(); } SPLIT={cat}; closePaneQuiet(); renderList(); listTop(); }
 function closeSplit(){ SPLIT=null; renderList(); }
 function closePaneQuiet(){ OPEN=null; if(!(PREVIEW&&innerWidth>980)){ document.body.classList.remove('pane-open'); $('#pane').classList.remove('open'); } }
 function renderSplit(){
@@ -3659,6 +3709,19 @@ function renderList(){
   if (TAB==='today' && TODAY_VIEW==='inbox' && !SEARCH_ROWS && SCOPE.kind==='inbox') return renderTodayInbox();
   // E204: a group opened from the list is its own view until Back / Esc.
   if (SPLIT && !SEARCH_ROWS) return renderSplit();
+  let html = inboxListHtml(items);
+  // E204: mail that arrived while you were scrolled down announces itself
+  if(NEW_COUNT&&$('#list').scrollTop>120)
+    html=`<div class="new-pill"><button onclick="NEW_COUNT=0;renderList();listTop(true)">↑ ${NEW_COUNT} new</button></div>`+html;
+  // E178: the plain lists get the Inbox view's measure and gutter too.
+  $('#list').innerHTML = html ? `<div class="ib-wrap">${html}</div>` : '<div class="empty">Nothing here.</div>';
+  hydrateAvatars($('#list'));
+}
+/* 2026-11-11: the Inbox's list as HTML, for the Inbox itself and for Home's
+   email section (Casey: "The Home View, should include a more robust email
+   experience, with a fuller view into the inbox; perhaps the smart inbox
+   view"). Reads SCOPE/TAB/SMART/Q like it always did and fills VISIBLE. */
+function inboxListHtml(items){
   const groups = groupItems(items);
   VISIBLE = [];
   const sweepable = name => ['Last 7 days','Earlier this month','Older'].includes(name);
@@ -3744,12 +3807,7 @@ function renderList(){
   }
   // Account cards reuse the old internal `project` scope name, but active
   // triage never renders the retired project/goal management headers.
-  // E204: mail that arrived while you were scrolled down announces itself
-  if(NEW_COUNT&&$('#list').scrollTop>120)
-    html=`<div class="new-pill"><button onclick="$('#list').scrollTo({top:0,behavior:'smooth'});NEW_COUNT=0;renderList()">↑ ${NEW_COUNT} new</button></div>`+html;
-  // E178: the plain lists get the Inbox view's measure and gutter too.
-  $('#list').innerHTML = html ? `<div class="ib-wrap">${html}</div>` : '<div class="empty">Nothing here.</div>';
-  hydrateAvatars($('#list'));
+  return html;
 }
 function toggleFold(n){ FOLDS.has(n)?FOLDS.delete(n):FOLDS.add(n); renderList(); }
 
@@ -4258,7 +4316,7 @@ const projById = id => (PROJECTS||[]).find(p=>p.id===id);
 function enterProj(p){
   if(HOME_ALL) leaveHomeAll();
   PROJ=p; SPLIT=null; closePane(); closeNav&&closeNav();
-  renderAcctTabs(); renderRail(); renderCrumbs(); renderList(); $('#list').scrollTop=0;
+  renderAcctTabs(); renderRail(); renderCrumbs(); renderList(); listTop();
 }
 function showNotes(){ enterProj({view:'notes', filter:'all'}); loadNotes(); }
 let NOTES=null;
@@ -4866,10 +4924,11 @@ function hdayRight(sections, evs, mine){
     <div class="rtop"><b>Today${meetings?` · ${meetings} ${meetings===1?'meeting':'meetings'}`:''}</b><a onclick="openCalPage()">Open calendar</a></div>
     ${legend?`<div class="hday-legend">${legend}</div>`:''}
     <div class="hday-cal">
+      ${mine&&!HOME_ALL?`${homeTodosHtml(mine)}<div style="height:12px"></div>`:`
       <div class="hday-sub" style="padding:0 2px 4px"><span>Todos due today · ${due.length}</span>${HOME_ALL?'':`<a onclick="goTodos()">All todos</a>`}</div>
       ${due.length?due.map(todoRow).join(''):'<div class="hday-none" style="padding:4px 2px">Nothing due today.</div>'}
       ${overdue?`<div class="hday-over" onclick="${HOME_ALL?`hdayGo('${esc(sections.find(s=>s.counts.overdue).account)}','todos')`:'goTodos()'}">
-        <span><b>${overdue} overdue ${overdue===1?'todo':'todos'}</b><span class="m"> · ${HOME_ALL?esc(byAcct):oldest?'oldest from '+esc(fmtDate(oldest)):''}</span></span><span>›</span></div>`:'<div style="height:12px"></div>'}
+        <span><b>${overdue} overdue ${overdue===1?'todo':'todos'}</b><span class="m"> · ${HOME_ALL?esc(byAcct):oldest?'oldest from '+esc(fmtDate(oldest)):''}</span></span><span>›</span></div>`:'<div style="height:12px"></div>'}`}
       ${allDay.length?`<div class="hday-allday">${allDay.map(e=>`<span style="border-left-color:${e.account?acctColor(e.account):'var(--line)'}">${esc(e.title)}</span>`).join('')}</div>`:''}
       ${hdayTimeline(evs, mine)}
       ${clashLine?`<div class="hday-clash">${clashLine}</div>`:''}
@@ -4893,6 +4952,59 @@ function hdayHead(evs, mine, toggle){
       <span class="hg-sub">${mine?esc(acctLabel(mine))+' · ':''}${new Date().toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'})}${next?` · next: ${esc(next.e.time)} ${esc(next.e.title.slice(0,40))}`:' · a clear track'}</span>
       ${curLine?`<span class="hg-sub">${curLine}</span>`:''}
     </div><span class="sp" style="flex:1"></span>${toggle||''}${wit}</div>`;
+}
+let HOME_MAIL=(()=>{ try { return JSON.parse(localStorage.getItem('gc2_home_mail')||'{}')||{}; } catch(_){ return {}; } })();
+function homeMailTab(a){ return HOME_MAIL[a]||(JEV_ON[a]?'smart':'inbox'); }
+function homeSetMail(a,t){
+  HOME_MAIL[a]=t; try { localStorage.setItem('gc2_home_mail',JSON.stringify(HOME_MAIL)); } catch(_){}
+  KB=-1; renderList();
+}
+// the Inbox's own list, drawn as if the Inbox were showing, then put back
+function homeInboxRows(smart){
+  const keep={SCOPE,TAB,SMART,SPLIT,SEARCH_ROWS,Q,NEW_COUNT};
+  SCOPE={kind:'inbox',id:null}; TAB='mail'; SMART=!!smart; SPLIT=null; SEARCH_ROWS=null; Q=''; NEW_COUNT=0;
+  try { return inboxListHtml(ITEMS.filter(i=>inScope(i)&&inTab(i))); }
+  finally { SCOPE=keep.SCOPE; TAB=keep.TAB; SMART=keep.SMART; SPLIT=keep.SPLIT; SEARCH_ROWS=keep.SEARCH_ROWS; Q=keep.Q; NEW_COUNT=keep.NEW_COUNT; }
+}
+const homeNeeds = a => ITEMS.filter(i=>i.type==='mail'&&i.account===a&&!i.snoozed&&inboxLive(i)
+    &&(i.needs||i.cls?.waiting_on==='me')).sort((x,y)=>String(y.date).localeCompare(String(x.date)));
+function homeMailHtml(a){
+  const t=homeMailTab(a), needs=homeNeeds(a), jev=!!JEV_ON[a];
+  const tab=(k,label,n)=>`<button role="tab" aria-selected="${t===k}" class="${t===k?'on':''}" onclick="homeSetMail('${esc(a)}','${k}')">${label}${n?` <span class="n">${n}</span>`:''}</button>`;
+  const head=`<div class="hday-tabs hmail-tabs" role="tablist">
+      ${jev?tab('smart','Smart'):''}${tab('inbox','Inbox')}${tab('needs','Needs you',needs.length)}
+      <span class="sp"></span><a onclick="${t==='smart'?'goSmart()':'hdayGo(\''+esc(a)+'\',\'inbox\')'}">Open ${t==='smart'?'Smart Inbox':'Inbox'} ›</a></div>`;
+  let body;
+  if(t==='needs'){
+    VISIBLE=needs.slice();
+    body=needs.length?`<div class="ib-card">${needs.map(i=>rowHtml(i)).join('')}</div>`
+      :'<div class="hday-none">Nothing waiting on your reply.</div>';
+  } else body=homeInboxRows(t==='smart'&&jev)||'<div class="hday-none">Nothing in the inbox.</div>';
+  return head+`<div class="ib-wrap hmail-list">${body}</div>`;
+}
+// the day note as one line; a click opens the rest (remembered per device)
+function hdayNoteLine(key,label){
+  let open=false; try { open=localStorage.getItem('gc2_note_open')==='1'; } catch(_){}
+  const n=HOME_NOTE[key]||{}, text=n.note&&n.note.text||'';
+  const first=(text.match(/^[\s\S]*?[.!?](\s|$)/)||[text])[0].trim();
+  return `<div class="hday-note ${open?'':'line'}" onclick="if(!event.target.closest('button')){ try{localStorage.setItem('gc2_note_open',this.classList.contains('line')?'1':'0')}catch(_){}; this.classList.toggle('line') }">
+    <div class="k">${esc(label)}<button title="Write it again from what's on the board now" onclick="homeNote('${esc(key)}',true);renderList()">↻</button></div>
+    ${text?`<p class="full">${esc(text)}</p><p class="one">${esc(first)}${first.length<text.length?' <span class="more">more</span>':''}</p>`
+      :`<p class="wait">${n.pending||n.busy?'Writing today’s note…':'No note yet today.'}</p>`}</div>`;
+}
+// todos you can tick off: overdue, due today, My Day
+function homeTodosHtml(a){
+  const today=dOff(0);
+  const ts=ITEMS.filter(i=>i.type==='todo'&&i.account===a&&!i.snoozed);
+  const over=ts.filter(i=>i.due&&i.due<today).sort((x,y)=>String(x.due).localeCompare(String(y.due)));
+  const due=ts.filter(i=>i.due===today||(i.my_day&&!(i.due&&i.due<today)));
+  const row=i=>`<label class="hday-todo"><input type="checkbox" onclick="event.stopPropagation();doneItem('${esc(i.key)}')" aria-label="Mark done: ${esc(i.title)}">
+      <span class="x" onclick="event.preventDefault();openItem('${esc(i.key)}')">${esc(i.title)}</span>
+      ${i.due?`<span class="d ${i.due<today?'late':''}">${i.due<today?esc(fmtDate(i.due)):'today'}</span>`:'<span class="d">☀</span>'}</label>`;
+  const sec=(name,list,cls='')=>list.length?`<div class="hday-sub ${cls}" style="padding:6px 2px 4px"><span>${name} · ${list.length}</span></div>${list.slice(0,8).map(row).join('')}${list.length>8?`<div class="hday-none" style="padding:2px">+${list.length-8} more</div>`:''}`:'';
+  return `<div class="hday-sub" style="padding:0 2px 4px"><span>Todos</span><a onclick="goTodos()">All todos ${ts.length?`(${ts.length})`:''}</a></div>`
+    + (over.length||due.length ? sec('Due today & My Day',due)+sec('Overdue',over,'late')
+       : '<div class="hday-none" style="padding:4px 2px">Nothing due today or overdue.</div>');
 }
 function hdayNote(key, label){
   const n=HOME_NOTE[key]||{};
@@ -4941,15 +5053,25 @@ function renderHomeDay(){
   const s=(data.sections||[])[0]; if(!s){ $('#list').innerHTML='<div class="empty">Nothing here yet.</div>'; return; }
   const evs=hdayEvents(data.cal_account);
   const mtg=evs.filter(e=>e.account===a).length;
+  // 2026-11-11 (Casey: "The Home View, should include a more robust email
+  // experience, with a fuller view into the inbox; perhaps the smart inbox
+  // view; and the todos"): the day note (one line, opens on click) and the
+  // tiles stay on top; then the real inbox — Smart / Inbox / Needs you, the
+  // Inbox's own rows and actions; todos to tick off under the calendar;
+  // Ask and the VIP suggestions at the bottom.
+  const tier=tierHomeCard();
   $('#list').innerHTML=`<div class="hday">${hdayHead(evs, a, toggle)}
     <div class="hday-grid"><div class="hday-left">
-      ${hdayNote(a, 'The day in '+acctLabel(a))}${hdayAsk()}${tierHomeCard()}
+      ${hdayNoteLine(a, 'The day in '+acctLabel(a))}
       <div class="hday-tiles">
         <a onclick="hdayGo('${esc(a)}','inbox')"><b>${s.counts.emails}</b><span>emails in the inbox</span></a>
         <a onclick="openCalPage()"><b>${mtg}</b><span>${mtg===1?'meeting':'meetings'} today</span></a>
         <a onclick="goTodos()"><b>${s.counts.todos_due}</b><span>todos due today</span></a></div>
-      <section class="hday-acct"><div class="hday-body" style="border-top:none">${hdayMailBlock(s)}</div></section>
+      <section class="hmail">${homeMailHtml(a)}</section>
+      ${hdayAsk()}
+      ${tier?`<details class="hday-more"><summary>Who matters most? — VIP suggestions</summary>${tier}</details>`:''}
     </div>${hdayRight([s], evs, a)}</div></div>`;
+  hydrateAvatars($('#list'));
 }
 
 /* ================= E204: freshness, the steward badge, grouping =================
@@ -5016,6 +5138,61 @@ function stewardHere(){
   // by the mail account the sender writes to (server-joined), not by project
   return STEWARD.filter(s=>(s.accounts||[]).some(mailAcctInAcct));
 }
+/* 2026-11-10 (Casey: "When I delete an email or do something in email, the
+   list jumps back to the top. It should stay where it is"): every redraw of
+   the list keeps the row at the top of the view where it was. Before
+   rendering, note the first visible row (and a few after it, in case it's
+   the one that just left) and its offset; after, put that row back at the
+   same offset. Only within the same view: a new scope, tab, account,
+   bundle or search starts wherever its own code puts it.
+   I couldn't reproduce the jump, so a jump that still happens without
+   Casey scrolling is written to the ⚑ flag context with the redraw's caller. */
+const LIST_HOLD={key:'', anchor:null, why:'', input:0};
+// a deliberate trip to the top (Go to Inbox, a bundle, ↑ new) — not a jump
+function listTop(smooth){
+  LIST_HOLD.input=Date.now()+(smooth?1500:0);
+  const L=$('#list'); if(L) L.scrollTo({top:0,behavior:smooth?'smooth':'auto'});
+}
+function listViewKey(){
+  return [ACCT, SCOPE&&SCOPE.kind, SCOPE&&SCOPE.id, TAB, SPLIT&&SPLIT.cat, typeof Q==='string'?Q:'',
+          HOME_ALL?1:0, PROJ?JSON.stringify(PROJ):''].join('|');
+}
+function listAnchor(){
+  const L=$('#list'); if(!L||L.scrollTop<4) return null;
+  const top=L.getBoundingClientRect().top;
+  const rows=[...L.querySelectorAll('.row[data-key], .grp[data-grp], .ib-head[data-sec]')];
+  const i=rows.findIndex(r=>r.getBoundingClientRect().bottom>top+2);
+  if(i<0) return null;
+  const id=r=>r.dataset.key?'k:'+r.dataset.key:r.dataset.grp?'g:'+r.dataset.grp:'s:'+r.dataset.sec;
+  return {ids:rows.slice(i,i+8).map(id), off:rows[i].getBoundingClientRect().top-top, y:L.scrollTop};
+}
+function listFind(L,id){
+  const v=id.slice(2).replace(/["\\]/g,'\\$&');
+  return L.querySelector(id[0]==='k'?`.row[data-key="${v}"]`:id[0]==='g'?`.grp[data-grp="${v}"]`:`.ib-head[data-sec="${v}"]`);
+}
+const _renderListPlain=renderList;
+renderList=function(){
+  const L=$('#list'), key=listViewKey(), same=key===LIST_HOLD.key;
+  const a=same&&L?listAnchor():null;
+  LIST_HOLD.key=key;
+  const out=_renderListPlain.apply(this,arguments);
+  if(a&&L){
+    const top=L.getBoundingClientRect().top;
+    const hit=a.ids.map((id,n)=>({el:listFind(L,id),n})).find(x=>x.el);
+    if(hit){
+      const shift=hit.el.getBoundingClientRect().top-top-(hit.n?Math.max(0,a.off):a.off);
+      if(Math.abs(shift)>1) L.scrollTop+=shift;
+    } else if(Math.abs(L.scrollTop-a.y)>1) L.scrollTop=a.y;
+  }
+  LIST_HOLD.why=(new Error().stack||'').split('\n').slice(2,5).map(x=>x.trim().replace(/\(.*\//,'(')).join(' < ');
+  return out;
+};
+['wheel','touchstart','keydown','mousedown'].forEach(ev=>addEventListener(ev,()=>{ LIST_HOLD.input=Date.now(); },{passive:true,capture:true}));
+(()=>{ let last=0; const L=$('#list'); if(!L) return;
+  L.addEventListener('scroll',()=>{ const y=L.scrollTop;
+    if(last>300&&y<20&&Date.now()-LIST_HOLD.input>800&&listViewKey()===LIST_HOLD.key)
+      fbErr('scroll',`list jumped to the top (${Math.round(last)}→${Math.round(y)}); last redraw: ${LIST_HOLD.why}`);
+    last=y; },{passive:true}); })();
 function renderListHead(){
   renderFresh();
   const b=$('#stw-badge'); if(b){
@@ -5756,7 +5933,7 @@ function renderDev(){
           return esc(n.toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'})); })()}</b>
         — it triages first, then builds only small, clear requests, highest priority first.
         Interactive sessions pick requests up sooner.</div>
-      ${devCode()?`<div class="td-quick" style="margin-bottom:6px">
+      ${devCode()?`${devRunHtml()}<div class="td-quick" style="margin-bottom:6px">
         <button class="qbtn" onclick="devNewCode()" title="Mint a code to pair another Mac, iPhone or browser">🔑 Pair another device…</button></div>
       <textarea id="dev-in" class="tp-notes" placeholder="Describe the change… what you want, where, why. (⌘⏎ to file it)"
         onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))devAdd()">${esc(DEV_DRAFT)}</textarea>
@@ -5794,6 +5971,30 @@ async function devTriage(id,fields){
   try { await post('/dev',{action:'triage',id,account:ACCT,...fields},devHdr());
     toast(fields.verdict==='build'?'Cleared — the next run builds it':'Priority set'); await loadDev(); renderList();
   } catch(e){ if(!devUnpaired(e)) toast('Not saved — '+e.message); }
+}
+/* dev #82 (§6 2026-11-09, Casey: "Yes, with guardrails"): run the queue now.
+   Triage now labels the waiting cards; Build now starts the scheduled
+   worker job itself, same rules, just sooner. One at a time, a daily cap,
+   never over uncommitted work; a push + iMessage says how it went. */
+let DEV_RUN=null;
+async function loadDevRun(){
+  try { const r=await fetch('/dev/run',{cache:'no-store'}).then(r=>r.json()); if(r.ok) DEV_RUN=r; } catch(e){}
+}
+function devRunHtml(){
+  const r=DEV_RUN; if(!r) { loadDevRun().then(()=>{ if(SCOPE.kind==='dev') renderList(); }); return ''; }
+  const last=r.last?`Last on-demand ${esc(r.last.mode)}: ${esc(new Date(r.last.at).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'}))}.`:'';
+  return `<div class="td-quick" style="margin:8px 0 4px;align-items:center;flex-wrap:wrap">
+      <button class="qbtn" ${r.running||!r.left.triage?'disabled':''} onclick="devRun('triage')" title="Label the waiting cards now (priority, size, verdict) — builds nothing">🏷 Triage now</button>
+      <button class="qbtn" ${r.running||!r.left.build?'disabled':''} onclick="devRun('build')" title="Run the worker now: triage, then build and ship the cleared cards">▶ Build now</button>
+      <span class="status" style="text-transform:none;letter-spacing:0">${r.running?'⏳ A run is going — answers land on the cards.':`${r.left.build} of ${r.caps.build} builds left today. ${last}`}</span></div>`;
+}
+async function devRun(mode){
+  if(mode==='build'&&!confirm('Start the dev worker now? It triages, then builds, tests and ships the cleared cards (at most 5), and answers on each card. You get a notification when it finishes.')) return;
+  try { await post('/dev/run',{mode,confirm:true});
+    toast(mode==='build'?'Worker started — you’ll get a notification when it’s done':'Triage started — labels land on the cards in a minute');
+  } catch(e){ toast('Not started — '+e.message); }
+  DEV_RUN=null; await loadDevRun(); renderList();
+  if(mode==='triage') setTimeout(async()=>{ await loadDev(); await loadDevRun(); if(SCOPE.kind==='dev') renderList(); },45000);
 }
 async function devAdd(){
   const inp=$('#dev-in'); const text=(inp?.value||'').trim(); if(!text) return;
@@ -6241,13 +6442,19 @@ function valChip(i){
 function rowTail(i){
   const lbl=(i.labels||[])[0];
   const proj='';
-  return `<span class="tail">`+tierChip(i)+pjSugChip(i)+(i.type==='mail'?trkChip(i.account,i.raw.thread_id):'')+valChip(i)
+  // 2026-11-09 (Casey: "too much information … let's have only certain
+  // information appear until I mouse over the item"): a row at rest is the
+  // avatar, who, when, subject, first line and the star. The rest — tier,
+  // tracking, score, reply owed, note, label, attachment, My Day — waits in
+  // .tail-more for hover, the open row or the keyboard cursor.
+  return `<span class="tail"><span class="tail-more">`+tierChip(i)+pjSugChip(i)+(i.type==='mail'?trkChip(i.account,i.raw.thread_id):'')+valChip(i)
     + (i.needs?`<span class="owed" title="A reply is owed">↩ ${fdAge(i.date)??0}d</span>`:'')
     + (i.note?`<span class="chip" style="background:var(--amber-soft);color:var(--note-head)" title="${esc(i.note)}">📝 ${esc(i.note.slice(0,24))}</span>`:'')
     + (lbl?`<span class="chip lbl" style="${lblStyle(lbl)}" onclick="event.stopPropagation();setScope('label','${esc(lbl)}')" title="Show everything labelled ${esc(lbl)}">${esc(lbl)}</span>`
           :(proj?`<span class="chip" onclick="event.stopPropagation();openOvl('project','${esc(i.project)}')">${esc(proj)}</span>`:''))
     + (i.attachments?`<span title="Has an attachment">${ic('attach','sm')}</span>`:'')
     + (i.my_day?`<span title="In My Day today">${ic('sun','sm')}</span>`:'')
+    + `</span>`
     + (i.starred?`<span class="st" title="Starred">${ic('starfill','sm')}</span>`:'')
     + `</span>`;
 }
@@ -6796,6 +7003,10 @@ function queueUndo(label, exec, restore, ms=6000){
   const bar=$('#undobar'); bar.hidden=false;
   const tick=$('#undo-tick'); tick.style.animation='none'; void tick.offsetWidth;
   tick.style.animation=''; tick.style.animationDuration=(ms/1000)+'s';
+  // dev #80 (§6 2026-11-03, Casey: dismissing the send Undo bar should "Send
+  // right away"): a held send also offers Send now — your click, cutting
+  // the 10-second wait short; Undo still works until you press it
+  $('#undo-go').hidden=ms!==SEND_UNDO_MS;
   PENDING={exec,restore,timer:setTimeout(commitPending,ms)};
 }
 async function commitPending(){
@@ -6830,18 +7041,23 @@ function restoreItem(i){
 // a todo navigates into its page, which took the reading pane away. An email
 // that wasn't in the flat list (a stub, a folded section) opens the list's
 // first email instead of closing the pane.
-function dropLocal(i){
+// Dev #86 (Casey: after Delete "move up to the previous (newer) email in the
+// list and open it"): up=true tries the email above first, then below.
+// Only Delete passes it; done/archive/snooze keep moving down.
+function dropLocal(i, up){
   DROPPED.set(i.key, Date.now());
   const wasOpen = OPEN===i.key;
   const pool = VISIBLE.filter(x=>i.type!=='mail'||x.type==='mail');
   const idx = pool.findIndex(x=>x.key===i.key);
-  const near = idx>=0 ? [...pool.slice(idx+1), ...pool.slice(0,idx).reverse()] : [];
+  const below = idx>=0 ? pool.slice(idx+1) : [], above = idx>=0 ? pool.slice(0,idx).reverse() : [];
+  const near = up ? [...above, ...below] : [...below, ...above];
   if(i.type==='mail') MAIL=MAIL.filter(t=>t!==i.raw); else TODOS=TODOS.filter(t=>t!==i.raw);
   rebuild();   // refreshes VISIBLE
   if(wasOpen){
     let next = near.map(x=>VISIBLE.find(v=>v.key===x.key)).find(Boolean) || null;
     if(!next && idx<0 && i.type==='mail') next = VISIBLE.find(x=>x.type==='mail') || null;
-    if(next){ KB=VISIBLE.indexOf(next); openItem(next.key); }
+    if(next){ KB=VISIBLE.indexOf(next); openItem(next.key);
+      if(up){ const el=document.querySelector('.row.kb'); if(el) el.scrollIntoView({block:'nearest'}); } }
     else closePane();
   }
 }
@@ -6910,23 +7126,26 @@ async function doneTodoGroup(key, archiveMail){
 }
 async function starItem(key){
   const i=findItem(key); if(!i) return;
+  // dev #80 (Casey: "there's a lag when I click on the star … it's fine if it
+  // happens in the background, but we should make the UX snappy"): the star
+  // flips at once and Gmail catches up behind it; a refusal flips it back.
+  // The open thread is redrawn from what's loaded, not fetched again.
+  const want=!i.starred;
+  const paint=()=>{ renderList(); if(OPEN===key&&i._msgs&&!$('#pane').classList.contains('composing')) renderThreadPane(i); };
+  i.raw.starred=i.starred=want;
+  if(i.type==='mail') STAR_PENDING.set(i.key,{v:want,ts:Date.now()});   // E93.8: the poll can't flip it back
+  paint();
   try {
-    if(i.type==='mail'){
-      await post('/mail-action',{action:i.starred?'unstar':'star',thread_id:i.raw.thread_id,account:i.account});
-      i.raw.starred=i.starred=!i.starred;
-      // E93.8: /mail reflects Gmail only after the ~3-min sync — remember
-      // the intent so the 60s poll can't flip the star back meanwhile.
-      STAR_PENDING.set(i.key,{v:i.starred,ts:Date.now()});
-    } else {
-      await post('/task',{action:'update',id:i.raw.id,fields:{starred:!i.starred}});
-      i.raw.starred=i.starred=!i.starred;
-    }
-    renderList(); if(OPEN===key) openItem(key,true);
-  } catch(e){ toast('Star failed — '+e.message); }
+    if(i.type==='mail') await post('/mail-action',{action:want?'star':'unstar',thread_id:i.raw.thread_id,account:i.account});
+    else await post('/task',{action:'update',id:i.raw.id,fields:{starred:want}});
+  } catch(e){
+    i.raw.starred=i.starred=!want; STAR_PENDING.delete(i.key); paint();
+    toast('Star failed — '+e.message);
+  }
 }
 async function trashItem(key){
   const i=findItem(key); if(!i||i.type!=='mail') return;
-  dropLocal(i);
+  dropLocal(i, true);
   queueUndo(`Deleting "${i.title.slice(0,40)}" — Gmail Trash`,
     ()=>post('/mail-action',{action:'trash',thread_id:i.raw.thread_id,account:i.account}),
     restoreItem(i));
@@ -7112,17 +7331,42 @@ function stewardDlg(){
   // "Approve all" all see only the senders who mail the account you're in.
   const ST=stewardHere();
   if(!ST.length){ closeDlg(); return; }
+  // Dev #88 (Casey: "needs the dates of the recommendations; and a way to
+  // dismiss one or many"): each row says when it was suggested, ✕ is labelled
+  // Dismiss, and the checkboxes + "Dismiss selected" / "Dismiss all" clear
+  // several at once. Dismiss is the existing reject verdict — the sender is
+  // never suggested again and nothing about their mail changes.
   dlg(`<h3>🤵 Inbox steward — ${ST.length} suggestion${ST.length>1?'s':''} · ${esc(acctName(ACCT))}</h3>
-    <div class="status" style="margin-bottom:4px">Approving bundles that sender's future mail (like a 🤖 click) and drops them from reply-debt. Nothing happens without you.</div>`+
+    <div class="status" style="margin-bottom:4px">Approving bundles that sender's future mail (like a 🤖 click) and drops them from reply-debt. Dismissing leaves their mail alone and never suggests them again. Nothing happens without you.</div>`+
     ST.map(s=>`<div class="stw-row" id="stw-${s.id}">
+      <input type="checkbox" class="stw-pick" value="${s.id}" onchange="stewardPicked()" title="Select">
       <div class="info"><div class="em">${esc(s.who||s.email)} <span style="color:var(--faint);font-weight:400">${esc(s.email)}</span></div>
-        <div class="why">${esc(s.why||'')}</div></div>
+        <div class="why">${esc(s.why||'')}</div>
+        ${s.created_at?`<div class="stw-when">Suggested ${esc(fmtDate(s.created_at))}</div>`:''}</div>
       <span class="cat">${esc(CAT_LABEL[s.category]||s.category)}</span>
-      <button class="qbtn" onclick="stewardVote(${s.id},'approve',this)">✓</button>
-      <button class="qbtn" onclick="stewardVote(${s.id},'reject',this)">✕</button>
+      <button class="qbtn" onclick="stewardVote(${s.id},'approve',this)" title="Approve — bundle this sender">✓</button>
+      <button class="qbtn" onclick="stewardVote(${s.id},'reject',this)" title="Dismiss — never suggested again">✕</button>
     </div>`).join('')+
     `<div class="foot"><button class="btn" onclick="stewardAll(this)">✓ Approve all</button>
+      <button class="btn sec2" id="stw-dsel" onclick="stewardDismiss(this,true)" disabled>✕ Dismiss selected</button>
+      <button class="btn sec2" onclick="stewardDismiss(this,false)">✕ Dismiss all</button>
       <button class="btn sec2" onclick="closeDlg()">Close</button><span class="status" id="stw-status"></span></div>`);
+}
+function stewardPicked(){
+  const n=document.querySelectorAll('.stw-pick:checked').length, b=$('#stw-dsel');
+  if(b){ b.disabled=!n; b.textContent=n?`✕ Dismiss ${n} selected`:'✕ Dismiss selected'; }
+}
+async function stewardDismiss(btn,picked){
+  const ids=picked?[...document.querySelectorAll('.stw-pick:checked')].map(x=>+x.value)
+                  :stewardHere().map(s=>s.id);
+  if(!ids.length) return;
+  const inDlg=!!$('#stw-status');
+  if(!picked&&!confirm(`Dismiss all ${ids.length} suggestion${ids.length>1?'s':''}? Those senders won't be suggested again.`)) return;
+  btn.disabled=true;
+  for(const id of ids) await stewardVote(id,'reject',null);
+  toast(`✕ Dismissed ${ids.length} suggestion${ids.length>1?'s':''}`);
+  if(inDlg&&stewardHere().length) stewardDlg();
+  if(SCOPE.kind==='wizard') renderWizard();
 }
 async function stewardVote(id,action,btn){
   if(btn) btn.disabled=true;
@@ -7204,16 +7448,17 @@ function renderWizard(){
   }).join('');
   const STW=stewardHere();
   const stwShown=WIZ_MORE.has('stw')?STW:STW.slice(0,WIZ_CAP);
-  const stw=STW.length?`<div class="wiz-sec"><h3>🤵 Sender bundling <span class="ct">${STW.length}</span></h3>
+  const stw=STW.length?`<div class="wiz-sec"><h3>🤵 Sender bundling <span class="ct">${STW.length}</span>
+        <span class="sp"></span><button class="qbtn" onclick="stewardDismiss(this,false)">✕ Dismiss all ${STW.length}</button></h3>
       <div class="status">Approving bundles that sender's future mail and drops them from reply-debt.</div>
       <div class="wiz-grid">`+
       stwShown.map(s=>`<div class="wiz-tile" id="stw-${s.id}">
           <div class="t">${esc(s.who||s.email)}</div>
           <div class="why">${esc(s.why||'')}</div>
-          <div class="meta"><span class="chip">${esc(s.email)}</span><span class="chip">${esc(CAT_LABEL[s.category]||s.category)}</span></div>
+          <div class="meta"><span class="chip">${esc(s.email)}</span><span class="chip">${esc(CAT_LABEL[s.category]||s.category)}</span>${s.created_at?`<span class="chip">📅 ${esc(fmtDate(s.created_at))}</span>`:''}</div>
           <div class="acts">
             <button class="qbtn add" onclick="stewardVote(${s.id},'approve',this)">✓ Bundle</button>
-            <button class="qbtn" onclick="stewardVote(${s.id},'reject',this)">✕</button></div></div>`).join('')
+            <button class="qbtn" onclick="stewardVote(${s.id},'reject',this)" title="Dismiss — never suggested again">✕</button></div></div>`).join('')
       +`</div>${wizMoreBtn('stw',STW.length)}</div>`:'';
   const fsShown=WIZ_MORE.has('fs')?_FS:_FS.slice(0,WIZ_CAP);
   const fs=_FS.length?`<div class="wiz-sec"><h3>🧭 Your filing patterns, as rules <span class="ct">${_FS.length}</span></h3>
@@ -7675,8 +7920,11 @@ async function openItem(key, keepScroll){
   // itself; E180 swapped in the shared row and lost it.
   // Projects: a project page keeps the reading pane beside it (the email
   // opens with its own account), so there is no Home to step out of.
-  if(SCOPE.kind==='home' && !PROJ){ const it=findItem(key);
+  // 2026-11-11: on an account's Home the email opens beside it (Casey chose
+  // "Read it beside Home"); the calendar column steps aside while it's open
+  if(SCOPE.kind==='home' && !PROJ && HOME_ALL){ const it=findItem(key);
     return homeOpen(it&&it.project?it.project:'__none', key); }
+  if(SCOPE.kind==='home' && !PROJ) document.body.classList.add('home-read');
   sfx('open');
   OPEN=key; document.body.classList.add('pane-open'); renderList();
   let i=findItem(key);
@@ -8024,7 +8272,7 @@ function linkifyHtml(html){
    container (Gmail/Apple/Outlook/Yahoo/Thunderbird) and hide it plus all
    following siblings; the ••• toggle lives in the PARENT (the sandboxed
    iframe can't run scripts — the parent flips display via contentDocument). */
-function trimQuoteHtml(html){
+function trimQuoteHtml(html, open){
   try{
     const doc=new DOMParser().parseFromString(html,'text/html');
     const q=doc.querySelector('div.gmail_quote, blockquote[type=cite], #divRplyFwdMsg, .yahoo_quoted, .moz-cite-prefix');
@@ -8033,7 +8281,7 @@ function trimQuoteHtml(html){
     const pre=r.cloneContents();
     if(!(r.toString().trim()||pre.querySelector('img'))) return {html, trimmed:false};
     const wrap=doc.createElement('div');
-    wrap.className='gc-quote'; wrap.style.display='none';
+    wrap.className='gc-quote'; if(!open) wrap.style.display='none';
     q.parentNode.insertBefore(wrap,q);
     let n=wrap.nextSibling; const moves=[];
     while(n){ moves.push(n); n=n.nextSibling; }
@@ -8068,11 +8316,15 @@ function qToggle(btn){
   if(f&&f.contentDocument&&f.contentDocument.querySelector('.gc-quote')){
     const q=f.contentDocument.querySelector('.gc-quote');
     const show=q.style.display==='none';
-    q.style.display=show?'':'none'; btn.classList.toggle('on',show); sizeFrame(f);
+    q.style.display=show?'':'none'; btn.classList.toggle('on',show); sizeFrame(f); qLabel(btn,show);
   } else {
     const q=msg.querySelector('.mb-quote');
-    if(q){ q.hidden=!q.hidden; btn.classList.toggle('on',!q.hidden); }
+    if(q){ q.hidden=!q.hidden; btn.classList.toggle('on',!q.hidden); qLabel(btn,!q.hidden); }
   }
+}
+function qLabel(btn,open){
+  const t=btn.querySelector('span'); if(t) t.textContent=open?'Hide earlier text':'Show earlier text';
+  btn.title=(open?'Hide':'Show')+' the earlier text in this email';
 }
 function msgSnip(m){
   let t=m.body||'';
@@ -8090,7 +8342,9 @@ function attChipsHtml(entries){
   const files=esc(JSON.stringify(entries.map(e=>({name:e.a.filename,url:attUrl(e.m,e.k)}))));
   const canPick=typeof window.showDirectoryPicker==='function';
   const all=entries.length>1||canPick
-    ?`<div class="att-all">${entries.length>1?`<button title="Download every file here to your usual downloads folder" onclick="event.stopPropagation();attDownloadAll(${files})">⬇ Download all ${entries.length}</button>`:''}${canPick?`<button title="Choose a folder and save ${entries.length>1?'these files':'this file'} there" onclick="event.stopPropagation();attSaveToFolder(${files})">📁 Save to folder…</button>`:''}</div>`
+    ?`<div class="att-all">${entries.length>1?`<button title="Download every file here to your usual downloads folder" onclick="event.stopPropagation();attDownloadAll(${files})">⬇ Download all ${entries.length}</button>`:''}${entries.length===1&&typeof window.showSaveFilePicker==='function'
+        ?`<button title="Save this file — pick the folder and name" onclick="event.stopPropagation();attSaveAs(${files})">📁 Save as…</button>`
+        :canPick?`<button title="Choose a folder (Documents, Desktop, Downloads…) and save ${entries.length>1?'these files':'this file'} there" onclick="event.stopPropagation();attSaveToFolder(${files})">📁 Save to folder…</button>`:''}</div>`
     :'';
   return entries.map(e=>{ const a=e.a, pv=attPreviewable(a), url=attUrl(e.m,e.k);
     return `<span class="att ${pv?'pv':''}">${pv
@@ -8119,10 +8373,30 @@ async function attFreeName(dir,name){
     catch(e){ if(e.name==='NotFoundError') return tryName; throw e; }
   }
 }
+/* 2026-11-10 (Casey, with Chrome's "can't open this folder because it
+   contains system files"): Chrome won't hand a web page the whole of your
+   home folder, Library or the disk root. One file now goes through the
+   ordinary Save dialog (any folder, your choice of name); several still need
+   a folder, so the picker opens in Documents and the refusal is explained. */
+async function attSaveAs(files){
+  const f=files[0]; if(!f) return;
+  let h;
+  try { h=await window.showSaveFilePicker({id:'gc-save-file', startIn:'downloads', suggestedName:String(f.name||'attachment')}); }
+  catch(e){ if(e.name!=='AbortError') toast('Not saved — '+e.message); return; }
+  try {
+    const r=await fetch(f.url);
+    if(!r.ok||r.headers.get('X-GC-From-Cache')) throw new Error(`“${f.name}” didn’t download`);
+    const w=await h.createWritable(); await w.write(await r.blob()); await w.close();
+    toast(`Saved “${h.name}”`);
+  } catch(e){ toast('Not saved — '+e.message); }
+}
 async function attSaveToFolder(files){
   let dir;
-  try { dir=await window.showDirectoryPicker({id:'gc-attachments',mode:'readwrite'}); }
-  catch(e){ if(e.name!=='AbortError') toast('Can’t open that folder — '+e.message); return; }
+  try { dir=await window.showDirectoryPicker({id:'gc-attachments-docs',mode:'readwrite',startIn:'documents'}); }
+  catch(e){
+    if(e.name==='AbortError') return;
+    toast('Chrome won’t save into that folder — pick one inside it, like Documents, Desktop or Downloads');
+    return; }
   let saved=0;
   try {
     for(const f of files){
@@ -8229,17 +8503,24 @@ function msgHtml(m,gi){
     :'';
   let body;
   if(m.body_html){
-    const tq=trimQuoteHtml(ci.html);   // E107: history behind •••
+    // dev #90 (Casey: "Sometimes it's hard to expand the message history …
+    // in the event that it's a forwarded email with a single email in the
+    // thread, let's expand it by default"): the first message's earlier text
+    // isn't anywhere else in the thread — a forward's content, or what a
+    // lone reply answered — so it opens expanded. Later messages' quotes
+    // repeat the messages above them, so those stay folded.
+    const openQ=gi===0||gi==null;
+    const tq=trimQuoteHtml(ci.html, openQ);   // E107: history behind •••
     const native=mailNative(tq.html);
     body=`<iframe class="htmlbody ${native?'native':'paper'}" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         onload="sizeFrame(this)" srcdoc="${esc(htmlWrapFor(tq.html)+linkifyHtml(tq.html))}"></iframe>`
-      +(tq.trimmed?`<div class="qdots" onclick="qToggle(this)" title="Show quoted history">•••</div>`:'');
+      +(tq.trimmed?qdotsHtml(openQ):'');
   } else {
-    const raw=(m.body||'').trim().slice(0,20000), cut=qCutText(raw);
+    const raw=(m.body||'').trim().slice(0,20000), cut=qCutText(raw), openQ=gi===0||gi==null;
     body=cut>0
       ? `<div class="mb">${linkify(raw.split('\n').slice(0,cut).join('\n').trimEnd())}</div>
-         <div class="qdots" onclick="qToggle(this)" title="Show quoted history">•••</div>
-         <div class="mb mb-quote" hidden>${linkify(raw.split('\n').slice(cut).join('\n'))}</div>`
+         ${qdotsHtml(openQ)}
+         <div class="mb mb-quote" ${openQ?'':'hidden'}>${linkify(raw.split('\n').slice(cut).join('\n'))}</div>`
       : `<div class="mb">${linkify(raw)}</div>`;
   }
   // Every message shows its full recipient list; every name is a hoverable
@@ -8257,7 +8538,32 @@ function msgHtml(m,gi){
     ${rcpt?`<div class="mrcpt">${rcpt}</div>`:''}
     ${body}${atts}</div>`;
 }
-function sizeFrame(f){ try{ f.style.height=Math.min(f.contentDocument.body.scrollHeight+24,560)+'px'; }catch(e){} }
+// dev #91 (Casey: "Sometimes the email preview pane is truncated and doesn't
+// use the entire vertical space"): the frame was capped at 560px and the rest
+// scrolled out of sight inside it. It takes the email's whole height now and
+// the pane scrolls — and it re-measures as late images arrive.
+function sizeFrame(f){
+  try{
+    const d=f.contentDocument; if(!d||!d.body) return;
+    // the content's own bottom edge — scrollHeight counts the frame's height
+    // too, so measuring it would grow the frame forever
+    const fit=()=>{
+      let bottom=0;
+      for(const c of d.body.children){ if(c.style&&c.style.display==='none') continue;
+        const r=c.getBoundingClientRect(); if(r.height||r.width) bottom=Math.max(bottom,r.bottom); }
+      const mb=parseFloat(d.defaultView.getComputedStyle(d.body).marginBottom)||0;
+      const h=Math.ceil(bottom+mb+(d.defaultView.scrollY||0));
+      if(h>0&&Math.abs(h+16-(parseFloat(f.style.height)||0))>2) f.style.height=(h+16)+'px'; };
+    fit();
+    // a late image re-measures (the load event fires once all of them have
+    // loaded; this catches one that hadn't). No ResizeObserver: emails sized
+    // to their frame made it fire in a loop, hundreds of warnings a minute.
+    d.querySelectorAll('img').forEach(img=>{ if(!img.complete) img.addEventListener('load',fit,{once:true}); });
+  }catch(e){}
+}
+function qdotsHtml(open){
+  return `<button type="button" class="qdots ${open?'on':''}" onclick="qToggle(this)" title="${open?'Hide':'Show'} the earlier text in this email">•••<span>${open?'Hide earlier text':'Show earlier text'}</span></button>`;
+}
 function renderThreadPane(i){
   MSG_CTX={account:i.account, thread_id:i.raw.thread_id, key:i.key};
   $('#pane').classList.remove('composing');
@@ -8368,6 +8674,7 @@ function cmpPop(on){
 addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.body.classList.contains('cmp-full')){ e.stopPropagation(); cmpPop(false); } },true);
 function closePane(){
   OPEN=null; $('#pane').classList.remove('composing');
+  document.body.classList.remove('home-read');
   // full-page scopes (Home hides the pane in CSS; the Wizard needs its
   // width) — no persistent preview placeholder there, per-item panes only
   if(PREVIEW && innerWidth>980 && SCOPE.kind!=='home' && SCOPE.kind!=='wizard'){
@@ -9072,7 +9379,7 @@ function composerBar(id,o){
     ${b('Quote',`rbQuote('${id}')`,'❝')}
     <span class="cb-sep"></span>
     ${b('Emoji','emojiPick(event,\''+id+'\')','🙂')}
-    ${b('Attach files (up to 5 MB)',"this.nextElementSibling.click()",'📎')}<input type="file" id="sd-files" multiple hidden onchange="sdFiles(this)">
+    ${b('Attach files (up to 10 MB)',"this.nextElementSibling.click()",'📎')}<input type="file" id="sd-files" multiple hidden onchange="sdFiles(this)">
     ${b('Insert image or GIF — sends inline',`rbImg('${id}')`,'🖼')}
     ${b('Signatures',`sigDlg(${o.key?`'${esc(o.key)}'`:''})`,'✍')}
     ${b('Snippets (⌘;)','snipPick(event,\''+id+'\')','<span style="font-family:ui-monospace,monospace;font-size:12px">{ }</span>')}
@@ -9113,7 +9420,7 @@ function rbImg(id){
   inp.type='file'; inp.accept='image/*';
   inp.onchange=async ()=>{
     const f=inp.files[0]; if(!f) return;
-    if(f.size>3.5*1024*1024){ toast('Keep images under ~3.5 MB (5 MB total per send)'); return; }
+    if(f.size>7*1024*1024){ toast('Keep images under ~7 MB (10 MB total per send)'); return; }
     const url=await new Promise((res,rej)=>{ const r=new FileReader();
       r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
     const el=$('#'+id); el.focus();
@@ -9570,8 +9877,16 @@ async function doSaveSigs(btn){
    seeing it appear in the thread after a minute or so"): the pane read the
    stored copy until the next mail sync. Your reply shows at once, and the
    real thread is read fresh from Gmail a few seconds later. */
+// dev #85 (2026-11-03): a thread you replied to is read — the server marks
+// it read in Gmail too; this makes the list agree at once
+function repliedRead(i){
+  if(!i||!i.unread) return;
+  i.unread=false; if(i.raw) i.raw.unread=0;
+  renderList(); renderRail();
+}
 function threadShowSent(i,p){
   if(!i) return;
+  repliedRead(i);
   i._msgs=[...(i._msgs||[]), {from:`Your Name <${acctEmail(i.account)||''}>`, to:p.to||'', cc:p.cc||'',
     date:new Date().toISOString(), subject:p.subject||'', body:p.body||'', body_html:p.body_html||null,
     attachments:[], inline_images:0, uid:null, _local:true}];
@@ -10103,6 +10418,7 @@ async function doComposeSend(btn){
     catch(e){ restore('Not sent — '+e.message); return; }   // restored here, not again by commitPending
     clearBak(d?'d:'+d.account+':'+d.draft_uid:'new');   // E155
     sentStale();
+    if(reply) repliedRead(findItem('m:'+acct+':'+d.thread_id));
     sendCard({key:reply?'m:'+acct+':'+d.thread_id:null, ctx:{account:acct, thread_id:reply?d.thread_id:'', message_id:(window._lastSend||{}).message_id||null, to, cc, subject}});
     if(d){
       DRAFTS=null;
@@ -10812,7 +11128,7 @@ document.getElementById('rail').addEventListener('click', ()=>{
 });
 
 /* ------- E82: attachments — shared picker state for the inline composer
-   and the Compose dialog. ≤3 files, ≤5MB total (server re-enforces);
+   and the Compose dialog. ≤3 files, ≤10MB total since 2026-11-11 (server re-enforces);
    bigger files keep the 📎-via-Gmail hatch. ------- */
 /* Dev #50: the compose window no longer blocks the page, so it and a reply
    in the pane can be open together — each keeps its own attachments, shown
@@ -10829,8 +11145,8 @@ async function addFiles(ctx, files){
   const A=ATTS[ctx];
   for(const f of files){
     if(A.length>=3){ toast('Up to 3 attachments per send'); break; }
-    if(A.reduce((s,a)=>s+a.size,0)+f.size>5*1024*1024){
-      toast(f.name+' would push past the 5 MB total — use 📎 via Gmail for big files'); continue; }
+    if(A.reduce((s,a)=>s+a.size,0)+f.size>10*1024*1024){
+      toast(f.name+' would push past the 10 MB total — use 📎 via Gmail for big files'); continue; }
     const data=await new Promise((res,rej)=>{ const r=new FileReader();
       r.onload=()=>res(String(r.result).split(',')[1]||''); r.onerror=rej; r.readAsDataURL(f); });
     A.push({name:f.name,mime:f.type||'application/octet-stream',size:f.size,data});
@@ -10842,7 +11158,7 @@ async function addFiles(ctx, files){
    inline where dropped, everything else attached, 5 MB as today). Drops feed
    the same two paths as 🖼 and 📎 — nothing new reaches the send path. */
 async function rbInsertImageFile(id, f, x, y){
-  if(f.size>3.5*1024*1024){ toast(f.name+': keep images under ~3.5 MB (5 MB total per send)'); return; }
+  if(f.size>7*1024*1024){ toast(f.name+': keep images under ~7 MB (10 MB total per send)'); return; }
   const url=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
   const el=$('#'+id); if(!el) return;
   el.focus();
@@ -11645,7 +11961,7 @@ function goInbox(smart){
   SPLIT=null; SEARCH_ROWS=null;
   if(Q){ Q=''; $('#q').value=''; syncQClr(); }
   setScope('inbox',null); TAB='all'; syncTabs(); renderList(); renderRail(); renderCrumbs();
-  const l=$('#list'); if(l) l.scrollTop=0;
+  listTop();
 }
 function goTodos(){ if(SCOPE.kind!=='inbox') setScope('inbox',null); TAB='todos'; syncTabs(); renderList(); renderRail(); renderCrumbs(); }
 /* E163: back to the whole scope from the lens crumb. */

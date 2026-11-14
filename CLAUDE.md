@@ -24,6 +24,7 @@ Grand Central is a single-user (Casey) chief-of-staff board running on a Mac min
 .venv/bin/python sweeper/agent_gate.py --status          # E258: agent key, switched-on accounts, lockout (--enable/--disable ACCT, --reset, --new-key)
 .venv/bin/python sweeper/agent_audit.py --days 7         # E258: review every agent call; SUSPECT = a write right after reading injection-shaped mail
 .venv/bin/python sweeper/egress.py --report              # E258: outbound hosts seen; WOULD BLOCK = not in config/egress_allow.txt
+.venv/bin/python tools/setup.py --check                  # E312: what is configured and what is missing (no writes); without --check it walks through setup
 .venv/bin/python sweeper/tracking.py --check             # E269: open/click tracking — t.<domain> health, per-account switches, recent tracked sends
 integrations/tracker/deploy.sh                           # E269: deploy the tracker Worker (needs `wrangler login`; never prints TRACK_SECRET)
 launchctl kickstart -k gui/$(id -u)/com.example.grandcentral.dashboard   # restart after serve.py / sweeper changes the server imports

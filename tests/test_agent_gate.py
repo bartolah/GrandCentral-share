@@ -287,6 +287,15 @@ class AgentGate(unittest.TestCase):
         self.assertEqual(code, 429)
         self.assertIn("40 thread reads an hour", out["error"])
 
+    def test_dev_run_is_a_paired_browser_tap(self):
+        # dev #82 (§6 2026-11-09): starting the dev worker is never an agent's
+        # or an unpaired caller's — the request is refused before dev_run runs
+        code, _ = self.agent("POST", "/dev/run", {"mode": "build", "confirm": True})
+        self.assertEqual(code, 403)
+        code, _ = self._req("POST", "/dev/run", {"mode": "build", "confirm": True})
+        self.assertEqual(code, 403)
+        self.setUp()   # two refusals shouldn't push the breaker toward a lockout
+
     def test_three_refusals_lock_the_agent_until_casey_resets(self):
         for _ in range(3):
             self.agent("POST", "/send", {"confirm": True})

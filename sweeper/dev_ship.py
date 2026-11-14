@@ -29,7 +29,7 @@ NEVER = ("config/", "data/", "logs/", ".git/", ".venv/", "design/")
 LOCKED = {"sweeper/dev_worker.sh", "sweeper/dev_worker_settings.json", "sweeper/dev_answer.py",
           "sweeper/dev_check.py", "sweeper/dev_triage.py", "sweeper/dev_ship.py",
           "sweeper/dev_pairing.py", "sweeper/auto_pull.sh", "sweeper/send_mail.py",
-          "sweeper/connections.py"}
+          "sweeper/connections.py", "sweeper/dev_run.py"}
 CO_AUTHOR = "Co-Authored-By: Claude <noreply@anthropic.com>"
 
 

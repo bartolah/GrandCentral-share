@@ -184,9 +184,12 @@ ROOT = os.path.dirname(DIRECTORY)
 sys.path.insert(0, os.path.join(ROOT, "sweeper"))
 
 MAX_BODY = 32 * 1024
+# §6 2026-11-11 (Casey: "Can we also expand the attachment size cap to 10 MB?"):
+# a composer send may carry 10MB of attachments in all (was 5MB, E82/E104)
+ATT_MAX = 10 * 1024 * 1024
 MAX_DOC_BODY = 640 * 1024         # E259: a 100k-character context document, JSON-escaped
-MAX_SEND_BODY = 12 * 1024 * 1024  # E82: /send may carry ≤3 base64 attachments
-                                  # (5MB binary cap enforced post-decode; the
+MAX_SEND_BODY = 16 * 1024 * 1024  # E82: /send may carry ≤3 base64 attachments
+                                  # (10MB binary cap, §6 2026-11-11, enforced post-decode; the
                                   # transport cap just needs to exceed b64 bloat)
 UPLOAD_DIR = os.path.join(ROOT, "data", "uploads")
 MAX_UPLOAD = 20 * 1024 * 1024
@@ -347,14 +350,14 @@ def _fetch_forward_atts(payload, account):
 
 def _parse_attachments(payload):
     """E82 (§6 amended 2026-08-02, Casey: "let's add basic attachment
-    support"): ≤3 files, ≤5MB total, base64 in the /send JSON, decoded
+    support"): ≤3 files, ≤10MB total (5MB until 2026-11-11), base64 in the /send JSON, decoded
     here and passed to send_mail on the SAME human-confirmed send.
     Never written to disk. Returns [] when absent."""
     atts = payload.get("attachments") or []
     if not atts:
         return []
     # E104: entries carrying a cid are INLINE images (referenced from the
-    # HTML body); ≤4 of those, plus ≤3 regular files, ≤5MB all together.
+    # HTML body); ≤4 of those, plus ≤3 regular files, ≤10MB all together.
     if not isinstance(atts, list) or len(atts) > 7:
         raise ValueError("too many attachments")
     import base64
@@ -367,8 +370,8 @@ def _parse_attachments(payload):
         except Exception:
             raise ValueError("bad attachment encoding")
         total += len(data)
-        if total > 5 * 1024 * 1024:
-            raise ValueError("attachments over 5MB total — use 📎 via Gmail")
+        if total > ATT_MAX:
+            raise ValueError("attachments over 10MB total — use 📎 via Gmail")
         cid = _clean(a.get("cid"), 40)
         if cid and not re.match(r"^[A-Za-z0-9._-]{1,40}$", cid):
             raise ValueError("bad inline image id")
@@ -1005,6 +1008,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                  "pending": pending})
             except ValueError as e:
                 self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+            return
+        if parsed.path == "/dev/run":
+            # dev #82: today's on-demand runs and whether one is going
+            try:
+                import dev_run
+                self._json(200, {"ok": True, **dev_run.status(),
+                                 "caps": {"build": dev_run.BUILD_PER_DAY, "triage": dev_run.TRIAGE_PER_DAY}})
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
             return
@@ -2377,6 +2389,25 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": repr(e)})
 
+        elif route == "/dev/run":
+            # dev #82 (§6 2026-11-09): run the dev queue now — triage only, or
+            # the scheduled worker job itself. A paired browser only (also
+            # agent_gate.HUMAN_ONLY_POST), with a confirm, inside dev_run's
+            # caps: one at a time, 4 builds / 10 triages a day, clean tree.
+            try:
+                import dev_pairing
+                if not dev_pairing.verify(self.headers.get("X-GC-Dev-Code")):
+                    self._json(403, {"ok": False, "error": "pair this device to run the dev queue"})
+                    return
+                if payload.get("confirm") is not True:
+                    raise ValueError("confirmation required")
+                import dev_run
+                self._json(200, {"ok": True, **dev_run.start(_clean(payload.get("mode"), 10))})
+            except ValueError as e:
+                self._json(400, {"ok": False, "error": str(e)})
+            except Exception as e:
+                self._json(500, {"ok": False, "error": repr(e)})
+
         elif route == "/dev":
             # E144: add / edit / archive a dev request. Status writes are
             # open to the API on purpose — Claude Code sessions use the same
@@ -2883,6 +2914,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     body_html=str(payload.get("body_html") or "")[:60000] or None,
                     track=_track_choice(payload),
                 )
+                # dev #85 (Casey, 2026-11-03): a thread you replied to is read
+                import mail_actions
+                mail_actions.replied_read(thread_id, account)
                 try:   # the stored copy predates this reply — read it fresh next time
                     import db, mail_cache
                     _c = db.connect()

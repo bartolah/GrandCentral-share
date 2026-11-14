@@ -61,9 +61,20 @@ ACCOUNT_EMAIL_KEYS = {
     # calendar on 2026-09-28), so an invite goes out from the account the
     # email lives in — still create-only, on Casey's own calendars (E21)
     "fieldhouse": "GMAIL_FIELDHOUSE_USER",
-    "civic": "GMAIL_CIVIC_USER",
+    "civic": "GMAIL_Civic_USER",
     "consulting": "GMAIL_CONSULTING_USER",
 }
+
+
+
+def email_key(account: str, env: dict) -> str | None:
+    """E312: the env key holding the account's address: the table above, or
+    any configured account's GMAIL_<SLUG>_USER (still create-only, own calendar)."""
+    if account in ACCOUNT_EMAIL_KEYS:
+        return ACCOUNT_EMAIL_KEYS[account]
+    key = f"GMAIL_{str(account).upper()}_USER"
+    return key if re.fullmatch(r"[a-z0-9_]{1,40}", str(account)) and env.get(key) else None
+
 
 GOG_TIMEOUT = 30
 _DATE_ONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -95,15 +106,15 @@ def create(account: str, summary: str, start: str, end: str = None,
     """Create one event on the account's primary calendar. Returns
     {account, calendar, event_id, summary, start, end, link}. Raises with
     the auth instruction when the gog grant is missing."""
-    if account not in ACCOUNT_EMAIL_KEYS:
-        raise ValueError(f"unknown account {account!r} "
-                         f"(expected {'|'.join(ACCOUNT_EMAIL_KEYS)})")
+    env = env or load_env()
+    key = email_key(account, env)
+    if key is None:
+        raise ValueError(f"unknown account {account!r} (no GMAIL_{str(account).upper()}_USER)")
     summary = (summary or "").strip()
     if not summary:
         raise ValueError("summary is required")
 
-    env = env or load_env()
-    email = require_env(env, ACCOUNT_EMAIL_KEYS[account])
+    email = require_env(env, key)
 
     start = _parse_when(start, all_day, "start")
     if end:

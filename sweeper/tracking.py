@@ -38,6 +38,21 @@ import db
 # Casey: on by default for the sales accounts, off for Personal (and anything
 # not listed until he switches it on in Settings → Tracking).
 DEFAULT_ON = {"brightline", "consulting", "fieldhouse"}
+
+
+def default_on() -> set:
+    """E312: TRACK_DEFAULT_ON=acct,acct in config/.env overrides the set above."""
+    try:
+        try:
+            from .common import load_env
+        except ImportError:
+            from common import load_env
+        raw = load_env().get("TRACK_DEFAULT_ON")
+    except Exception:
+        raw = None
+    if raw is None:
+        return DEFAULT_ON
+    return {a.strip().lower() for a in raw.split(",") if a.strip()}
 SIGNALS = ("enabled", "clicks", "ping", "waiting")
 AUTO_SRC = {"apple-prefetch", "scanner"}
 AUTO_SECONDS = 30            # an open this soon after sending is a scanner or prefetch
@@ -66,7 +81,7 @@ def _parse(ts: str | None) -> datetime | None:
 # ------------------------------------------------------------------ settings
 def settings(conn, account: str) -> dict:
     row = conn.execute("SELECT * FROM track_settings WHERE account = ?", (account,)).fetchone()
-    on = account in DEFAULT_ON
+    on = account in default_on()
     out = {s: on for s in SIGNALS}
     if row:
         out.update({s: bool(row[s]) for s in SIGNALS if row[s] is not None})

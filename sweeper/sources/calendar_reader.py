@@ -66,6 +66,30 @@ def _cal_label(cal: icalendar.Calendar) -> str:
     return "personal"
 
 
+# E312 (setup wizard, 2026-11-14): a calendar can name its account directly,
+# GCAL_ICS_<SLUG>=url[,url], so nobody else depends on the name rules above.
+# GCAL_ICS_URLS keeps working exactly as before.
+_ACCT_ICS = re.compile(r"^GCAL_ICS_([A-Z0-9_]+)$")
+
+
+def calendar_feeds(env: dict) -> list:
+    """[(url, account or None)]: per-account feeds first, then the shared list."""
+    feeds, seen = [], set()
+    for key in sorted(env):
+        m = _ACCT_ICS.match(key)
+        if not m or m.group(1) == "URLS":
+            continue
+        for u in str(env.get(key) or "").split(","):
+            if u.strip() and u.strip() not in seen:
+                seen.add(u.strip())
+                feeds.append((u.strip(), m.group(1).lower()))
+    for u in str(env.get("GCAL_ICS_URLS", "")).split(","):
+        if u.strip() and u.strip() not in seen:
+            seen.add(u.strip())
+            feeds.append((u.strip(), None))
+    return feeds
+
+
 def read_events(env: dict, log=print, days: int = WINDOW_DAYS) -> list:
     """Return the next `days` days starting today (the sweep contract)."""
     tz = datetime.now().astimezone().tzinfo
@@ -80,9 +104,9 @@ def read_range(env: dict, start, days: int, log=print) -> list:
     Raises when GCAL_ICS_URLS is unset or a feed fails, so the orchestrator
     can mark the source absent (spec §3) — same contract as the Gmail reader.
     """
-    urls = [u.strip() for u in env.get("GCAL_ICS_URLS", "").split(",") if u.strip()]
-    if not urls:
-        raise RuntimeError("GCAL_ICS_URLS is not set in config/.env")
+    feeds = calendar_feeds(env)
+    if not feeds:
+        raise RuntimeError("no calendar in config/.env (GCAL_ICS_URLS or GCAL_ICS_<ACCOUNT>)")
 
     tz = datetime.now().astimezone().tzinfo
     today = datetime.now(tz).date()
@@ -92,11 +116,11 @@ def read_range(env: dict, start, days: int, log=print) -> list:
     per_day: dict = {start + timedelta(i): [] for i in range(days)}
     seen = set()
     total = 0
-    for url in urls:
+    for url, account in feeds:
         resp = requests.get(url, timeout=FETCH_TIMEOUT)
         resp.raise_for_status()
         cal = icalendar.Calendar.from_ical(resp.content)
-        label = _cal_label(cal)
+        label = account or _cal_label(cal)
         for ev in recurring_ical_events.of(cal).between(window_start, window_end):
             if str(ev.get("STATUS", "")).upper() == "CANCELLED":
                 continue
@@ -147,7 +171,7 @@ def read_range(env: dict, start, days: int, log=print) -> list:
             "events": events,
         })
     log(f"gcal: {total} events over {days}d from {start.isoformat()} "
-        f"across {len(urls)} calendar(s)")
+        f"across {len(feeds)} calendar(s)")
     return out
 
 

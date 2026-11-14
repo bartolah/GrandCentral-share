@@ -145,11 +145,18 @@ You need Python 3.11+ and macOS or Linux. On macOS, launchd keeps things running
 ```bash
 git clone <this repo> ~/Code/GrandCentral && cd ~/Code/GrandCentral
 python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
-cp config/.env.example config/.env && chmod 600 config/.env
-cp config/projects.example.yaml config/projects.yaml   # optional: reply thresholds, key people
+.venv/bin/python tools/setup.py
 ```
 
-All credentials live in `config/.env`: plain `KEY=value` lines, never committed. The full list is in `config/.env.example`.
+**`tools/setup.py` walks you through everything below:**
+- Gmail accounts, with each login tested before it is saved.
+- Your sender name, the Claude key, and a calendar for each account.
+- Calendar access for creating events, plus Granola and Jev.
+- A browser pairing code, and the background jobs.
+
+Re-run it any time: what's set and working is skipped. `tools/setup.py --check` reports what's set and what's missing without changing anything.
+
+All credentials live in `config/.env`: plain `KEY=value` lines, mode 600, never committed. The sections below explain each piece, if you'd rather edit `config/.env` by hand (the full list is in `config/.env.example`). Optionally, `cp config/projects.example.yaml config/projects.yaml` for reply thresholds and key people.
 
 ### 2. Gmail (required, one or more accounts)
 
@@ -179,10 +186,11 @@ Get one at <https://console.anthropic.com>. The models used are set at the top o
 
 ### 4. Google Calendar
 
-**To read** calendars, use each calendar's "Secret address in iCal format": Google Calendar → Settings → *your calendar* → Integrate calendar. Treat these URLs like passwords; Google refreshes them lazily, so new events can lag a little.
+**To read** calendars, use each calendar's "Secret address in iCal format": Google Calendar → Settings → *your calendar* → Integrate calendar. Treat these URLs like passwords; Google refreshes them lazily, so new events can lag a little. Give each account its own line, so its events land in the right account:
 
 ```ini
-GCAL_ICS_URLS=https://calendar.google.com/calendar/ical/.../basic.ics,https://...
+GCAL_ICS_WORK=https://calendar.google.com/calendar/ical/.../basic.ics
+GCAL_ICS_PERSONAL=https://calendar.google.com/calendar/ical/.../basic.ics
 ```
 
 **To create events and RSVP**, install [gog](https://github.com/steipete/gogcli) (`brew install steipete/tap/gog`) and grant it calendar access once per account: `gog auth add you@yourcompany.com --services calendar`. If the jobs run headless under launchd, set `GOG_KEYRING_PASSWORD` so gog can unlock its keyring.
@@ -260,11 +268,8 @@ Every widening of what the system may do is written down as a dated decision in 
 
 This started as one person's tool, and a few things still assume one setup:
 
-- **Calendar to account:** which calendar belongs to which account is decided by calendar name in `sweeper/sources/calendar_reader.py` and `sweeper/home_view.py`. Adjust both for your accounts.
-- **Event creation** (`sweeper/calendar_writer.py`) only knows two account slugs; add yours to `ACCOUNT_EMAIL_KEYS`.
-- **Open and click tracking** defaults (`sweeper/tracking.py`) and the Worker config (`integrations/tracker/`) name example domains; set your own.
+- **Open and click tracking:** the Worker config (`integrations/tracker/`) names example domains; set your own. `TRACK_DEFAULT_ON` in `config/.env` chooses which accounts track by default.
 - **launchd plists and `auto_pull.sh`** contain example paths and labels.
-- **No setup wizard yet:** setup is `config/.env` plus Settings → Connections, and your browser must be paired before Connections can save.
 - **Docs:** `BUILD_SPEC.md` §1–5 describes an earlier design and is kept as history; `CLAUDE.md` and `ACCOUNT_FIRST.md` describe how it works now.
 
 ---
@@ -278,3 +283,9 @@ This started as one person's tool, and a few things still assume one setup:
 ```
 
 The backend is mostly the Python standard library; the whole front end is `dashboard/index.html`, plain JavaScript with no build step. `CLAUDE.md` is the best map of the code. In code comments, *Casey* is the stand-in name for the owner.
+
+---
+
+## License
+
+MIT. See [LICENSE](LICENSE).

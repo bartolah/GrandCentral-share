@@ -284,6 +284,34 @@ def _store_all_mail(thread_id: str, account: str, item: str, value: str,
             pass
 
 
+def mark_read(thread_id: str, account: str, env: dict | None = None,
+              log=print, dry_run: bool = False) -> dict:
+    """Add \\Seen to every message of one thread (dev #85, approved by Casey
+    2026-11-03: "If I reply to an email, it shouldn't still show up as
+    unread" → "Yes, in Gmail too"). Called only after a reply sends."""
+    return _store_all_mail(thread_id, account, "+FLAGS", r"(\Seen)", env, log, dry_run)
+
+
+def replied_read(thread_id: str, account: str, env: dict | None = None, log=print) -> None:
+    """After a reply goes out: the thread is read, in Gmail and on the board.
+    Best-effort — the send already happened, so a failure here only logs."""
+    try:
+        mark_read(thread_id, account, env=env, log=log)
+    except Exception as e:
+        log(f"mail_actions: sent, but {account}:{thread_id} stayed unread in Gmail ({e!r})")
+    try:
+        import db
+        conn = db.connect()
+        try:
+            with conn:
+                conn.execute("UPDATE mail_threads SET unread = 0 WHERE account = ? AND thread_id = ?",
+                             (account, str(thread_id)))
+        finally:
+            conn.close()
+    except Exception as e:
+        log(f"mail_actions: {account}:{thread_id} board unread not cleared ({e!r})")
+
+
 def star_thread(thread_id: str, account: str, star: bool = True,
                 env: dict | None = None, log=print, dry_run: bool = False) -> dict:
     item = "+FLAGS" if star else "-FLAGS"

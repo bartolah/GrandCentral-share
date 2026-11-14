@@ -114,6 +114,7 @@ DENIED: dict[tuple[str, str], str] = {
     ("*", "/attachment"): "attachments never leave through an agent (§6 E258 egress).",
     ("*", "/agent/accounts"): "which accounts agents may touch is Casey's switch (§6 E258).",
     ("*", "/agent/reset"): "only Casey lifts an agent lockout (§6 E258).",
+    ("*", "/dev/run"): "starting the dev worker is Casey's tap in a paired browser (§6 2026-11-09).",
     ("*", "/agent/proposals/decide"): "approving a desktop request is Casey's click (§6 E260).",
     ("*", "/private"): "the Private label is Casey's alone (§6 E258).",
     ("*", "/calendar/invite"): "invites go out on Casey's click only (§6 E258 invite drafts).",

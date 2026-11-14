@@ -105,7 +105,7 @@ def _parse_addrs(raw: str) -> list:
 
 
 def _apply_attachments(msg, attachments):
-    """E82/E104 (§6 amended): ≤3 files + ≤4 inline images, 5MB total,
+    """E82/E104 (§6 amended): ≤3 files + ≤4 inline images, 10MB total (§6 2026-11-11),
     validated/decoded in serve.py; riding the SAME human-confirmed send.
     Inline entries (cid set) attach RELATED to the HTML alternative so
     <img src="cid:…"> renders in place; never stored server-side."""

@@ -436,6 +436,8 @@ def send_due_outbox(conn, env: dict, log=print) -> int:
                            subject=row["subject"] or None,
                            bcc=row["bcc_addrs"] or None, body_html=row.get("body_html"),
                            env=env, log=log, track=track)
+                import mail_actions   # dev #85: replied to → read
+                mail_actions.replied_read(row["thread_id"], row["account"], env=env, log=log)
             else:
                 # 2026-10-06: a scheduled NEW email (a draft Casey scheduled)
                 send_new(row["account"], row["body"], row["to_addrs"], row["subject"] or "",

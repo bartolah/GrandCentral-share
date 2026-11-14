@@ -62,6 +62,18 @@ class _Clean(HTMLParser):
             keep.append(f'{k}="{htmlmod.escape(v, quote=True)}"')
         if tag == "a":
             keep.append('rel="noopener"')
+        if tag == "p":
+            # 2026-11-03 (dev #78/#84, Casey: "Spacing looks wrong in my
+            # emails, when they come back to me"): a signature pasted from
+            # Gmail is one <p> per line. The composer styles them tight, but
+            # mail clients give every <p> a blank line's margin, so the
+            # signature arrived double-spaced. The spacing goes in the HTML.
+            i = next((n for n, a in enumerate(keep) if a.startswith('style="')), None)
+            if i is None:
+                keep.append('style="margin:0"')
+            elif "margin" not in keep[i]:
+                keep[i] = keep[i][:-1].rstrip("; ") + '; margin:0"'
+
         self.out.append(f"<{tag}{' ' + ' '.join(keep) if keep else ''}>")
         if tag not in VOID:
             self.stack.append(tag)
@@ -101,7 +113,15 @@ def clean(html: str) -> str:
     p.close()
     out = "".join(p.out) + "".join(f"</{t}>" for t in reversed(p.stack))
     # whitespace between tags shows as blank lines in the composer
-    return re.sub(r">\s+<", "><", out).strip()
+    out = re.sub(r">\s+<", "><", out).strip()
+    # empty lines ahead of the signature: the composer already leaves a blank
+    # line above it, so these only pushed it further down
+    return _LEAD_EMPTY.sub("", out)
+
+
+_LEAD_EMPTY = re.compile(
+    r"\A(?:<(p|div)\b[^>]*>(?:<(?:strong|b|span|i|em|font)\b[^>]*>)*(?:<br>|&nbsp;|\s)*"
+    r"(?:</(?:strong|b|span|i|em|font)>)*</\1>|<br>)+")
 
 
 def to_text(html: str) -> str:

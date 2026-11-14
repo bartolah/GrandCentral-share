@@ -35,11 +35,11 @@ import sys
 try:
     from . import db
     from .common import load_env, require_env
-    from .calendar_writer import ACCOUNT_EMAIL_KEYS, GOG_TIMEOUT
+    from .calendar_writer import ACCOUNT_EMAIL_KEYS, GOG_TIMEOUT, email_key
 except ImportError:  # run with sweeper/ on sys.path
     import db
     from common import load_env, require_env
-    from calendar_writer import ACCOUNT_EMAIL_KEYS, GOG_TIMEOUT
+    from calendar_writer import ACCOUNT_EMAIL_KEYS, GOG_TIMEOUT, email_key
 
 MAX_ATTENDEES = 10
 _EMAIL = re.compile(r"^[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
@@ -105,7 +105,10 @@ def send(conn, invite_id: int, env: dict | None = None, log=print, runner=subpro
     attendees = clean_attendees(json.loads(row["attendees"] or "[]"))
 
     env = env or load_env()
-    email = require_env(env, ACCOUNT_EMAIL_KEYS[account])
+    key = email_key(account, env)
+    if key is None:
+        raise ValueError(f"unknown account {account!r}")
+    email = require_env(env, key)
     gog = (shutil.which("gog")
            or next((p for p in ("/opt/homebrew/bin/gog", "/usr/local/bin/gog")
                     if os.path.exists(p)), None))

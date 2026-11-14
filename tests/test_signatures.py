@@ -40,6 +40,16 @@ class Signatures(unittest.TestCase):
         self.assertIn("<strong>Your Name</strong>", out)
         self.assertNotIn(">\n <", out)                       # no blank lines in the composer
 
+    def test_paragraphs_carry_zero_margin_and_leading_blanks_go(self):
+        # dev #78/#84: Gmail's one-<p>-per-line signature arrived double-spaced
+        out = S.clean('<p style="color: rgb(32, 33, 36);"><strong><br><br></strong></p>'
+                      '<p style="color: rgb(32, 33, 36);"><strong>Your Name</strong></p>'
+                      '<p>CEO</p><p style="margin:2px">kept</p>')
+        self.assertTrue(out.startswith('<p style="color: rgb(32, 33, 36); margin:0"><strong>Your Name'), out)
+        self.assertIn('<p style="margin:0">CEO</p>', out)
+        self.assertIn('<p style="margin:2px">kept</p>', out)     # a margin Casey set stays
+        self.assertEqual(S.clean(out), out)                       # stable on re-save
+
     def test_dangerous_things_are_dropped(self):
         bad = ('<p onclick="x()">Hi<script>alert(1)</script></p><a href="javascript:alert(1)">x</a>'
                '<img src="http://plain.example/x.png" onerror="alert(1)"><span style="background:url(http://e/x)">y</span>'

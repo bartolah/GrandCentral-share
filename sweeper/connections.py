@@ -214,6 +214,24 @@ def set_single(name: str, value: str) -> dict:
     return status()
 
 
+# E312 (the setup wizard, tools/setup.py): the few plain settings it may
+# write besides accounts and the SINGLE keys. A pattern list, not "any key",
+# so this stays the one narrow writer of config/.env.
+SETUP_KEYS = re.compile(r"^(SENDER_NAME|GMAIL_[A-Z0-9_]+_NAME|GCAL_ICS_[A-Z0-9_]+|"
+                        r"TRACK_DEFAULT_ON|GOG_KEYRING_PASSWORD|VAPID_(PUBLIC_KEY|PRIVATE_KEY|SUBJECT))$")
+
+
+def set_value(key: str, value: str) -> dict:
+    """Set one of SETUP_KEYS. Command-line only: not reachable from /connections."""
+    if not SETUP_KEYS.match(key or ""):
+        raise ValueError(f"{key!r} is not a setting the wizard may write")
+    value = (value or "").strip()
+    if "\n" in value or "\r" in value:
+        raise ValueError("one line only")
+    _write_env({key: value})
+    return status()
+
+
 def clear_single(name: str) -> dict:
     meta = SINGLE.get(name)
     if not meta:
