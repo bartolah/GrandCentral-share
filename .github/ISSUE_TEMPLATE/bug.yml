@@ -1,0 +1,27 @@
+name: Something broke
+description: An error, a crash, or something that didn't do what it said.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please don't paste passwords, API keys, iCal addresses or real email content. Anything in config/.env is a secret.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: Output of `tools/setup.py --check`
+      description: It lists what's set up without showing any secrets.
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: System
+      placeholder: "macOS 15 / Ubuntu 24.04, Python 3.11"

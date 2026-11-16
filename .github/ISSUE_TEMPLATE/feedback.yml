@@ -1,0 +1,36 @@
+name: Feedback
+description: Tell us what you think. What worked, what was confusing, what you'd want.
+title: "Feedback: "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for trying Grand Central. Every bit of feedback helps, short or long. For open-ended questions or ideas, Discussions works too.
+  - type: dropdown
+    id: how
+    attributes:
+      label: How did you try it?
+      options:
+        - Demo data only (tools/demo_seed.py)
+        - With my own Gmail account(s)
+        - I read the README but didn't run it
+    validations:
+      required: true
+  - type: textarea
+    id: liked
+    attributes:
+      label: What was useful?
+  - type: textarea
+    id: confusing
+    attributes:
+      label: What was confusing or got in the way?
+  - type: textarea
+    id: wish
+    attributes:
+      label: What would make you use it every day?
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup (optional)
+      description: Mac or Linux, how many accounts, which integrations (Claude, calendar, Granola, Jev, agents)
