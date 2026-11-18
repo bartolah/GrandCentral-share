@@ -7,7 +7,7 @@
 // queued, so nothing side-effectful can fire from a stale tab. Prime the cache
 // by loading the app once online; after that it opens with no network.
 
-const VERSION = 'gc-cache-v10';   // E297: cached answers say so
+const VERSION = 'gc-cache-v14';   // E318: VIP from the person card and the classifier
 
 // Precached on install so the very first offline open works even for paths the
 // user hasn't visited yet. Everything else is cached on demand as they browse.

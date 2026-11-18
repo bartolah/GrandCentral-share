@@ -818,6 +818,10 @@ CREATE INDEX IF NOT EXISTS idx_context_docs ON context_docs (scope, id);
 # TABLE IF NOT EXISTS can't add columns to existing tables, so connect()
 # also walks this append-only list. Idempotent via PRAGMA table_info.
 _MIGRATIONS = [
+    # E317: when a snooze began, so new incoming mail after it can wake the
+    # thread early, the way Gmail's own snooze does.
+    ("mail_triage", "snoozed_at",
+     "ALTER TABLE mail_triage ADD COLUMN snoozed_at TEXT"),
     # E108: filing to a project can also MOVE the email there — archived in
     # Gmail, out of the Inbox scope, but kept in the feed so project/label
     # views still show it. moved_at is that keep-alive marker.
@@ -1841,6 +1845,20 @@ def upsert_mail_threads(conn: sqlite3.Connection, account: str, rows: list) -> N
             "  SELECT 1 FROM mail_threads mt WHERE mt.account = mail_triage.account "
             "  AND mt.thread_id = mail_triage.thread_id AND mt.in_inbox = 1)",
             (now, account, grace))
+        # E317 (Casey, 2026-11-17: "some replies on emails aren't bringing
+        # those emails back into my inbox"): a reply to a snoozed thread
+        # wakes it now, as Gmail's own snooze does. Gmail has already put the
+        # thread back in its inbox (in_inbox=1); the reply must be incoming
+        # and newer than the snooze, so Casey's own reply never wakes it.
+        # snoozed_until moves to now, so the "⏰ back" chip shows.
+        conn.execute(
+            "UPDATE mail_triage SET snoozed_until = ?, wake_inbox = 0, updated_at = ? "
+            "WHERE account = ? AND snoozed_until IS NOT NULL AND snoozed_until > ? AND EXISTS ("
+            "  SELECT 1 FROM mail_threads mt WHERE mt.account = mail_triage.account "
+            "  AND mt.thread_id = mail_triage.thread_id AND mt.in_inbox = 1 "
+            "  AND mt.last_direction = 'inbound' "
+            "  AND mt.last_date > COALESCE(mail_triage.snoozed_at, mail_triage.updated_at))",
+            (now, now, account, now))
         # E108: new INCOMING mail on a filed-and-moved thread brings it back
         # to the Inbox — Gmail re-inboxes it, and clearing moved_at lets the
         # client show it there again. in_inbox=1 is the guard: Casey's own
@@ -1865,6 +1883,8 @@ def set_mail_triage(conn: sqlite3.Connection, thread_id: str, account: str,
     if not sets:
         raise ValueError("no triage fields to set")
     now = _now_iso()
+    if sets.get("snoozed_until"):
+        sets["snoozed_at"] = now          # E317: replies after this wake it
     with conn:
         conn.execute(
             "INSERT INTO mail_triage (thread_id, account, updated_at) VALUES (?, ?, ?) "
@@ -2414,7 +2434,9 @@ def threads_for_todos(conn: sqlite3.Connection) -> dict:
             "  COALESCE(mt.message_count, 1) AS n, "
             "  (SELECT tr.snoozed_until FROM mail_triage tr WHERE tr.account = et.account "
             "     AND tr.thread_id = et.thread_id) AS snoozed_until, "
-            "  et.added_at AS added_at "
+            "  et.added_at AS added_at, "
+            "  (mt.in_inbox = 1 AND mt.last_direction = 'inbound' "
+            "   AND mt.last_date > et.added_at) AS new_reply "
             "FROM engagement_threads et "
             "LEFT JOIN mail_threads mt ON mt.account = et.account "
             "  AND mt.thread_id = et.thread_id "
@@ -2428,6 +2450,8 @@ def threads_for_todos(conn: sqlite3.Connection) -> dict:
             "who_email": r["who_email"] or "", "n": r["n"],
             "last_date": r["last_date"] or r["added_at"],
             "unread": bool(r["unread"]), "snippet": (r["snippet"] or "")[:200],
+            # E317: an incoming reply since it joined the todo, still in Gmail's inbox
+            "new_reply": bool(r["new_reply"]),
             "snooze_returned": bool(r["snoozed_until"] and r["snoozed_until"] <= _now_iso()),
             "snoozed": bool(r["snoozed_until"] and r["snoozed_until"] > _now_iso())})
     return out
@@ -2642,6 +2666,19 @@ def class_get(conn, account: str, thread_id: str) -> dict | None:
     eff.update(account=account, thread_id=thread_id, version=row["version"],
                classified_at=row["classified_at"])
     return eff
+
+
+def class_missing_reason(conn, account: str, thread_id: str, days: int = 30) -> str:
+    """E314: why a thread has no classification. 'not_synced' = not in the
+    synced inbox (a sent email nobody has answered yet, or archived mail);
+    'too_old' = last active before the classifier's window; 'pending' = in
+    the window and not reached yet (the next mail sync classifies it)."""
+    row = conn.execute("SELECT last_date FROM mail_threads WHERE account=? AND thread_id=?",
+                       (account, thread_id)).fetchone()
+    if row is None:
+        return "not_synced"
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return "too_old" if (row[0] or "") < since else "pending"
 
 
 def class_correct(conn, account: str, thread_id: str, field: str, value: str) -> dict:

@@ -2411,6 +2411,32 @@ if(window.matchMedia('(display-mode: standalone)').matches || navigator.standalo
   document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('app-mode'));
 /* E114: apply the saved rail state (slim icon strip) before first paint. */
 document.documentElement.dataset.rail = localStorage.getItem('gc2_rail') || '';
+/* E316 (Casey: "I'd like to have the UX zoomed in 5-10% more … maybe as a
+   setting"): the whole board is zoomed, per device. Default is 108% on a
+   desktop/tablet; phones (≤700px) default to 100% because they have no
+   room to spare. Avatar menu → 🔍 Zoom picks 90–125% and it sticks here.
+   CSS zoom makes rects and mouse coordinates arrive in screen pixels while
+   style.left/top are multiplied by the zoom, so anything placed by
+   coordinates divides by GC_ZK — measured, not assumed, so a browser that
+   ignores zoom simply gets 1. */
+const GC_ZOOMS=[0.9,1,1.08,1.15,1.25];
+function zoomDefault(){ return matchMedia('(max-width: 700px)').matches ? 1 : 1.08; }
+function zoomWanted(){
+  let v=NaN; try { v=parseFloat(localStorage.getItem('gc2_zoom')); } catch(_){}
+  return GC_ZOOMS.includes(v) ? v : zoomDefault();
+}
+let GC_ZK=1;
+function applyZoom(){
+  const de=document.documentElement, z=zoomWanted();
+  de.style.zoom = z===1 ? '' : String(z);
+  const p=document.createElement('div');
+  p.style.cssText='position:fixed;left:0;top:0;width:100px;height:1px;visibility:hidden;pointer-events:none';
+  de.appendChild(p);
+  const k=p.getBoundingClientRect().width/100; p.remove();
+  GC_ZK = (isFinite(k) && k>0.5 && k<2) ? k : 1;
+}
+applyZoom();
+const zpx=v=>v/GC_ZK;
 /* E203 — the app is exactly as tall as the window says it is.
    Casey's screenshot: the board painted to 100dvh and stopped ~77px short of
    the bottom, with the phone's own grey showing beneath the dock bar. iOS
@@ -2424,7 +2450,9 @@ document.documentElement.dataset.rail = localStorage.getItem('gc2_rail') || '';
 function syncAppHeight(){
   const h = window.innerHeight;
   if (!h) return;
-  document.documentElement.style.setProperty('--app-h', h + 'px');
+  /* E316: --app-h is a CSS length, so under zoom it is multiplied back up
+     to exactly innerHeight on screen. */
+  document.documentElement.style.setProperty('--app-h', zpx(h) + 'px');
   document.documentElement.classList.add('has-apph');
   if (window.scrollY || window.pageYOffset) window.scrollTo(0, 0);
 }
@@ -2595,6 +2623,7 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
         <button class="phone-only" onclick="meClose();fbDlg()">⚑ Flag something on this screen</button>
         <button onclick="togglePreview()">◫ Preview pane: <span id="pv-state">off</span></button>
         <button onclick="toggleSfx()">🔊 Skin sounds: <span id="sfx-state">on</span></button>
+        <button onclick="meClose();zoomDlg()">🔍 Zoom — this device: <span id="zoom-state"></span></button>
         <button onclick="meClose();pushDlg()">🔔 Notifications — this device &amp; channels</button>
         <button onclick="meClose();sigDlg()">✍ Signatures</button>
         <button onclick="meClose();openWhatsNew()">✨ What's New<span class="wn-dot" id="wn-dot2" hidden style="position:static;margin-left:6px"></span></button>
@@ -3084,10 +3113,12 @@ function rebuild(){
   // connected to a Todo. This could be a toggle"): by default a todo's email
   // comes back to the inbox while it has something unread, under an
   // "In todo" note; the Group menu can hide it again or always show it.
-  const owner=new Map();
-  TODOS.forEach(t=>(t.threads||[]).forEach(th=>owner.set('m:'+th.account+':'+th.thread_id,t)));
+  const owner=new Map(), replied=new Set();
+  TODOS.forEach(t=>(t.threads||[]).forEach(th=>{ const k='m:'+th.account+':'+th.thread_id;
+    owner.set(k,t); if(th.new_reply) replied.add(k); }));
   ITEMS.forEach(i=>{ if(i.type!=='mail') return;
     const t=owner.get(i.key); i.todoOf=t?{id:t.id,title:t.text||'Todo'}:null;
+    i.todoReply=replied.has(i.key);
     i.attached=!!t&&!todoMailShows(i); });
   for(const [k,t] of DROPPED) if(Date.now()-t>600e3) DROPPED.delete(k);
   ITEMS=ITEMS.filter(i=>!DROPPED.has(i.key));
@@ -3197,7 +3228,7 @@ function renderRail(){
     if(!b||document.documentElement.dataset.rail!=='slim'||!matchMedia('(min-width: 981px)').matches) return hide();
     const r=b.getBoundingClientRect(), t=tip();
     t.textContent=b.getAttribute('title')||''; if(!t.textContent) return hide();
-    t.style.left=(r.right+8)+'px'; t.style.top=(r.top+r.height/2)+'px'; t.classList.add('on');
+    t.style.left=zpx(r.right+8)+'px'; t.style.top=zpx(r.top+r.height/2)+'px'; t.classList.add('on');
   });
   document.addEventListener('scroll',hide,true);
   document.addEventListener('click',hide,true);
@@ -3314,7 +3345,10 @@ let TODO_MAIL=(()=>{ try { return localStorage.getItem('gc2_todo_mail')||'new'; 
 function todoMailShows(i){
   if(TODO_MAIL==='all') return true;
   // the one you're reading stays put when opening it marks it read
-  return TODO_MAIL==='new' && (i.unread || OPEN===i.key);
+  // E317 (Casey: "some replies on emails aren't bringing those emails back
+  // into my inbox"): a reply read elsewhere (Gmail on the phone) is no
+  // longer unread, but it is still new to this todo — it shows until archived.
+  return TODO_MAIL==='new' && (i.unread || i.todoReply || OPEN===i.key);
 }
 function setTodoMail(v){
   TODO_MAIL=v; try { localStorage.setItem('gc2_todo_mail',v); } catch(_){}
@@ -6573,8 +6607,8 @@ function ctxOpen(x,y,html){
   const c=$('#ctx'); c.innerHTML=html;
   c.style.left='0px'; c.style.top='0px'; c.classList.add('open');
   const r=c.getBoundingClientRect();
-  c.style.left=Math.max(4,Math.min(x,innerWidth-r.width-8))+'px';
-  c.style.top=Math.max(4,Math.min(y,innerHeight-r.height-8))+'px';
+  c.style.left=zpx(Math.max(4,Math.min(x,innerWidth-r.width-8)))+'px';
+  c.style.top=zpx(Math.max(4,Math.min(y,innerHeight-r.height-8)))+'px';
 }
 // Dev #27: the hover strip's "…" — the right-click menu, anchored to the button
 function rowMore(e,key){
@@ -7926,6 +7960,10 @@ async function openItem(key, keepScroll){
     return homeOpen(it&&it.project?it.project:'__none', key); }
   if(SCOPE.kind==='home' && !PROJ) document.body.classList.add('home-read');
   sfx('open');
+  // Dev #93 (Casey: "the active email is not the selected email"): the
+  // keyboard cursor follows whatever opens — a click included — so there is
+  // one highlighted row and the one-key actions hit the email you're reading.
+  { const ix=VISIBLE.findIndex(v=>v.key===key); if(ix>=0) KB=ix; }
   OPEN=key; document.body.classList.add('pane-open'); renderList();
   let i=findItem(key);
   if(!i && key.startsWith('m:')){
@@ -8017,7 +8055,12 @@ function clsHtml(i){
   const c=CLS[i.key];
   if(!c||c.date!==i.date){ setTimeout(()=>clsLoad(i),0); return `<span class="cls-sum muted">🏷 Classifying…</span>`; }
   const d=c.data;
-  if(!d) return `<span class="cls-sum muted" title="Only mail from the last 30 days is classified">🏷 Not classified — older than 30 days</span>`;
+  // E314: say why — a fresh sent email is not "older than 30 days"
+  if(!d) return c.why==='not_synced'
+      ? `<span class="cls-sum muted" title="Inbox mail from the last 30 days is classified; a sent email is classified once a reply arrives">🏷 Not classified — only inbox mail is classified</span>`
+    : c.why==='pending'
+      ? `<span class="cls-sum muted" title="The mail sync classifies new mail every few minutes">🏷 Not classified yet — it will be in a few minutes</span>`
+      : `<span class="cls-sum muted" title="Only mail from the last 30 days is classified">🏷 Not classified — older than 30 days</span>`;
   const bits=[d.type];
   if(tierOf(i)) bits.unshift(TIER_LABEL[tierOf(i)]);   // Dev #66
   if(d.respond==='yes') bits.push('Reply needed'); else if(d.respond==='optional') bits.push('Reply optional');
@@ -8048,12 +8091,20 @@ function clsHtml(i){
     ${row('Follow up','follow_up',`<input type="date" value="${esc(d.follow_up||'')}" onchange="clsFix('${k}','follow_up',this.value)">
        ${d.follow_up?`<span class="muted">${esc(clsDay(d.follow_up))}</span> <button class="qbtn" onclick="clsFix('${k}','follow_up','')">Clear</button>`:''}`)}
     ${row('Relationship','relationship',sel('relationship',d.relationship)+(d.group?` <span class="muted">${esc(d.group)}</span>`:''))}
+    ${sender&&!OWN.has(sender)?`<div class="cls-row"><span class="cls-k">Contact</span><span class="cls-v"><select onchange="clsTier('${k}',this.value)">
+      ${[['','Regular'],['vip','⭐ VIP'],['prospect','🎯 Top prospect']].map(([v,l])=>`<option value="${v}" ${(TIERS[sender]||'')===v?'selected':''}>${l}</option>`).join('')}</select>
+      <span class="muted">${esc(sender)}</span></span><span class="cls-src cls-you" title="Your tag, the same one Contacts sets">you</span></div>`:''}
     ${(d.reasons||[]).length?`<ul class="cls-reasons">${d.reasons.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
     <div class="cls-foot">
       ${sender&&!OWN.has(sender)?`<button class="qbtn" onclick="clsGroupDlg('${k}')">👥 Add ${esc(sender)} to a group…</button>`:''}
       <span class="muted">Corrections stick and tune the classifier · ${esc(d.version||'')}</span></div>
   </div>`;
   return h;
+}
+// 2026-11-17: VIP / top prospect for the other person, from the 🏷 panel
+async function clsTier(key,tier){
+  const i=findItem(key), em=i&&clsOther(i); if(!em) return;
+  await tierTag(em,tier); clsRender(key);
 }
 function clsOther(i){
   const em=(i.raw.last_from_email||'').toLowerCase();
@@ -8065,7 +8116,7 @@ async function clsLoad(i){
   CLS[i.key]={date:i.date,loading:true,data:c?.data||null};
   try{
     const out=await fetch(`/classify?account=${encodeURIComponent(i.account)}&thread_id=${encodeURIComponent(i.raw.thread_id)}`,{cache:'no-store'}).then(r=>r.json());
-    CLS[i.key]={date:i.date,data:out.ok?out.classification:null};
+    CLS[i.key]={date:i.date,data:out.ok?out.classification:null,why:out.why||null};
   }catch(e){ CLS[i.key]={date:i.date,data:null}; }
   clsRender(i.key);
 }
@@ -9055,14 +9106,16 @@ function showPersonPop(el){
       <button class="qbtn" data-ppmail="${esc(em)}">✉ Their mail</button>
       <button class="qbtn" data-ppcompose="${esc(em)}">✏️ Email them</button>
       <button class="qbtn" data-ppedit="${esc(em)}" data-ppnm="${esc(nm)}" title="Name, notes, company and teammate">✎ Edit</button>
+      ${TIERS[em]?`<button class="qbtn" data-pptier="" data-ppem="${esc(em)}" title="Back to a regular contact">✕ Not a ${TIERS[em]==='vip'?'VIP':'top prospect'}</button>`
+        :`<button class="qbtn" data-pptier="vip" data-ppem="${esc(em)}" title="Their mail goes to the top of the inbox">⭐ Make VIP</button>`}
       <button class="qbtn" data-ppproj="${esc(em)}" data-ppnm="${esc(nm)}" title="Add to a project">📁</button>
     </div>`;
   // E276: "Gina has 3 open assignments"
   fetch('/watch/person?email='+encodeURIComponent(em)).then(r=>r.json()).then(d=>{ const x=$('#pp-assigned');
     if(x&&d.ok&&d.assigned) x.innerHTML=`👤 ${d.assigned} open assignment${d.assigned>1?'s':''} from you`; }).catch(()=>{});
   const r=el.getBoundingClientRect();
-  pop.style.left=Math.min(r.left, innerWidth-330)+'px';
-  pop.style.top=(r.bottom+6)+'px';
+  pop.style.left=zpx(Math.min(r.left, innerWidth-330*GC_ZK))+'px';
+  pop.style.top=zpx(r.bottom+6)+'px';
   pop.hidden=false;
 }
 function hidePersonPop(){ $('#ppop').hidden=true; }
@@ -9082,6 +9135,8 @@ document.addEventListener('click', e=>{
   const cp=e.target.closest('[data-ppcompose]'); if(cp){ hidePersonPop(); composeDlg();
     setTimeout(()=>chipAdd('cp-to',cp.dataset.ppcompose),80); return; }
   const ed=e.target.closest('[data-ppedit]'); if(ed){ hidePersonPop(); contactEditDlg(ed.dataset.ppedit, ed.dataset.ppnm); return; }
+  // 2026-11-17 (Casey: "How do I unVIP someone? … the classifier or the contact card or both")
+  const tg=e.target.closest('[data-ppem]'); if(tg){ hidePersonPop(); tierTag(tg.dataset.ppem, tg.dataset.pptier||''); return; }
   const pj=e.target.closest('[data-ppproj]'); if(pj){ hidePersonPop(); projPick(null,{kind:'contact',account:null,ref:pj.dataset.ppproj,title:pj.dataset.ppnm||pj.dataset.ppproj}); return; }
   const emEl=e.target.closest('.pp-em'); if(emEl){ copyText(emEl.textContent,'address'); }
 });
@@ -9601,8 +9656,18 @@ function rbHtml(id){
   // composer shows raw line breaks (white-space: pre-wrap), so pasted text,
   // ✨ and snippets looked right here — but email HTML ignores them, and
   // Gmail and Outlook ran every paragraph together. They become <br>s.
-  const c=el.cloneNode(true), w=document.createTreeWalker(c, NodeFilter.SHOW_TEXT), hits=[];
-  while(w.nextNode()){ const n=w.currentNode; if(/\n/.test(n.nodeValue)&&!n.parentNode.closest('pre')) hits.push(n); }
+  const c=el.cloneNode(true), w=document.createTreeWalker(c, NodeFilter.SHOW_TEXT), hits=[], gaps=[];
+  // 2026-11-16 (Casey: a sent email showed "extra spaces"): text pasted from a
+  // document arrives as <p>…</p>\n\n<p>…</p>. Those newlines are layout, not
+  // content: the paragraphs already carry their own spacing, and turning
+  // them into <br>s doubled or tripled every gap the recipient saw. A
+  // whitespace-only run beside a block element is dropped instead.
+  const BLOCK=/^(P|DIV|UL|OL|LI|BLOCKQUOTE|H[1-6]|TABLE|PRE|HR)$/;
+  const isBlock=x=>x&&x.nodeType===1&&BLOCK.test(x.tagName);
+  while(w.nextNode()){ const n=w.currentNode;
+    if(!/\n/.test(n.nodeValue)||n.parentNode.closest('pre')) continue;
+    if(!n.nodeValue.trim()&&(isBlock(n.previousSibling)||isBlock(n.nextSibling))) gaps.push(n); else hits.push(n); }
+  gaps.forEach(n=>n.remove());
   hits.forEach(n=>{ const f=document.createDocumentFragment();
     n.nodeValue.split(/\r?\n/).forEach((part,k)=>{ if(k) f.appendChild(document.createElement('br')); if(part) f.appendChild(document.createTextNode(part)); });
     n.parentNode.replaceChild(f,n); });
@@ -11293,6 +11358,26 @@ function skinDlg(){
     ${dark.length?`<div class="status" style="margin:8px 0 6px">Dark</div><div class="snz-grid">${dark.map(item).join('')}</div>`:''}
     <div class="foot"><button class="btn sec2" onclick="closeDlg()">Done</button></div>`);
 }
+/* E316: the zoom picker. Per device (localStorage); "Default" forgets the
+   choice so this device follows the default again. Reloads, because menus,
+   the pane width and the app height were all measured at the old zoom. */
+const zoomPct=z=>Math.round(z*100)+'%';
+function zoomState(){ const s=$('#zoom-state'); if(s) s.textContent=zoomPct(zoomWanted()); }
+function setZoom(z){
+  try { if(z==null) localStorage.removeItem('gc2_zoom'); else localStorage.setItem('gc2_zoom',String(z)); } catch(_){}
+  location.reload();
+}
+function zoomDlg(){
+  const saved=(()=>{ try { return localStorage.getItem('gc2_zoom'); } catch(_){ return null; } })();
+  const cur=zoomWanted(), def=zoomDefault();
+  const item=z=>`<button class="qbtn ${saved!=null&&z===cur?'on':''}" onclick="setZoom(${z})">${zoomPct(z)}${saved!=null&&z===cur?' ·now':''}</button>`;
+  dlg(`<h3>🔍 Zoom</h3>
+    <div class="status" style="margin-bottom:8px">How big Grand Central draws on this device. The default here is ${zoomPct(def)}.</div>
+    <div class="snz-grid">
+      <button class="qbtn ${saved==null?'on':''}" onclick="setZoom(null)">Default (${zoomPct(def)})${saved==null?' ·now':''}</button>
+      ${GC_ZOOMS.map(item).join('')}</div>
+    <div class="foot"><button class="btn sec2" onclick="closeDlg()">Done</button></div>`);
+}
 /* Kept for the keyboard and anything that still cycles. */
 function cycleSkin(){
   const names=Object.keys(SKINS), cur=document.documentElement.dataset.skin||'neon';
@@ -11637,7 +11722,7 @@ function fbDescribe(el){
 }
 function fbFlash(el){
   const r=el.getBoundingClientRect(), m=document.createElement('div');
-  m.style.cssText=`position:fixed;left:${r.left-3}px;top:${r.top-3}px;width:${r.width+6}px;height:${r.height+6}px;
+  m.style.cssText=`position:fixed;left:${zpx(r.left-3)}px;top:${zpx(r.top-3)}px;width:${zpx(r.width+6)}px;height:${zpx(r.height+6)}px;
     border:2px solid var(--red);pointer-events:none;z-index:200;transition:opacity .4s ease;`;
   document.body.appendChild(m);
   setTimeout(()=>{ m.style.opacity='0'; setTimeout(()=>m.remove(),450); },900);
@@ -11882,7 +11967,8 @@ document.addEventListener('keydown', e=>{
   const k=cur.key;
   if(e.key==='Enter'||e.key==='o') openItem(k);
   else if(e.key==='e'||e.key==='y'){ if(mail) archiveItem(k); }
-  else if(e.key==='#'){ if(mail) trashItem(k); }
+  // Dev #93: the Delete key (⌫ / fn-⌫ on a Mac) deletes too, same as #
+  else if(e.key==='#'||e.key==='Delete'||e.key==='Backspace'){ if(mail){ e.preventDefault(); trashItem(k); } }
   else if(e.key==='s') starItem(k);
   else if(e.key==='b'||e.key==='h') snoozeDlg(k);
   else if(e.key==='H') handledItem(k);
@@ -11904,7 +11990,7 @@ const KEYS=[
   ['Compose & find',[['c','New email'],['/','Search'],['?','This list']]],
   ['Move around',[['j / k or ↓ / ↑','Next / previous (with an email open, opens the next one)'],['o or Enter','Open'],['u','Back to the list'],['Esc','Close / step back'],
     ['g i','Inbox'],['g s','Starred'],['g t','Sent'],['g d','Drafts'],['g a','All mail'],['g k','Todos'],['g h','Home']]],
-  ['Act on an email',[['e','Archive (done)'],['#','Delete — Gmail Trash, with Undo'],['s','Star / unstar'],['b or h','Snooze'],
+  ['Act on an email',[['e','Archive (done)'],['# or ⌫','Delete — Gmail Trash, with Undo'],['s','Star / unstar'],['b or h','Snooze'],
     ['r','Reply'],['a','Reply all'],['f','Forward'],['R','Claude\'s reply options'],['l','Label'],['t','Add to todo'],
     ['H','Handled'],['z','Undo']]],
   ['Select',[['x','Select this one'],['* a','Select all'],['* n','Select none']]],
@@ -11932,7 +12018,7 @@ function keysDlg(){
   document.addEventListener('mousemove', e=>{
     if(!dragging) return;
     const r=$('#pane').getBoundingClientRect();
-    const w=Math.min(Math.max(r.right-e.clientX, 380), innerWidth*0.75);
+    const w=zpx(Math.min(Math.max(r.right-e.clientX, 380*GC_ZK), innerWidth*0.75));
     document.documentElement.style.setProperty('--pane-w', Math.round(w)+'px');
   });
   document.addEventListener('mouseup', ()=>{
@@ -12187,6 +12273,7 @@ setTimeout(draftRecoverOffer, 3500);   // Dev #53: an email that a reload interr
   $('#pv-btn')?.classList.toggle('on',PREVIEW);
   const sx=$('#sfx-state'); if(sx) sx.textContent=localStorage.getItem('gc2_sfx')==='0'?'off':'on';
   diagState();       // E206: reflect whether viewport diagnostics are armed
+  zoomState();       // E316: this device's zoom, in the avatar menu
   applySkinIcon();   // E129: the saved skin's ship, from first paint
   if(PREVIEW && innerWidth>980) closePane();   // opens the persistent pane
   const p=new URLSearchParams(location.search);

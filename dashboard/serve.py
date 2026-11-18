@@ -1056,8 +1056,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         thread_id = _clean((qs.get("thread_id") or [""])[0], 40)
                         if not account or not _account_known(conn, account) or not thread_id:
                             raise ValueError("known account and thread_id required")
-                        self._json(200, {"ok": True,
-                                         "classification": db.class_get(conn, account, thread_id)})
+                        cls = db.class_get(conn, account, thread_id)
+                        # E314 (Casey, 2026-11-16): a sent email 3 days old said
+                        # "older than 30 days". Only inbox-synced threads from the
+                        # last 30 days are classified, so say which reason applies.
+                        why = None if cls else db.class_missing_reason(conn, account, thread_id)
+                        self._json(200, {"ok": True, "classification": cls, "why": why})
                     else:
                         from common import load_env
                         from sources import gmail_reader
