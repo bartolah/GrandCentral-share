@@ -3707,14 +3707,16 @@ function grpToggle(cat){ GRP_XP.has(cat)?GRP_XP.delete(cat):GRP_XP.add(cat); ren
 let SPLIT=null;
 // Dev #98: a group opened from Home goes back to Home when you leave it (Back,
 // Esc, or its last email finished), not to the Inbox it borrowed.
-function openSplit(cat){ let back=null;
+// Dev #105: and it comes back at the scroll you left it, not at the top.
+function openSplit(cat){ let back=null; const top=$('#list').scrollTop;
   // Dev #104: and it opens in the mode Home drew it in, or a Jev-sorted
   // bundle (Cold pitches, Spam) finds nothing and bounces straight back
   if(SCOPE.kind==='home'){ back='home'; const sm=homeSmart(); setScope('inbox',null); SMART=sm; TAB='mail'; syncTabs(); }
-  SPLIT={cat, back}; closePaneQuiet(); renderList(); listTop(); }
-function closeSplit(){ const back=SPLIT&&SPLIT.back; SPLIT=null;
-  if(back==='home'&&SCOPE.kind==='inbox') return setScope('home',null);
-  renderList(); }
+  SPLIT={cat, back, top}; closePaneQuiet(); renderList(); listTop(); }
+function closeSplit(){ const back=SPLIT&&SPLIT.back, top=SPLIT?SPLIT.top:0; SPLIT=null;
+  const restore=()=>{ LIST_HOLD.input=Date.now(); const l=$('#list'); if(l&&top) l.scrollTop=top; };
+  if(back==='home'&&SCOPE.kind==='inbox'){ const p=setScope('home',null); restore(); requestAnimationFrame(restore); return p; }
+  renderList(); restore(); requestAnimationFrame(restore); }
 function closePaneQuiet(){ OPEN=null; if(!(PREVIEW&&innerWidth>980)){ document.body.classList.remove('pane-open'); $('#pane').classList.remove('open'); } }
 function renderSplit(){
   const k=grpKind(SPLIT.cat);
