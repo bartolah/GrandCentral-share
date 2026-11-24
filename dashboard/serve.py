@@ -655,6 +655,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         for t in threads:
                             t["cls"] = cls.get(t.get("thread_id"))
                         jev_on = db.class_account_jev(conn, acct)
+                        # dev #95 (Casey: "We should show if an email is in a
+                        # Todo, or folder or label more clearly"): the
+                        # projects each thread is filed under, for the row's
+                        # context line. Agents never get this (agent_gate).
+                        pmap = {}
+                        for r in conn.execute(
+                                "SELECT pi.ref, p.id, p.name, p.color FROM project_items pi "
+                                "JOIN projects p ON p.id = pi.project_id "
+                                "WHERE pi.kind = 'thread' AND pi.account = ? "
+                                "AND COALESCE(p.status, 'active') != 'archived'", (acct,)):
+                            pmap.setdefault(r["ref"], []).append(
+                                {"id": r["id"], "name": r["name"], "color": r["color"]})
+                        for t in threads:
+                            if t.get("thread_id") in pmap:
+                                t["projects"] = pmap[t["thread_id"]]
                     else:
                         jev_on = False
                     # E253: your own services (services.py) — each thread's
@@ -2754,7 +2769,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             try:
                 import mail_actions
                 action = _clean(payload.get("action"), 20)
-                if action not in {"archive", "trash", "star", "unstar", "label-add", "label-remove"}:
+                # dev #95: "inbox" puts one thread back in the Gmail inbox
+                # (Casey's ↩ Move to Inbox); not an agent verb (agent_gate)
+                if action not in {"archive", "trash", "star", "unstar", "label-add", "label-remove", "inbox"}:
                     raise ValueError(f"unknown action {action!r}")
                 thread_id = _clean(payload.get("thread_id"), 25)
                 account = _clean(payload.get("account"), 40)
@@ -2773,6 +2790,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         return fn(*a, **k)
                 if action == "archive":
                     out = _once(mail_actions.archive_thread, thread_id, account)
+                elif action == "inbox":
+                    out = _once(mail_actions.unarchive_thread, thread_id, account)
                 elif action == "trash":
                     # E7-P3 (§6 amended 2026-07-17): move to Gmail Trash —
                     # recoverable 30d, never purged, human click only (the

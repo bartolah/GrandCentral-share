@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import email
 import re
+import time
 
 try:
     from . import mail_common as mc
@@ -271,9 +272,11 @@ def _store_all_mail(thread_id: str, account: str, item: str, value: str,
                 f"in {account}:{all_mail} for thread {thread_id}")
             return {"dry_run": True, "messages": len(uids)}
         for uid in uids:
-            typ, _ = imap.uid("STORE", uid, item, value)
+            typ, resp = _uid_retry(imap, "STORE", uid, item, value)
             if typ != "OK":
-                raise RuntimeError(f"STORE {item} {value} failed on uid {uid!r}")
+                why = _resp(resp)
+                raise RuntimeError((HICCUP + " — " if _TRANSIENT.search(why) else "")
+                                   + f"STORE {item} {value} failed on uid {uid!r} ({len(uids)} in thread): {typ} {why}")
         log(f"mail_actions: {item} {value} on {len(uids)} message(s) in "
             f"{account}:{all_mail} for thread {thread_id}")
         return {"messages": len(uids)}
@@ -400,6 +403,38 @@ def search_threads(query: str, account: str, env: dict | None = None,
             pass
 
 
+# 2026-11-19 (Casey chose "Retry quietly, then explain"): with the reason now
+# logged, the Trash failures were Gmail answering "System Error (Failure)" —
+# its own momentary error, about 1 delete in 50. The same command is tried
+# again (up to 3 times over ~4s, with a NOOP between); only those answers are
+# retried — any other refusal fails at once, as before.
+_TRANSIENT = re.compile(r"system error|failure|unavailable|try again|temporar|serverbug|throttl", re.I)
+HICCUP = "Gmail had a hiccup — try again in a minute"
+
+
+def _uid_retry(imap, *args, tries: int = 3, pause: float = 1.3):
+    typ, resp = imap.uid(*args)
+    for k in range(1, tries):
+        if typ == "OK" or not _TRANSIENT.search(_resp(resp)):
+            break
+        time.sleep(pause * k)
+        try:
+            imap.noop()
+        except Exception:
+            pass
+        typ, resp = imap.uid(*args)
+    return typ, resp
+
+
+def _resp(data) -> str:
+    """An IMAP reply, short and printable, for an error message."""
+    try:
+        parts = [d.decode("utf-8", "replace") if isinstance(d, bytes) else str(d) for d in (data or [])]
+        return " ".join(parts)[:200] or "(no text)"
+    except Exception:
+        return repr(data)[:200]
+
+
 def trash_thread(thread_id: str, account: str, env: dict | None = None,
                  log=print, dry_run: bool = False) -> dict:
     """Move the whole thread to Gmail's Trash (E7-P3, §6 amended by Casey
@@ -429,15 +464,20 @@ def trash_thread(thread_id: str, account: str, env: dict | None = None,
             return {"dry_run": True, "messages": len(uids)}
         moved = 0
         for uid in uids:
-            typ, _ = imap.uid("COPY", uid, f'"{trash}"')
+            typ, resp = _uid_retry(imap, "COPY", uid, f'"{trash}"')
             if typ == "OK":
                 moved += 1
                 continue
             # the message left All Mail between SEARCH and COPY — another
             # action trashed it; only a message still here is a real failure
-            typ, data = imap.uid("SEARCH", None, "UID", uid)
-            if typ == "OK" and data and data[0] and uid in data[0].split():
-                raise RuntimeError(f"COPY to Trash failed on uid {uid!r}")
+            styp, data = imap.uid("SEARCH", None, "UID", uid)
+            if styp == "OK" and data and data[0] and uid in data[0].split():
+                # 2026-11-19: 42 of these since October and the reason was
+                # thrown away — keep Gmail's own answer so the cause shows
+                why = _resp(resp)
+                raise RuntimeError((HICCUP + " — " if _TRANSIENT.search(why) else "")
+                                   + f"COPY to Trash failed on uid {uid!r} ({len(uids)} in thread, "
+                                   f"{moved} moved): {typ} {why}")
         log(f"mail_actions: trashed {moved} message(s) in {account} "
             f"for thread {thread_id} (recoverable from Trash 30d)")
         return {"messages": moved}
@@ -740,9 +780,10 @@ def trash_draft(account: str, uid: str, gm_msgid: str,
         if typ != "OK":
             raise RuntimeError(f"cannot open {drafts}")
         _draft_msg(imap, drafts, uid, gm_msgid)
-        typ, _ = imap.uid("COPY", str(uid), f'"{trash}"')
+        typ, resp = _uid_retry(imap, "COPY", str(uid), f'"{trash}"')
         if typ != "OK":
-            raise RuntimeError("COPY to Trash failed")
+            why = _resp(resp)
+            raise RuntimeError((HICCUP + " — " if _TRANSIENT.search(why) else "") + f"COPY to Trash failed: {typ} {why}")
         log(f"mail_actions: old draft {uid} in {account} moved to Trash")
         return {"trashed": 1}
     finally:

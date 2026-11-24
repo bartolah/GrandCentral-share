@@ -241,9 +241,10 @@
   }
   .search input { border: none; outline: none; flex: 1; background: none; min-width: 0; }
   .search .hint { font-size: 10.5px; border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; }
-  .search .clr { display: none; cursor: pointer; color: var(--faint); font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 6px; }
-  .search .clr:hover { color: var(--ink); background: var(--hover); }
-  .search.has-q .clr { display: inline-block; }
+  .search .clr { display: none; cursor: pointer; color: var(--ink); background: var(--hover); border: 1px solid var(--line);
+    font-size: 12.5px; font-weight: 600; line-height: 1; padding: 6px 11px; margin: -5px 0; border-radius: 999px; white-space: nowrap; flex: none; }
+  .search .clr:hover { border-color: var(--faint); }
+  .search.has-q .clr { display: inline-flex; align-items: center; gap: 5px; }
   .top-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   /* E206: menu entries that only exist because the phone hides the matching
      control in the top bar. The phone block turns them back on. */
@@ -524,6 +525,16 @@
   .hday-more[open] > summary { margin-bottom: 8px; }
   .hday-todo .d { margin-left: auto; color: var(--faint); font-size: 11.5px; white-space: nowrap; padding-left: 8px; }
   .hday-todo .d.late, .hday-sub.late span { color: var(--red); }
+  .bt-who { max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 10px; font-size: 12.5px; }
+  .bt-who > div { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+  .bt-who > div:last-child { border-bottom: none; }
+  .bt-who b { flex: 0 0 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .bt-who span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pane-head .chip.lbl { display: inline-flex; align-items: center; gap: 4px; }
+  .pane-head .lbl-x { border: 0; background: none; padding: 0 2px; margin-left: 2px; cursor: pointer; color: inherit; opacity: .6; font-size: 11px; line-height: 1; }
+  .pane-head .lbl-x:hover { opacity: 1; }
+  .pane-head .bundle-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px dashed var(--line); background: var(--hover); color: var(--muted); cursor: pointer; font: inherit; font-size: 12px; }
+  .pane-head .bundle-chip:hover { color: var(--ink); border-style: solid; }
   .hday-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .hday-tiles a { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px 16px; color: var(--ink); text-decoration: none; cursor: pointer; }
   .hday-tiles a:hover { border-color: var(--blue); }
@@ -1143,6 +1154,12 @@
   .rb-body blockquote, .rb-body blockquote * { color: var(--muted) !important; }
   .row .in-todo { font-size: 11.5px; color: var(--blue); display: flex; align-items: center; gap: 4px; margin-bottom: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .in-todo b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .row .row-cx { color: var(--muted); gap: 6px; }
+  .row .row-cx a { display: inline-flex; align-items: center; gap: 4px; color: inherit; cursor: pointer; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .row-cx a:hover { color: var(--ink); text-decoration: underline; }
+  .row .row-cx .cx-todo { color: var(--blue); }
+  .row .row-cx .cx-dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+  .row .row-cx .cx-sep { color: var(--faint); }
   .row .in-todo:hover { text-decoration: underline; }
   .ai-box { border: 1px solid var(--blue); border-radius: 10px; padding: 8px 10px; margin: 0 0 8px; background: var(--card); }
   .ai-box .ai-top { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 4px; }
@@ -1243,7 +1260,7 @@
   .cw.full { right: 4vw; left: 4vw; top: 4vh; bottom: 4vh; width: auto; max-height: none; border-radius: 14px; border-bottom: 1px solid var(--line); }
   body.cw-full::after { content: ''; position: fixed; inset: 0; background: rgba(25,32,45,.4); z-index: 84; }
   .cw.full #cp-body { min-height: 45vh; }
-  .pane .cmp-dock.popped { position: fixed; left: 6vw; right: 6vw; top: 5vh; bottom: 5vh; z-index: 86; display: flex;
+  .pane .cmp-dock.popped { position: fixed; left: 6vw; right: 6vw; top: 5vh; bottom: 5vh; z-index: 86; display: flex; max-height: none;
     background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 60px rgba(0,0,0,.35); }
   .pane .cmp-dock.popped .rb-body { min-height: 50vh; }
   body.cmp-full::after { content: ''; position: fixed; inset: 0; background: rgba(25,32,45,.45); z-index: 84; }
@@ -1843,6 +1860,9 @@
   .grp .gs { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; }
   .grp .gs b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; color: var(--ink); max-width: 190px; }
   .grp.read .gs b { font-weight: 500; }
+  .grp .gx { width: 22px; height: 22px; padding: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--faint); }
+  .grp .gx:hover { background: var(--chip-bg); color: var(--ink); }
+  .grp-kids { border-left: 2px solid var(--line); margin-left: 34px; }
   .grp .gbar { width: 1px; height: 14px; background: var(--line); flex: 0 0 auto; }
   .fav { width: 18px; height: 18px; border-radius: 5px; flex: 0 0 auto; position: relative; overflow: hidden; display: inline-flex;
     align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700; color: #fff; }
@@ -1922,10 +1942,12 @@
   .replybar .rb-in:hover { color: var(--ink); }
   .replybar .tool { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; }
   .replybar:hover { border-color: var(--line); color: var(--faint); }
-  .pane.composing .msgs { flex: 0 1 40%; }
+  /* Dev #99 (E321): the dock is as tall as the reply, up to 60% — the thread
+     takes the rest, so a short reply leaves no blank band under Send. */
+  .pane.composing .msgs { flex: 1 1 0; min-height: 0; }
   .pane.composing #composer { position: relative; }
   .pane.composing .replybar { display: none; }
-  .pane .cmp-dock { flex: 1 1 60%; min-height: 0; overflow-y: auto; border-top: 1px solid var(--line); display: none; flex-direction: column; }
+  .pane .cmp-dock { flex: 0 1 auto; max-height: 60%; min-height: 0; overflow-y: auto; border-top: 1px solid var(--line); display: none; flex-direction: column; }
   .pane.composing .cmp-dock { display: flex; }
   .cmp-dock .cmp-head { display: flex; align-items: center; gap: 8px; padding: 8px 16px; color: var(--muted); font-size: 13px; }
   .cmp-dock .cmp-head .sp { flex: 1; }
@@ -1943,7 +1965,7 @@
     .row .selbox { left: 12px; }
     .grp { padding: 10px 12px; gap: 12px; }
     .tail .chip { max-width: 96px; }
-    .pane.composing .msgs { flex-basis: 30%; }
+    .pane.composing .cmp-dock:not(.popped) { max-height: 70%; }
     /* E204 undoes E201's wrap: the chips left line 1 (they end line 3 now),
        so the title has the whole line and one line is enough — Shortwave. */
     .row .l1 { flex-wrap: nowrap; overflow: hidden; }
@@ -2588,7 +2610,7 @@ if (location.search.indexOf('diag=1') >= 0 || localStorage.getItem('gc2_diag') =
     <img class="brand-logo" src="favicon.svg" alt="">
     <h1>Grand Central<span class="dot">.</span></h1>
   </div>
-  <div class="search">🔍<input id="q" placeholder="Filter this account — from: label: is:unread has:attachment" title="Gmail operators: from: to: subject: label: account: is:unread/starred/todo/needs has:attachment before:/after:YYYY-MM-DD, quotes and -negation. Enter searches this account." autocomplete="off"><span class="clr" onclick="qClear()" title="Clear search (Esc)">✕</span><span class="hint">/</span></div>
+  <div class="search">🔍<input id="q" placeholder="Filter this account — from: label: is:unread has:attachment" title="Gmail operators: from: to: subject: label: account: is:unread/starred/todo/needs has:attachment before:/after:YYYY-MM-DD, quotes and -negation. Enter searches this account." autocomplete="off"><span class="clr" onclick="qClear()" title="Clear search (Esc)">✕ Clear</span><span class="hint">/</span></div>
   <div class="top-right">
     <!-- E297 (dev #76): shown from a dropped connection until it's back -->
     <span id="net-chip" role="status" hidden>⚡<span class="lbl"> Disconnected</span></span>
@@ -3066,7 +3088,7 @@ function rebuild(){
       type:'mail', key:'m:'+x.account+':'+x.thread_id, raw:x,
       ...mailWho(x), title:x.subject||'(no subject)', snip:x.snippet||'',
       account:x.account, project:x.account, goals:[],
-      labels:(x.labels||[]).filter(l=>!l.startsWith('GC/')),
+      labels:(x.labels||[]).filter(l=>!l.startsWith('GC/')), projects:x.projects||[],
       date:x.last_date, unread:!!x.unread, starred:!!x.starred, pinned:!!x.pinned,
       snoozed:!!(x.snoozed_until && x.snoozed_until>now), wake:x.snoozed_until||null,
       my_day:!!(x.my_day && x.my_day===today),
@@ -3500,6 +3522,16 @@ function groupItems(items){
   // age — and within it, similar bulk mail is ONE ROW at the height of its
   // newest message ("Updates 17 · Chase | Google Alerts | ◉◉◉◉"), a peer of
   // the emails around it rather than a section of its own.
+  // dev #100 (Casey: "Let's make the 'Inbox' pure … unlike the smart inbox,
+  // let's have it just show all of the emails in the inbox in chronological
+  // order" → "Every email, newest first"): the plain Inbox is one list —
+  // no Todos, Starred, VIP or Prospect sections, no bundles. Smart Inbox
+  // keeps all the grouping; the Todos and Starred tabs keep theirs.
+  if (SCOPE.kind==='inbox' && !smartOn() && !SEARCH_ROWS && TAB!=='todos' && TAB!=='star' && TAB!=='today'){
+    const mail=items.filter(i=>i.type==='mail'&&!i.attached)
+      .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    return mail.length?[['Inbox',mail]]:[];
+  }
   const todos=[], starred=[], flow=[], groups={};
   // E60: an email attached to an open todo is spoken for — it lives in its todo.
   items.forEach(i=>{
@@ -3589,8 +3621,11 @@ const GRP_BULK={newsletter:'📰 Newsletters',notification:'🔔 Updates & notif
    categorizer. Accounts without Jev keep exactly the old behaviour. */
 const JEV_ON={};
 const JEV_TYPE_GRP={'Cold pitch':'pitch','Spam':'spam','Update':'notification','Newsletter':'newsletter'};
-// A bundle Jev filled offers Archive all but not Delete all: a model's call
-// shouldn't be one click from Trash for every thread in it.
+// A bundle Jev filled: a model's call shouldn't be one click from Trash for
+// every thread in it. Since dev #96 (2026-11-19, Casey: "Why doesn't the cold
+// pitches section have a Trash button?" → "Always confirm, showing who") it
+// has Delete all, but it always asks first and lists who's in it, so a
+// mis-sorted prospect is easy to spot.
 const JEV_TYPE_GRP_KEYS=new Set(['pitch','spam']);
 // Dev #49: Jev's bundles (cold pitches, spam) belong to Smart Inbox; the
 // mono Inbox bundles by the rules alone.
@@ -3642,28 +3677,50 @@ function grpRowHtml(g){
   const named=ranked.slice(0,2).map(e=>`<span class="gs">${face(e)}<b>${esc(e.nm)}</b></span>`).join('<span class="gbar"></span>');
   const rest=ranked.slice(2,9).map(e=>`<span title="${esc(e.nm)}">${face(e)}</span>`).join('');
   const unread=g.rows.some(r=>r.unread), open=SPLIT&&SPLIT.cat===g.grp;
-  const bulk=esc(grpBulk(g.grp));
+  const bulk=esc(grpBulk(g.grp)), xp=GRP_XP.has(g.grp);
   return `<div class="grp ${unread?'':'read'} ${open?'open':''}" data-grp="${esc(g.grp)}" onclick="openSplit('${esc(g.grp)}')">
     <span class="gic">${ic(k.icon,'lg')}</span>
     <div class="gb">
       <div class="g1"><span class="gname">${esc(k.name)}</span><span class="gn">${g.rows.length}</span>
+        <button class="gx" title="${xp?'Collapse':'Show these emails here'}" onclick="event.stopPropagation();grpToggle('${esc(g.grp)}')">${ic(xp?'up':'down','sm')}</button>
         <span class="gw">${fmtDate(g.date)}</span>
         <span class="acts">
           ${actBtn('check','Archive all '+g.rows.length+' in Gmail',`bundleBulk('${bulk}','archive')`)}
-          ${JEV_TYPE_GRP_KEYS.has(g.grp)||k.sales?'':actBtn('trash','Delete all — Gmail Trash, recoverable 30d',`bundleTrash('${bulk}')`)}</span></div>
+          ${k.sales?'':actBtn('trash',JEV_TYPE_GRP_KEYS.has(g.grp)?'Delete all… — asks first, shows who':'Delete all — Gmail Trash, recoverable 30d',`bundleTrash('${bulk}')`)}</span></div>
       <div class="g2">${named}${rest?'<span class="gbar"></span>'+rest:''}</div>
-    </div></div>`;
+    </div></div>${xp?grpKidsHtml(g):''}`;
 }
+/* Dev #103 (Casey: "a way to expand Bundles inline in addition to opening them
+   into their own view"): the chevron on a bundle row drops its emails in right
+   under it; clicking the row itself still opens the split. Remembered for the
+   session only. */
+const GRP_XP=new Set();
+const GRP_XP_MAX=50;
+function grpKidsRows(g){ return g.rows.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))); }
+function grpKidsHtml(g){
+  const rows=grpKidsRows(g);
+  return `<div class="grp-kids">${rows.slice(0,GRP_XP_MAX).map(rowHtml).join('')}${rows.length>GRP_XP_MAX
+    ?`<div class="go-all" onclick="openSplit('${esc(g.grp)}')">Open all ${rows.length} ${ic('right','sm')}</div>`:''}</div>`;
+}
+function grpToggle(cat){ GRP_XP.has(cat)?GRP_XP.delete(cat):GRP_XP.add(cat); renderList(); }
 /* A group opens as its own list under a back arrow (Shortwave's split). */
 let SPLIT=null;
-function openSplit(cat){ if(SCOPE.kind==='home'){ setScope('inbox',null); TAB='mail'; syncTabs(); } SPLIT={cat}; closePaneQuiet(); renderList(); listTop(); }
-function closeSplit(){ SPLIT=null; renderList(); }
+// Dev #98: a group opened from Home goes back to Home when you leave it (Back,
+// Esc, or its last email finished), not to the Inbox it borrowed.
+function openSplit(cat){ let back=null;
+  // Dev #104: and it opens in the mode Home drew it in, or a Jev-sorted
+  // bundle (Cold pitches, Spam) finds nothing and bounces straight back
+  if(SCOPE.kind==='home'){ back='home'; const sm=homeSmart(); setScope('inbox',null); SMART=sm; TAB='mail'; syncTabs(); }
+  SPLIT={cat, back}; closePaneQuiet(); renderList(); listTop(); }
+function closeSplit(){ const back=SPLIT&&SPLIT.back; SPLIT=null;
+  if(back==='home'&&SCOPE.kind==='inbox') return setScope('home',null);
+  renderList(); }
 function closePaneQuiet(){ OPEN=null; if(!(PREVIEW&&innerWidth>980)){ document.body.classList.remove('pane-open'); $('#pane').classList.remove('open'); } }
 function renderSplit(){
   const k=grpKind(SPLIT.cat);
   const rows=ITEMS.filter(i=>inScope(i)&&inQ(i)&&i.type==='mail'&&!i.attached&&!i.starred&&grpKey(i)===SPLIT.cat)
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  if(!rows.length){ SPLIT=null; return renderList(); }
+  if(!rows.length) return closeSplit();
   VISIBLE=rows.slice();
   const bulk=esc(grpBulk(SPLIT.cat));
   $('#list').innerHTML=`<div class="ib-wrap">
@@ -3683,6 +3740,10 @@ const DEFAULT_FOLD = n => /^(📰|🔔|🧾|📅|🛍)/.test(n);
 const isFolded = n => DEFAULT_FOLD(n)!==FOLDS.has(n);
 
 let VISIBLE = [];   // flat list for keyboard nav
+// Dev #98: where the open email came from — {scope, top, homeAll} — and the
+// mail keys of the list it was opened from (OPEN_RING), so finishing it
+// moves to a neighbour from THAT view and closing it lands you back there.
+let OPEN_FROM=null, OPEN_RING=[], HOMEALL_BACK=null;
 function renderList(){
   renderListHead();
   // E134: freeform editors inside the list (scratch pads, braindump cards,
@@ -3767,7 +3828,7 @@ function inboxListHtml(items){
   let html = groups.map(([name,rows])=>{
     const folded=FOLDS.has(name)!==foldsFirst(name);
     const rowOut = r => r.grp ? grpRowHtml(r) : rowHtml(r);
-    if(!folded) rows.forEach(r=>{ if(r.grp) return; VISIBLE.push(r); });
+    if(!folded) rows.forEach(r=>{ if(r.grp){ if(GRP_XP.has(r.grp)) VISIBLE.push(...grpKidsRows(r).slice(0,GRP_XP_MAX)); return; } VISIBLE.push(r); });
     const more = rows._more
       ? (name==='Todos'
           ? `<div class="go-all" onclick="goTodos()">Go to all todos ${ic('right','sm')}</div>`
@@ -4816,7 +4877,13 @@ const hdayAvBg = n => HDAY_AV[[...String(n||'')].reduce((a,c)=>a+c.charCodeAt(0)
 const hdayVal = v => v==null?'':`<span class="hday-v ${v>=70?'hi':v>=40?'mid':'lo'}" title="Value score">${v}</span>`;
 function hdayOpenMail(a, tid){
   const go=()=>openItem('m:'+a+':'+tid);
-  if(HOME_ALL){ setAcct(a).then(go); return; }   // opening happens inside its own account
+  // opening happens inside its own account — on that account's Home, not
+  // whatever scope it was last left on (Dev #98: that was often the Inbox);
+  // closing the email brings the all-accounts Home back where you were
+  if(HOME_ALL){ const top=$('#list').scrollTop;
+    setAcct(a).then(()=>{ if(SCOPE.kind!=='home') return setScope('home',null); })
+      .then(()=>{ HOMEALL_BACK={top}; go(); });
+    return; }
   go();
 }
 function hdayGo(a, where){
@@ -4994,12 +5061,15 @@ function homeSetMail(a,t){
   KB=-1; renderList();
 }
 // the Inbox's own list, drawn as if the Inbox were showing, then put back
-function homeInboxRows(smart){
+function asHomeInbox(smart, fn){
   const keep={SCOPE,TAB,SMART,SPLIT,SEARCH_ROWS,Q,NEW_COUNT};
   SCOPE={kind:'inbox',id:null}; TAB='mail'; SMART=!!smart; SPLIT=null; SEARCH_ROWS=null; Q=''; NEW_COUNT=0;
-  try { return inboxListHtml(ITEMS.filter(i=>inScope(i)&&inTab(i))); }
+  try { return fn(); }
   finally { SCOPE=keep.SCOPE; TAB=keep.TAB; SMART=keep.SMART; SPLIT=keep.SPLIT; SEARCH_ROWS=keep.SEARCH_ROWS; Q=keep.Q; NEW_COUNT=keep.NEW_COUNT; }
 }
+function homeInboxRows(smart){ return asHomeInbox(smart, ()=>inboxListHtml(ITEMS.filter(i=>inScope(i)&&inTab(i)))); }
+// is Home's email section drawing the Smart Inbox right now?
+const homeSmart = () => homeMailTab(ACCT)==='smart' && !!JEV_ON[ACCT];
 const homeNeeds = a => ITEMS.filter(i=>i.type==='mail'&&i.account===a&&!i.snoozed&&inboxLive(i)
     &&(i.needs||i.cls?.waiting_on==='me')).sort((x,y)=>String(y.date).localeCompare(String(x.date)));
 function homeMailHtml(a){
@@ -6237,15 +6307,17 @@ $('#list').addEventListener('click', e=>{
 // dialog (not a bare confirm) — E7's delete rules: recoverable 30 days,
 // human-only, no purge verb anywhere.
 function bundleTrash(name){
-  const items=ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i)&&i.type==='mail'&&!i.starred&&!i.attached&&BUNDLE_NAME(i)===name);
+  const items=bundleMembers(name);
   if(!items.length) return;
   // Dev #64 (Casey, 10-01: "10 or fewer … no need to have a second
   // confirmation", chose "≤10, keep 10s Undo"; BUILD_SPEC §6): a small group
   // goes on one click, held 10 seconds behind Undo like a single delete.
   // Still Gmail Trash, still human-only; more than 10 keeps the dialog.
-  if(items.length<=10){ bundleTrashHeld(name,items); return; }
+  const ai=items.some(i=>JEV_TYPE_GRP_KEYS.has(grpKey(i)));
+  if(items.length<=10&&!ai){ bundleTrashHeld(name,items); return; }
+  const who=ai?`<div class="bt-who">${items.slice(0,60).map(i=>`<div><b>${esc(String(i.who).split('<')[0].trim().slice(0,40))}</b><span>${esc(String(i.title).slice(0,70))}</span></div>`).join('')}${items.length>60?`<div class="m">…and ${items.length-60} more</div>`:''}</div>`:'';
   dlg(`<h3>🗑 Delete all of ${esc(name)}?</h3>
-    <div class="status" style="margin:4px 0 10px">Moves <b>${items.length} thread(s)</b> to Gmail Trash — recoverable there for 30 days, then Gmail purges them. Grand Central has no purge button by design.</div>
+    <div class="status" style="margin:4px 0 10px">Moves <b>${items.length} thread(s)</b> to Gmail Trash — recoverable there for 30 days, then Gmail purges them. Grand Central has no purge button by design.${ai?' These were sorted here by the AI — check nobody you want is in the list.':''}</div>${who}
     <div class="foot">
       <button class="btn danger" onclick="closeDlg();doBundleTrash('${esc(name)}')">Delete ${items.length} threads</button>
       <button class="btn sec2" onclick="closeDlg()">Cancel</button></div>`);
@@ -6272,7 +6344,7 @@ function bundleTrashHeld(name,items){
   }, ()=>{ items.forEach(i=>{ DROPPED.delete(i.key); if(!MAIL.includes(i.raw)) MAIL.push(i.raw); }); rebuild(); }, 10000);
 }
 async function doBundleTrash(name){
-  const items=ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i)&&i.type==='mail'&&!i.starred&&!i.attached&&BUNDLE_NAME(i)===name);
+  const items=bundleMembers(name);
   if(!items.length) return;
   // E93.4: optimistic — rows vanish NOW, deletes run in the background
   // with live progress (each thread is a real IMAP move server-side).
@@ -6299,7 +6371,7 @@ async function doBundleTrash(name){
 // Clear a whole bundle: archive = real Gmail archive (chunked ≤50 per call),
 // dismiss = board-only. Two-step via confirm; rows drop locally on success.
 function bundleBulk(name, mode){
-  const items=ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i)&&i.type==='mail'&&!i.starred&&!i.attached&&BUNDLE_NAME(i)===name);
+  const items=bundleMembers(name);
   if(!items.length) return;
   // E94.2: in-app confirm (native confirm() gets suppressed)
   dlg(`<h3>${mode==='archive'?'✓ Archive':'⊘ Dismiss'} all of ${esc(name)}?</h3>
@@ -6310,7 +6382,7 @@ function bundleBulk(name, mode){
       <button class="btn sec2" onclick="closeDlg()">Cancel</button></div>`);
 }
 async function doBundleBulk(name, mode){
-  const items=ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i)&&i.type==='mail'&&!i.starred&&!i.attached&&BUNDLE_NAME(i)===name);
+  const items=bundleMembers(name);
   if(!items.length) return;
   let ok=0;
   try {
@@ -6330,6 +6402,15 @@ async function doBundleBulk(name, mode){
   } catch(e){ toast(`Group ${mode} stopped after ${ok} — ${e.message}`); rebuild(); }
 }
 const BUNDLE_NAME = i => grpBulk(grpKey(i));
+/* Dev #104 (Casey: "Why can't I delete this email or group?"): Home draws its
+   email section as the (Smart) Inbox, but a bundle's Archive all / Delete all
+   then looked its emails up as Home — Smart off, so a Jev-sorted "Cold
+   pitches" matched nothing and the click did nothing. Look them up the way
+   the list that showed them was drawn. */
+function bundleMembers(name){
+  const pick=()=>ITEMS.filter(i=>inScope(i)&&inTab(i)&&inQ(i)&&i.type==='mail'&&!i.starred&&!i.attached&&BUNDLE_NAME(i)===name);
+  return SCOPE.kind==='home' ? asHomeInbox(homeSmart(), pick) : pick();
+}
 // E197 (#11): Sent, Drafts, Scheduled and the tool screens do not read the
 // Everything/Today/Mail/Todos lens at all, so the strip stopped pretending.
 const TAB_SCOPES=new Set(['inbox','project','goal','label','allmail','account','snoozed']);
@@ -6484,8 +6565,7 @@ function rowTail(i){
   return `<span class="tail"><span class="tail-more">`+tierChip(i)+pjSugChip(i)+(i.type==='mail'?trkChip(i.account,i.raw.thread_id):'')+valChip(i)
     + (i.needs?`<span class="owed" title="A reply is owed">↩ ${fdAge(i.date)??0}d</span>`:'')
     + (i.note?`<span class="chip" style="background:var(--amber-soft);color:var(--note-head)" title="${esc(i.note)}">📝 ${esc(i.note.slice(0,24))}</span>`:'')
-    + (lbl?`<span class="chip lbl" style="${lblStyle(lbl)}" onclick="event.stopPropagation();setScope('label','${esc(lbl)}')" title="Show everything labelled ${esc(lbl)}">${esc(lbl)}</span>`
-          :(proj?`<span class="chip" onclick="event.stopPropagation();openOvl('project','${esc(i.project)}')">${esc(proj)}</span>`:''))
+    // dev #95: labels are in the context line above the sender now
     + (i.attachments?`<span title="Has an attachment">${ic('attach','sm')}</span>`:'')
     + (i.my_day?`<span title="In My Day today">${ic('sun','sm')}</span>`:'')
     + `</span>`
@@ -6542,7 +6622,7 @@ function rowHtml(i, idx){
     : '';
   // Dev #62 (Casey: "Archive and the checkmark seem the same. Let's just keep
   // the checkmark."): on an email ✓ is Gmail archive, as on a bundle header.
-  const acts=todoActs+actBtn('reply','Reply / draft',`replyOptions('${k}')`)
+  const acts=todoActs+(!inTodo&&notInInbox(i)?actBtn('into','Move to Inbox (⇧I)',`moveToInbox('${k}')`):'')+actBtn('reply','Reply / draft',`replyOptions('${k}')`)
     + actBtn('clock','Snooze',`snoozeDlg('${k}')`)
     + actBtn(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)
     + actBtn('check','Archive in Gmail (e)',`archiveItem('${k}')`)
@@ -6558,7 +6638,7 @@ function rowHtml(i, idx){
     <span class="selbox" title="Select — act on several at once" onclick="event.stopPropagation();toggleSel('${k}')">${ic('check','sm')}</span>
     ${lead}
     <div class="body">
-      ${i.todoOf&&SCOPE.kind!=='todo'?`<div class="l0 in-todo" title="This email belongs to a todo — open the todo" onclick="event.stopPropagation();openTodoPlace(${Number(i.todoOf.id)})">${ic('checkcircle','sm')} In todo · <b>${esc(String(i.todoOf.title).slice(0,70))}</b></div>`:''}
+      ${rowContext(i)}
       <div class="l1">${(()=>{ const em=i.whoEm||i.raw.last_from_email, nm=i.whoNm||i.who;
         return `<span class="who ${em?'person':''}" ${em?`data-em="${esc(em.toLowerCase())}" data-nm="${esc(nm)}"`:''}>${esc(String(i.who).split('<')[0].trim()||i.who)}</span>`; })()}${n}
         <span class="meta">${when}</span><span class="acts">${acts}</span></div>
@@ -6566,6 +6646,38 @@ function rowHtml(i, idx){
       <div class="l3"><span class="prev">${esc((i.snip||'').slice(0,200))}</span>${rowTail(i)}</div>
     </div>
   </div>`;
+}
+/* dev #95 (Casey: "We should show if an email is in a Todo, or folder or
+   label more clearly"; chose "One quiet line above the sender"): the todo,
+   project(s) and Gmail label(s) an email sits in, each a link there. The
+   place you're already looking at is left out. */
+function rowContext(i){
+  const bits=[];
+  if(i.todoOf&&!(SCOPE.kind==='todo'&&Number(SCOPE.id)===Number(i.todoOf.id)))
+    bits.push(`<a class="cx-todo" title="In this todo — open it" onclick="event.stopPropagation();openTodoPlace(${Number(i.todoOf.id)})">${ic('checkcircle','sm')} <b>${esc(String(i.todoOf.title).slice(0,60))}</b></a>`);
+  (i.projects||[]).forEach(p=>{ if(PROJ&&PROJ.view==='page'&&Number(PROJ.id)===Number(p.id)) return;
+    bits.push(`<a title="Filed in this project — open it" onclick="event.stopPropagation();openProject(${Number(p.id)})"><i class="cx-dot" style="background:${esc(p.color||'var(--faint)')}"></i>${esc(String(p.name).slice(0,40))}</a>`); });
+  (i.labels||[]).forEach(l=>{ if(SCOPE.kind==='label'&&SCOPE.id===l) return;
+    bits.push(`<a title="Labelled ${esc(l)} — show everything with it" onclick="event.stopPropagation();setScope('label','${esc(l)}')">🏷 ${esc(l.slice(0,36))}</a>`); });
+  return bits.length?`<div class="l0 in-todo row-cx">${bits.join('<span class="cx-sep">·</span>')}</div>`:'';
+}
+/* dev #95 ("a way to bring an email back to the inbox" → ↩ Move to Inbox,
+   also out of its todo, and a key): puts the thread back in Gmail's inbox.
+   If it's in a todo, it leaves the todo too (the E222 "back to the inbox"). */
+const notInInbox = i => i&&i.type==='mail'&&(!i.raw.in_inbox||!!i.raw.moved_at||!!i.todoOf);
+async function moveToInbox(key){
+  const i=findItem(key); if(!i||i.type!=='mail') return;
+  if(i.todoOf){
+    const t=findItem('t:'+i.todoOf.id);
+    if(t) return returnThread(t.key,i.account,i.raw.thread_id);
+  }
+  try {
+    await post('/mail-action',{action:'inbox',thread_id:i.raw.thread_id,account:i.account});
+    i.raw.in_inbox=true; i.raw.moved_at=null; i.raw.age_h=0; DROPPED.delete(i.key);
+    if(!MAIL.includes(i.raw)) MAIL.push(i.raw);
+    rebuild(); if(OPEN===key) renderThreadPane(i);
+    toast('Back in the inbox');
+  } catch(e){ toast('Not moved — '+e.message); }
 }
 function todoRowHtml(i,open,sel,kb){
   const k=esc(i.key), n=(i.threads||[]).length, uns=todoUnsnoozed(i);
@@ -7089,10 +7201,22 @@ function dropLocal(i, up){
   rebuild();   // refreshes VISIBLE
   if(wasOpen){
     let next = near.map(x=>VISIBLE.find(v=>v.key===x.key)).find(Boolean) || null;
-    if(!next && idx<0 && i.type==='mail') next = VISIBLE.find(x=>x.type==='mail') || null;
-    if(next){ KB=VISIBLE.indexOf(next); openItem(next.key);
-      if(up){ const el=document.querySelector('.row.kb'); if(el) el.scrollIntoView({block:'nearest'}); } }
-    else closePane();
+    // Dev #98 (Casey: "take me to the next or previous email from the view I
+    // was on … rather than taking me to the Inbox and often some random part
+    // of it"): when the email isn't in the list as it's drawn now, its
+    // neighbours from the list it was OPENED from decide — never the first
+    // email of whatever list is showing. Nothing left there: back to the view.
+    let nextKey = next ? next.key : null;
+    if(!next && idx<0 && i.type==='mail'){
+      const r=OPEN_RING.indexOf(i.key);
+      if(r>=0){
+        const b=OPEN_RING.slice(r+1), a=OPEN_RING.slice(0,r).reverse();
+        nextKey=(up?[...a,...b]:[...b,...a]).find(k=>!DROPPED.has(k)&&findItem(k))||null;
+      }
+    }
+    if(nextKey){ const ix=VISIBLE.findIndex(v=>v.key===nextKey); if(ix>=0) KB=ix; openItem(nextKey);
+      const el=document.querySelector('.row.kb'); if(el) el.scrollIntoView({block:'nearest'}); }
+    else paneClose();
   }
 }
 async function archiveItem(key){
@@ -7958,6 +8082,17 @@ async function openItem(key, keepScroll){
   // "Read it beside Home"); the calendar column steps aside while it's open
   if(SCOPE.kind==='home' && !PROJ && HOME_ALL){ const it=findItem(key);
     return homeOpen(it&&it.project?it.project:'__none', key); }
+  // Dev #98 (Casey: open an email from Home / Inbox / Smart Inbox, close or
+  // finish it, "go back to where I was"): an email opened from the list
+  // remembers that view, its scroll and the emails around it. Stepping on
+  // to the next email keeps the first origin; the neighbours follow you.
+  if(key.startsWith('m:')){
+    if(!OPEN||!OPEN.startsWith('m:')){
+      OPEN_FROM={scope:SCOPE.kind+':'+SCOPE.id, top:$('#list').scrollTop, homeAll:HOMEALL_BACK};
+    }
+    if(VISIBLE.some(v=>v.key===key)) OPEN_RING=VISIBLE.filter(v=>v.type==='mail').map(v=>v.key);
+  }
+  HOMEALL_BACK=null;
   if(SCOPE.kind==='home' && !PROJ) document.body.classList.add('home-read');
   sfx('open');
   // Dev #93 (Casey: "the active email is not the selected email"): the
@@ -8051,6 +8186,18 @@ const CLS_OPTS={
 const clsLbl=(f,v)=>{ const o=(CLS_OPTS[f]||[]).find(x=>Array.isArray(x)?x[0]===String(v):x===v); return o?(Array.isArray(o)?o[1]:o):(v==null?'—':String(v)); };
 const clsDay=d=>{ if(!d) return ''; const t=new Date(d+'T12:00:00'); const diff=Math.round((t-new Date(dOff(0)+'T12:00:00'))/864e5);
   return diff===0?'today':diff===1?'tomorrow':diff===-1?'yesterday':diff<0?`${-diff}d overdue`:t.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); };
+/* dev #102 (Casey: "How do I change or remove an email from a label? I don't
+   see Promotions as an option" → a "Bundle: Promotions ▾" chip): Promotions,
+   Newsletters, Updates… are Grand Central's bundles, not Gmail labels, so
+   they never showed in the label list. The chip names the bundle and opens
+   where to change it: the sender's bundle (from now on), or — for Cold
+   pitches and Spam, which the AI sorts by what the email is — its type. */
+function bundleChip(i){
+  const g=grpKey(i); if(!g) return '';
+  const k=grpKind(g), ai=JEV_TYPE_GRP_KEYS.has(g), key=esc(i.key);
+  const go=ai?`CLS_OPEN=true;clsRender('${key}')`:`catDlg('${key}')`;
+  return `<button class="chip bundle-chip" onclick="${go}" title="${ai?'Sorted here by the AI — change what type of email this is':'Change which bundle this sender’s mail goes to'}">${ic(k.icon,'sm')} Bundle: ${esc(k.name)} ▾</button>`;
+}
 function clsHtml(i){
   const c=CLS[i.key];
   if(!c||c.date!==i.date){ setTimeout(()=>clsLoad(i),0); return `<span class="cls-sum muted">🏷 Classifying…</span>`; }
@@ -8179,13 +8326,14 @@ function paneShell(i, inner){
   })();
   return `
   <div class="pane-tools">
-    ${tb('x','Close (Esc)','closePane()')}
+    ${tb('x','Close (Esc)','paneClose()')}
     ${i.type==='mail'?tb('back','Previous (k)','paneNav(-1)','hide-sm')+`<button class="tool hide-sm" onclick="paneNav(1)" title="Next (j)" style="transform:scaleX(-1)">${ic('back')}</button>`:''}
     <span class="sp"></span>
     ${i.type==='mail'?tb('reply','Reply / draft',`replyOptions('${k}')`):''}
     ${i.type==='mail'?tb('calendar','Invite them to a meeting',`inviteDlg('${k}')`):''}
     ${tb('clock','Snooze',`snoozeDlg('${k}')`)}
     ${tb(i.starred?'starfill':'star',i.starred?'Unstar':'Star',`starItem('${k}')`)}
+    ${notInInbox(i)?tb('into','Move to Inbox (⇧I)',`moveToInbox('${k}')`):''}
     ${i.type==='mail'?tb('check','Archive in Gmail (e)',`archiveItem('${k}')`):tb('check','Handled',`handledItem('${k}')`)}
     ${i.type==='mail'?tb('todo','Create or add to account todo',`todoPick(['${k}'])`):''}
     ${tb('folder','Add to project',`projPickKey(event,'${k}')`)}
@@ -8198,7 +8346,8 @@ function paneShell(i, inner){
        real Gmail labels, so only the chips deserved to go. Its own datalist id:
        the new-todo dialog renders a #lbl-list of its own and both can be open. -->
   <div class="pane-head"><h2>${esc(i.title)}</h2>
-    ${labels.map(l=>`<span class="chip lbl" style="${lblStyle(l)}">${esc(l)} <b style="cursor:pointer;font-weight:400" onclick="rmLabel('${k}','${esc(l)}')" title="Remove label">×</b></span>`).join(' ')}
+    ${i.type==='mail'?bundleChip(i):''}
+    ${labels.map(l=>`<span class="chip lbl" style="${lblStyle(l)}">🏷 ${esc(l)}<button class="lbl-x" onclick="rmLabel('${k}','${esc(l)}')" title="Remove the ${esc(l)} label in Gmail" aria-label="Remove label ${esc(l)}">✕</button></span>`).join(' ')}
     ${i.type==='mail'?`<input class="lbl-add" list="pane-lbl-list" placeholder="＋" title="Add a label"
       onkeydown="if(event.key==='Enter'){addLabel('${k}',this.value);this.value=''}">
     <datalist id="pane-lbl-list">${labelUniverse().map(l=>`<option value="${esc(l)}">`).join('')}</datalist>`:''}</div>
@@ -8474,13 +8623,29 @@ function threadAttsHtml(msgs){
   entries.reverse();   // newest first
   return `<div class="thread-atts"><span class="ta-h">📎 Earlier in this thread</span><div class="matts">${attChipsHtml(entries)}</div></div>`;
 }
+// E319 (Casey: "add the timezone … convert the timezone to mine"): the server
+// hands over the sender's Date header as ISO with the SENDER's offset, and we
+// used to just slice it — so a UK sender's 21:27 showed as 21:27. Convert to
+// this device's zone and name it; the hover keeps the sender's own clock.
+function msgWhen(d){
+  if(!d) return {txt:'',title:''};
+  const raw=String(d);
+  const iso=/[zZ]|[+-]\d\d:?\d\d$/.test(raw)?raw:raw+'Z';   // no offset (-0000) → UTC
+  const dt=new Date(iso);
+  if(isNaN(dt)) return {txt:raw.replace('T',' ').slice(0,16),title:''};
+  const p=n=>String(n).padStart(2,'0');
+  const tz=(new Intl.DateTimeFormat([],{timeZoneName:'short'}).formatToParts(dt).find(x=>x.type==='timeZoneName')||{}).value||'';
+  const txt=`${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())} ${p(dt.getHours())}:${p(dt.getMinutes())}${tz?' '+tz:''}`;
+  return {txt,title:`Sender's time: ${raw.replace('T',' ').slice(0,16)}${/[+-]\d\d:?\d\d$/.test(raw)?' (UTC'+raw.slice(-6)+')':''}`};
+}
+function msgWhenHtml(d){ const w=msgWhen(d); return `<span class="t"${w.title?` title="${esc(w.title)}"`:''}>${esc(w.txt)}</span>`; }
 function msgColHtml(m,gi){
   const frm=(m.from||'').split('<')[0].trim()||m.from||'?';
   const na=(m.attachments||[]).length;
   return `<div class="mcol" data-mi="${gi}" title="Expand this message">
     <span class="mav" style="background:${avColor(frm)}">${initials(frm)}${avImg(emOf(m.from))}</span>
     <b>${esc(frm)}</b><span class="csnip">${esc(msgSnip(m))}</span>${na?`<span class="mcol-att" title="${esc((m.attachments||[]).map(a=>a.filename).join(', '))}">📎${na>1?' '+na:''}</span>`:''}
-    <span class="t">${esc((m.date||'').replace('T',' ').slice(0,16))}</span></div>`;
+    ${msgWhenHtml(m.date)}</div>`;
 }
 let MSG_CTX=null;   // {account, thread_id} of the thread being rendered
 // which attachments the viewer can show (the server re-checks the bytes)
@@ -8583,7 +8748,7 @@ function msgHtml(m,gi){
   const cpAll=s=>{ const list=rcptList(s); return list.length>1?`<button class="rc-copy" data-copyall="${esc(list.join(', '))}" data-n="${list.length}" title="Copy all ${list.length} addresses" onclick="event.stopPropagation();copyText(this.dataset.copyall,this.dataset.n+' addresses')">⧉</button>`:''; };
   const rcpt=[m.to?`to ${names(m.to)}${cpAll(m.to)}`:'', m.cc?`cc ${names(m.cc)}${cpAll(m.cc)}`:''].filter(Boolean).join(' · ');
   return `<div class="msg"${gi!=null?` data-mi="${gi}"`:''}><div class="mh" title="Collapse this message"><span class="mav" style="background:${avColor(frm)}">${initials(frm)}${avImg(emOf(m.from))}</span>
-    ${personSpan(m.from||frm).replace('class="person"','class="person" style="font-weight:700;font-size:13.5px"')}<span class="t">${esc((m.date||'').replace('T',' ').slice(0,16))}</span>
+    ${personSpan(m.from||frm).replace('class="person"','class="person" style="font-weight:700;font-size:13.5px"')}${msgWhenHtml(m.date)}
     ${gi!=null&&MSG_CTX?.key?`<span class="mact">${[['reply','Reply to this message','reply'],['reply','Reply all to this message','all'],['forward','Forward this message','fwd']].map(([icn,t,md])=>
       `<button title="${t}" onclick="event.stopPropagation();openComposer('${esc(MSG_CTX.key)}','${md}',${gi})">${md==='all'?ic('reply')+ic('reply'):ic(icn)}</button>`).join('')}</span>`:''}</div>
     ${rcpt?`<div class="mrcpt">${rcpt}</div>`:''}
@@ -8723,8 +8888,20 @@ function cmpPop(on){
   if(on) setTimeout(()=>$('#sd-body')?.focus(),30);
 }
 addEventListener('keydown',e=>{ if(e.key==='Escape'&&document.body.classList.contains('cmp-full')){ e.stopPropagation(); cmpPop(false); } },true);
+// Close by your hand (× / Esc / u) or because a finished email had no
+// neighbour left: the pane goes, and the view you opened it from comes back
+// at the scroll you left it — the all-accounts Home included.
+function paneClose(){
+  const back=OPEN?OPEN_FROM:null;
+  closePane();
+  if(!back) return;
+  let top=back.top;
+  if(back.homeAll && SCOPE.kind==='home' && !HOME_ALL && !PROJ){ showHomeAll(); top=back.homeAll.top; }
+  else if(back.scope!==SCOPE.kind+':'+SCOPE.id) return;
+  requestAnimationFrame(()=>{ const l=$('#list'); if(l) l.scrollTop=top; });
+}
 function closePane(){
-  OPEN=null; $('#pane').classList.remove('composing');
+  OPEN=null; OPEN_FROM=null; OPEN_RING=[]; $('#pane').classList.remove('composing');
   document.body.classList.remove('home-read');
   // full-page scopes (Home hides the pane in CSS; the Wizard needs its
   // width) — no persistent preview placeholder there, per-item panes only
@@ -9468,8 +9645,34 @@ function sendMenu(ev,kind,key){ const r=ev.currentTarget.getBoundingClientRect()
   const items=kind==='cp'
     ? [_mi('💾 Save to Drafts',`doCompose(${dummy})`), ...(window.CP_DRAFT?[]:[_mi('📎 Big files: save and attach in Gmail ↗','attachViaGmail()')]), '<hr>',
        ...(window.CP_DRAFT?[_mi('🗑 Delete this draft — Gmail Trash','cwDeleteDraft()','warn')]:[]), _mi('✕ Close without saving','closeCompose()','warn')]
-    : [_mi('💾 Save to Drafts',`saveDraftBody('${key}',${dummy})`), ...(SD_MODE==='fwd'?[]:[_mi('📎 Big files: save and attach in Gmail ↗',`attachViaGmail('${key}')`)]), '<hr>', _mi('🗑 Discard',`closeComposer('${key}')`,'warn')];
+    : [...(SD_MODE==='fwd'?[]:[_mi('📥 Send and Archive',`sendThen('${key}','archive')`), _mi('⏰ Send and Snooze…',`sendSnoozePick('${key}')`), '<hr>']),
+       _mi('💾 Save to Drafts',`saveDraftBody('${key}',${dummy})`), ...(SD_MODE==='fwd'?[]:[_mi('📎 Big files: save and attach in Gmail ↗',`attachViaGmail('${key}')`)]), '<hr>', _mi('🗑 Discard',`closeComposer('${key}')`,'warn')];
   ctxOpen(r.right-230,r.top-(kind==='cp'?140:140),items.join('')); }
+/* dev #94 (Casey: "options next to the send button in an arrow menu, 'Send
+   and Archive', 'Send and Snooze'" → "Archive / snooze after it sends"):
+   the same Send — one click, the 10-second Undo, the same recipients — and
+   only once the email has actually gone is the thread archived or snoozed
+   (doSend's "then"). Undo cancels both. */
+function sendThen(key,then,until){
+  const sel=$('#sd-then'); if(!sel) return;
+  if(then==='snooze-at'){
+    if(!sel.querySelector('option[value="snooze-at"]')) sel.insertAdjacentHTML('beforeend','<option value="snooze-at"></option>');
+    sel.querySelector('option[value="snooze-at"]').textContent='then: snooze until '+new Date(until).toLocaleString([],{weekday:'short',hour:'numeric',minute:'2-digit'});
+    window.SD_THEN_AT=until;
+  }
+  sel.value=then;
+  doSend(key,$('#sd-send'));
+}
+function sendSnoozePick(key){
+  const b=(k,l)=>`<button class="qbtn" onclick="closeDlg();sendThen('${esc(key)}','snooze-at',snoozeWhen('${k}'))">${l}</button>`;
+  dlg(`<h3>⏰ Send, then snooze until…</h3>
+    <input type="text" id="ss-nl" autocomplete="off" placeholder='"3 days", "tue 9am", "next week"…'
+      onkeydown="if(event.key==='Enter'){event.preventDefault();const d=parseSnooze(this.value);if(d){closeDlg();sendThen('${esc(key)}','snooze-at',d.toISOString())}else toast('Couldn’t read that time')}">
+    <div class="snz-grid" style="margin-top:8px">${b('evening','This evening 6pm')}${b('tomorrow','Tomorrow 8am')}${b('weekend','This weekend')}${b('nextweek','Next week')}</div>
+    <div class="foot"><button class="btn sec2" onclick="closeDlg()">Cancel</button>
+      <span class="status">Sends now (with the usual Undo), then archives it until that time.</span></div>`);
+  setTimeout(()=>{ const n=$('#ss-nl'); if(n) n.focus(); },50);
+}
 function rbImg(id){
   const inp=document.createElement('input');
   inp.type='file'; inp.accept='image/*';
@@ -9523,11 +9726,28 @@ function rbLink(id){
    an empty paragraph is exactly one blank line. */
 const RB_BLOCK=new Set(['DIV','P','LI','UL','OL','BLOCKQUOTE','H1','H2','H3','H4','H5','H6','PRE']);
 function rbPlain(el){
+  // 2026-11-19 (Casey pasted an email from a chat app, reloaded the draft,
+  // and "the line breaks were crazy"): pasted HTML carries newlines between
+  // its tags that are layout, not content, and they came through as blank
+  // lines — between every bullet, twice around a list, and after each <br>.
+  // Now: those are skipped; a paragraph is followed by one blank line (unless
+  // it's a tight one, margin 0, like the signature); list items sit on
+  // consecutive lines with one blank line around the list.
   let out='';
   const nl=()=>{ if(out&&!out.endsWith('\n')) out+='\n'; };
+  const gap=()=>{ nl(); if(out&&!out.endsWith('\n\n')) out+='\n'; };
+  const isBlock=x=>x&&x.nodeType===1&&RB_BLOCK.has(x.tagName);
+  const tight=x=>{ const m=(x.getAttribute&&x.getAttribute('style'))||''; return /margin(-bottom)?\s*:\s*0(px)?\b/i.test(m); };
   const walk=node=>{
     for(const ch of node.childNodes){
-      if(ch.nodeType===3){ out+=ch.nodeValue.replace(/\u00a0/g,' '); continue; }
+      if(ch.nodeType===3){
+        let t=ch.nodeValue;
+        // whitespace between blocks is the HTML's own layout
+        if(!t.trim()&&/\n/.test(t)&&(isBlock(ch.previousSibling)||isBlock(ch.nextSibling)||isBlock(ch.parentNode)&&(!ch.previousSibling||!ch.nextSibling))) continue;
+        // "<br>\n" in pasted HTML: the newline after the break is layout
+        if(ch.previousSibling&&ch.previousSibling.nodeName==='BR') t=t.replace(/^\n/,'');
+        out+=t.replace(/\u00a0/g,' '); continue;
+      }
       if(ch.nodeType!==1) continue;
       const tag=ch.tagName;
       if(tag==='BR'){
@@ -9538,19 +9758,19 @@ function rbPlain(el){
         out+='\n'; continue;
       }
       if(RB_BLOCK.has(tag)){
-        nl();
+        if(tag==='UL'||tag==='OL') gap(); else nl();
         if(tag==='LI') out+=ch.parentNode&&ch.parentNode.tagName==='OL'?([...ch.parentNode.children].indexOf(ch)+1)+'. ':'• ';
         const from=out.length;
         walk(ch);
         if(tag==='BLOCKQUOTE') out=out.slice(0,from)+out.slice(from).split('\n').map(l=>l?'> '+l:l).join('\n');
-        nl();
+        if(tag==='UL'||tag==='OL'||(tag==='P'&&!tight(ch))) gap(); else nl();
         continue;
       }
       walk(ch);
     }
   };
   walk(el);
-  return out.replace(/\n+$/,'');
+  return out.replace(/\n{3,}/g,'\n\n').replace(/\n+$/,'');
 }
 const rbText = id => { const el=$('#'+id); return el?rbPlain(el):''; };
 /* E155: composer bodies snapshot to localStorage on every pause in typing,
@@ -10137,7 +10357,8 @@ async function doSend(key,btn){
     if(fa.length){ payload.forward_of=i.raw.thread_id; payload.forward_atts=fa; }
   }
   else { payload.thread_id=i.raw.thread_id; payload.body_html=send_at?null:ext.html; payload.send_at=send_at; }
-  const then=$('#sd-then').value;
+  const then=$('#sd-then').value, thenAt=window.SD_THEN_AT||null;
+  window.SD_THEN_AT=null;
   const finish=async out=>{
     clearBak('r:'+i.raw.thread_id);   // E155: it landed — drop the snapshot
     if(!send_at) sentStale();
@@ -10145,6 +10366,7 @@ async function doSend(key,btn){
     if(then==='archive') await doneItem(key);
     else if(then==='dismiss') await dismissItem(key);
     else if(then==='snooze-tomorrow'){ await post('/mail/triage',{action:'snooze',thread_id:i.raw.thread_id,account:i.account,until:snoozeWhen('tomorrow')}); dropLocal(i); }
+    else if(then==='snooze-at'&&thenAt){ await post('/mail/triage',{action:'snooze',thread_id:i.raw.thread_id,account:i.account,until:thenAt}); dropLocal(i); }
     else if(OPEN===key&&!$('#pane').classList.contains('composing')) renderThreadPane(i);
     if(!send_at&&SD_MODE!=='fwd') threadShowSent(i,payload);
     if(!send_at) sendCard({key:then===''&&SD_MODE!=='fwd'?key:null, ctx:{account:i.account, thread_id:SD_MODE==='fwd'?'':i.raw.thread_id,
@@ -11907,7 +12129,7 @@ document.addEventListener('keydown', e=>{
     // E204: Esc steps back one level — a dialog, then the pane, then an open group
     const busy=document.querySelector('#dlg-back.open,.ovl.open');
     if(SPLIT&&!OPEN&&!busy){ closeSplit(); return; }
-    closeDlg(); closeOvl(); closePane(); return; }
+    closeDlg(); closeOvl(); paneClose(); return; }
   // With a dialog open, the list's one-key actions stay asleep.
   if(document.querySelector('#dlg-back.open')) return;
   // E204: t = add to todo (the selection, else the row under the cursor or
@@ -11959,13 +12181,14 @@ document.addEventListener('keydown', e=>{
   if(e.key==='?'){ e.preventDefault(); keysDlg(); return; }
   if(e.key==='c'){ e.preventDefault(); composeDlg(); return; }
   if(e.key==='z'){ e.preventDefault(); undoPending(); return; }
-  if(e.key==='u'){ if(SPLIT&&!OPEN) closeSplit(); else closePane(); return; }
+  if(e.key==='u'){ if(SPLIT&&!OPEN) closeSplit(); else paneClose(); return; }
   // The row under the cursor, else the email open in the pane.
   const cur=VISIBLE[KB]||(OPEN&&findItem(OPEN));
   if(!cur) return;
   const mail=cur.type==='mail';
   const k=cur.key;
   if(e.key==='Enter'||e.key==='o') openItem(k);
+  if(e.key==='I'&&e.shiftKey&&mail&&notInInbox(cur)){ e.preventDefault(); moveToInbox(k); return; }
   else if(e.key==='e'||e.key==='y'){ if(mail) archiveItem(k); }
   // Dev #93: the Delete key (⌫ / fn-⌫ on a Mac) deletes too, same as #
   else if(e.key==='#'||e.key==='Delete'||e.key==='Backspace'){ if(mail){ e.preventDefault(); trashItem(k); } }
@@ -11988,7 +12211,7 @@ async function replyKey(key,mode){
 }
 const KEYS=[
   ['Compose & find',[['c','New email'],['/','Search'],['?','This list']]],
-  ['Move around',[['j / k or ↓ / ↑','Next / previous (with an email open, opens the next one)'],['o or Enter','Open'],['u','Back to the list'],['Esc','Close / step back'],
+  ['Move around',[['j / k or ↓ / ↑','Next / previous (with an email open, opens the next one)'],['o or Enter','Open'],['⇧I','Move to Inbox (an email that isn’t in it)'],['u','Back to the list'],['Esc','Close / step back'],
     ['g i','Inbox'],['g s','Starred'],['g t','Sent'],['g d','Drafts'],['g a','All mail'],['g k','Todos'],['g h','Home']]],
   ['Act on an email',[['e','Archive (done)'],['# or ⌫','Delete — Gmail Trash, with Undo'],['s','Star / unstar'],['b or h','Snooze'],
     ['r','Reply'],['a','Reply all'],['f','Forward'],['R','Claude\'s reply options'],['l','Label'],['t','Add to todo'],

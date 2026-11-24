@@ -590,6 +590,11 @@ def filter_response(ctx: Ctx, obj, conn=None):
         for m in out.get("messages") or []:
             if isinstance(m, dict):
                 m.pop("body_html", None)
+    if ctx.route == "/mail" and isinstance(out, dict):
+        # dev #95: Projects are Casey's — agents read mail, not his filing
+        for t in out.get("threads") or []:
+            if isinstance(t, dict):
+                t.pop("projects", None)
     if ctx.who == "desktop" and ctx.route == "/brief" and isinstance(out, dict):
         # E260: one account's brief; the board-wide counts and Casey's own day
         # note span accounts, so the desktop app does not get them

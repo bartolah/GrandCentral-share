@@ -287,6 +287,13 @@ class AgentGate(unittest.TestCase):
         self.assertEqual(code, 429)
         self.assertIn("40 thread reads an hour", out["error"])
 
+    def test_move_to_inbox_is_not_an_agent_verb(self):
+        # dev #95: ↩ Move to Inbox is Casey's; agents archive, they don't un-archive
+        code, out = self.agent("POST", "/mail-action",
+                               {"action": "inbox", "thread_id": THREAD, "account": A})
+        self.assertEqual(code, 403)
+        self.setUp()
+
     def test_dev_run_is_a_paired_browser_tap(self):
         # dev #82 (§6 2026-11-09): starting the dev worker is never an agent's
         # or an unpaired caller's — the request is refused before dev_run runs
@@ -387,6 +394,17 @@ class DesktopByteBudget(DesktopBreaker):
         with self.assertRaises(self.g.Refused) as e:
             self.g._check_limits(self.conn, self.g.Ctx("agent", "POST", "/draft/compose", {}, None))
         self.assertIn("2 MB", str(e.exception))
+
+
+class AgentsDontSeeProjects(unittest.TestCase):
+    def test_projects_are_stripped_from_mail_for_agents(self):
+        import agent_gate as g
+        for who in ("agent", "desktop"):
+            ctx = g.Ctx(who, "GET", "/mail", {}, None)
+            ctx.allowed_accounts = {"acctone"}
+            out = g.filter_response(ctx, {"ok": True, "threads": [
+                {"account": "acctone", "thread_id": "t1", "projects": [{"id": 1, "name": "Secret"}]}]})
+            self.assertNotIn("projects", out["threads"][0])
 
 
 class AgentThreadsAreText(unittest.TestCase):
